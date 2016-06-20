@@ -1,0 +1,22 @@
+!_TAG_FILE_FORMAT	2	/extended format; --format=1 will not append ;" to lines/
+!_TAG_FILE_SORTED	1	/0=unsorted, 1=sorted, 2=foldcase/
+!_TAG_PROGRAM_AUTHOR	Darren Hiebert	/dhiebert@users.sourceforge.net/
+!_TAG_PROGRAM_NAME	Exuberant Ctags	//
+!_TAG_PROGRAM_URL	http://ctags.sourceforge.net	/official site/
+!_TAG_PROGRAM_VERSION	5.8	//
+LC3getc	LC3.c	/^static void LC3getc(LC3 *simulator, WINDOW *window)$/;"	f	file:
+LC3halt	LC3.c	/^static void LC3halt(WINDOW *window)$/;"	f	file:
+LC3in	LC3.c	/^static void LC3in(LC3 *simulator, WINDOW *window)$/;"	f	file:
+LC3out	LC3.c	/^static void LC3out(LC3 *simulator, WINDOW *window)$/;"	f	file:
+LC3puts	LC3.c	/^static void LC3puts(LC3 *simulator, WINDOW *window)$/;"	f	file:
+WORD_SIZE	main.c	/^#define WORD_SIZE /;"	d	file:
+convert_bin_line	main.c	/^static unsigned short convert_bin_line(char *buffer)$/;"	f	file:
+main	main.c	/^int main(int argc, char **argv)$/;"	f
+populate_memory	main.c	/^static void populate_memory(LC3 *simulator, char *file_name)$/;"	f	file:
+print_state	LC3.c	/^void print_state(LC3 *simulator, WINDOW *window)$/;"	f
+prompt_for_file	main.c	/^static void prompt_for_file(char *buffer, int size)$/;"	f	file:
+read_error	Error.c	/^void read_error()$/;"	f
+setcc	LC3.c	/^static void setcc(unsigned short *last_result, unsigned char *CC)$/;"	f	file:
+simulate	LC3.c	/^void simulate(LC3 *simulator, WINDOW *output)$/;"	f
+unable_to_open_file	Error.c	/^void unable_to_open_file(char *file)$/;"	f
+usage	Error.c	/^void usage(char *program)$/;"	f
