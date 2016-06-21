@@ -7,5 +7,12 @@ An ncurses simulator for the LC-3.
 Currently it only supports using .obj files that are created when the actual LC-3 Simulator assembles your program.
 
 Usage:
-`$ ./LC3Simulator -f <file>`
-`$ ./LC3Simulator <file>`
+
+First run `make`, and then, in the same directory, run either of the following:
+
+```bash
+$ ./LC3Simulator -f <file>
+```
+```bash
+$ ./LC3Simulator <file>
+```
