@@ -1,6 +1,6 @@
 #include <stdbool.h>	// For boolean values.
 #include <string.h>	// For strlen
-#include <unistd.h>	// For getopts
+#include <getopt.h>	// For getop
 
 #include "Enums.h"
 #include "Error.h"
@@ -9,13 +9,14 @@
 #define WORD_SIZE 2 // Word's in the LC3 are 16 bits (2 bytes).
 
 // Some prototyped functions to use.
-static unsigned short convert_bin_line(char *);
+static short convert_bin_line(char *);
 
 static void populate_memory(LC3 *, char *);
 static void prompt_for_file(char *,   int);
 
 
-int main(int argc, char **argv)
+int
+main(int argc, char **argv)
 {
 	char file[256] = { 0 };
 	bool simulating = true;
@@ -160,7 +161,7 @@ int main(int argc, char **argv)
 					// simulator to the screen.
 					print_state(&simulator, status);
 					wtimeout(status, -1);
-                                } else if (simulator.halted) {
+				} else if (simulator.halted) {
 					// If the simulator is halted, then
 					// print the current state of the
 					// simulator to the screen.
@@ -195,7 +196,8 @@ int main(int argc, char **argv)
 }
 
 
-static void populate_memory(LC3 *simulator, char *file_name)
+static void
+populate_memory(LC3 *simulator, char *file_name)
 {
 	/*
 	 *  Populate the memory of the supplied simulator
@@ -209,15 +211,14 @@ static void populate_memory(LC3 *simulator, char *file_name)
 	if (!file || file == NULL)
 		unable_to_open_file(file_name);
 
-        unsigned short  tmp_PC = 0,	// A temporary PC used to store the
-                                        // values in memory.
-			value  = 0;	// What will be used to get the
-					// instruction on the line.
+	short tmp_PC = 0, // A temporary PC used to store the// values in memory.
+	      value  = 0; // What will be used to get the
+			  // instruction on the line.
 
 	char buffer[2];
 
-        // The first line of the file is where to start the PC at,
-        // so let's read it.
+	// The first line of the file is where to start the PC at,
+	// so let's read it.
 	fread(buffer, sizeof(buffer), 1, file);
 	simulator->PC = tmp_PC = convert_bin_line(buffer);
 
@@ -235,16 +236,12 @@ static void populate_memory(LC3 *simulator, char *file_name)
 		read_error();
 	}
 
-	//FILE *out = fopen("out.txt", "w");
-	//for (; simulator->PC < tmp_PC; ++simulator->PC)
-	//	fprintf(out, "%x\n", simulator->memory[simulator->PC]);
-	//read_error();
-
 	// Close the file
 	fclose(file);
 }
 
-static void prompt_for_file(char *buffer, int size)
+static void
+prompt_for_file(char *buffer, int size)
 {
 	/*
 	 *  The file wasn't supplied as a parameter,
@@ -257,7 +254,8 @@ static void prompt_for_file(char *buffer, int size)
 	buffer[strlen(buffer) - 1] = '\0';
 }
 
-static unsigned short convert_bin_line(char *buffer)
+static short
+convert_bin_line(char *buffer)
 {
 	/*
 	 * Convert a line of binary into a readable number.
@@ -266,7 +264,7 @@ static unsigned short convert_bin_line(char *buffer)
 	 *		   to convert.
 	 */
 
-	unsigned short  number = 0,	// Where we will store the value of the
+	short  number = 0,	// Where we will store the value of the
 					// line.
                         index  = 0;	// An index to gor through each value in
 					// the buffer.
