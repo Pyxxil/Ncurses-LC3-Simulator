@@ -22,9 +22,10 @@
 ## UI
 * Make a popup for any sim dumps we make
   * Dismissable with a simple keystroke
-  * Will just be a popup window with a border that displays:
-    * Dumped contents file
-    * Any current needed information (e.g. The current highlighted memory address)
+  * Will just be a popup window with a border that:
+    * Displays dumped contents file name
+    * Displays any current needed information (e.g. The current highlighted
+      memory address)
     * Allow the user to dump the contents of the output screen (?)
 * Make the UI more scalable
   * For differing terminal sizes
