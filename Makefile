@@ -1,8 +1,9 @@
 CC = gcc
 
 OUTFILE = Simulator
-SRC 	= main.c Error.c LC3.c
-OBJS 	= main.o Error.o LC3.o
+SRCDIR  = source
+SRC    := $(wildcard $(SRCDIR)/*.c)
+OBJS   := $(patsubst %.c, %.o, $(SRC))
 INCDIR 	= -Iincludes
 LIBS 	= -lncurses
 
@@ -32,5 +33,6 @@ build: $(OBJS)
 
 # Remove all unneccessary files
 clean:
-	rm $(OUTFILE) *.o
+	@echo "Cleaning up"
+	rm $(OUTFILE) $(OBJS)
 
