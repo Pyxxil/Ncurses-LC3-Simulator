@@ -29,7 +29,7 @@ int main(int argc, char **argv)
 		.PC		=   0  , // The PC starts at 0.
 		.IR		=   0  , // The IR starts at 0.
 		.CC		=  'Z' , // The CC starts at Z.
-	        .halted		= false, // We haven't hit the HALT instruction
+		.halted		= false, // We haven't hit the HALT instruction
 					 // yet.
 		.isPaused	= true , // The simulator starts paused.
 	};

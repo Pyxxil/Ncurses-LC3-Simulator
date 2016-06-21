@@ -2,34 +2,31 @@
 CC = gcc
 
 # The program name
-OUTFILE = LC3Simulator
+EXECUTABLE = LC3Simulator
 
 # Source directory
-SRCDIR   = source
+SRCDIR = source
 # Source files
-SRC     := $(wildcard $(SRCDIR)/*.c)
-# Object files
-OBJS    := $(patsubst %.c, %.o, $(SRC))
+SRC   := $(wildcard $(SRCDIR)/*.c)
+# Object files (gathered by substitution)
+OBJS  := $(SRC:%.c=%.o)
 
 # Includes directory
-INCDIR 	 = includes
+INCDIR   = includes
 # Flag to add the above directory to gcc's search path
 INCLUDES = -I$(INCDIR)
 # Library dependencies
 LIBS     = -lncurses
 
 # Flags to use when compiling
-CFLAGS 	 = $(INCLUDES) $(LIBS) -std=c11
+CFLAGS = $(INCLUDES) $(LIBS) -std=c11
 # Flags to add when compiling the debug version
-DFLAGS 	 = -Wall -Werror -Wpedantic -Wextra -DDEBUG
+DFLAGS = -Wall -Werror -Wpedantic -Wextra -DDEBUG
 
-GCC6    := $(shell which gcc-6 2>/dev/null)
+GCC6 := $(shell which gcc-6 2>/dev/null)
 
-# When run without any command-line options, run the build
-# If using make > 3.8, this should work
-.DEFAULT_GOAL := build
 
-# Just in case the user isn't using make > 3.8, we'll use this instead
+# Default target if none are given
 .PHONY: default
 default: build
 
@@ -50,7 +47,7 @@ tags:
 
 # Build the executable file
 build: $(OBJS)
-	$(CC) $(CFLAGS) -o $(OUTFILE) $(OBJS)
+	$(CC) $(CFLAGS) -o $(EXECUTABLE) $(OBJS)
 
 %.o: %.c $(INCDIR)/%.h
 	$(CC) $(CFLAGS) -c $< -o $@
@@ -58,5 +55,5 @@ build: $(OBJS)
 # Remove all generated files
 clean:
 	@echo "Cleaning up"
-	rm $(OUTFILE) $(OBJS)
+	rm $(EXECUTABLE) $(OBJS)
 
