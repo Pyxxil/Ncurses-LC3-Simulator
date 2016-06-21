@@ -22,8 +22,8 @@ int main(int argc, char **argv)
 	int input,
 	    index = 0;
 
-        // Our initial state that we can reset the simulator to.
-        static const LC3 initialState = {
+	// Our initial state that we can reset the simulator to.
+	static const LC3 initialState = {
 		.memory		= { 0 }, // All memory locations are zeroed.
 		.registers	= { 0 }, // All registers are zeroed.
 		.PC		=   0  , // The PC starts at 0.
@@ -57,8 +57,16 @@ int main(int argc, char **argv)
 		}
 	}
 
-	if ((optind == argc) && (strlen(file) == 0))
-		prompt_for_file(file, 256);
+	if (optind == argc) {
+		if (strlen(file) == 0) {
+			prompt_for_file(file, 256);
+		}
+	} else if (optind < argc) {
+		if (((optind + 1) == argc) && (strlen(file) == 0)) {
+			for (index = 0; argv[optind][index] != '\0'; ++index)
+				file[index] = argv[optind][index];
+		}
+	}
 
 	// Populate the memory with the contents of the file.
 	populate_memory(&simulator, file);
