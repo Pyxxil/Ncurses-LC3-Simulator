@@ -1,37 +1,61 @@
+# Use gcc as the compiler
 CC = gcc
 
-OUTFILE = Simulator
-SRCDIR  = source
-SRC    := $(wildcard $(SRCDIR)/*.c)
-OBJS   := $(patsubst %.c, %.o, $(SRC))
-INCDIR 	= -Iincludes
-LIBS 	= -lncurses
+# The program name
+OUTFILE = LC3Simulator
+
+# Source directory
+SRCDIR   = source
+# Source files
+SRC     := $(wildcard $(SRCDIR)/*.c)
+# Object files
+OBJS    := $(patsubst %.c, %.o, $(SRC))
+
+# Includes directory
+INCDIR 	 = includes
+# Flag to add the above directory to gcc's search path
+INCLUDES = -I$(INCDIR)
+# Library dependencies
+LIBS     = -lncurses
 
 # Flags to use when compiling
-CFLAGS 	= $(INCDIR) $(LIBS) -std=c11
-# Flags to use when compiling the debug version
-DFLAGS 	= -Wall -Werror -Wpedantic -Wextra -DDEBUG
+CFLAGS 	 = $(INCLUDES) $(LIBS) -std=c11
+# Flags to add when compiling the debug version
+DFLAGS 	 = -Wall -Werror -Wpedantic -Wextra -DDEBUG
 
+GCC6    := $(shell which gcc-6 2>/dev/null)
 
-all: build
+# When run without any command-line options, run the build
+# If using make > 3.8, this should work
+.DEFAULT_GOAL := build
 
-# Not really needed, but it's nice to use.
+# Just in case the user isn't using make > 3.8, we'll use this instead
+.PHONY: default
+default: build
+
+ifdef GCC6
+# Using Homebrew's version of gcc-6 for debug, because clang throws a
+# warning when -lncurses is linked but not used, but only if it exists
+# on the system
 debug: CC = gcc-6
+endif
+# Add the debug flags
 debug: CFLAGS += $(DFLAGS)
+# Build the system
 debug: build
 
-# To tag the files
+# Use ctags to generate tags for the c files
 tags:
 	ctags $(SRC)
 
-# For building
+# Build the executable file
 build: $(OBJS)
 	$(CC) $(CFLAGS) -o $(OUTFILE) $(OBJS)
 
 %.o: %.c $(INCDIR)/%.h
 	$(CC) $(CFLAGS) -c $< -o $@
 
-# Remove all unneccessary files
+# Remove all generated files
 clean:
 	@echo "Cleaning up"
 	rm $(OUTFILE) $(OBJS)
