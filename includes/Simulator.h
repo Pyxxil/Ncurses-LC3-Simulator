@@ -2,12 +2,11 @@
 #define SIMULATOR_H
 
 #include <stdbool.h>
+#include <stdint.h>
 
 struct LC3 {
-	unsigned short PC,
-		       memory[0xffff],
-		       registers[8],
-		       IR;
+	uint16_t PC, memory[0xffff],
+		registers[8], IR;
 	unsigned char CC;
 	bool halted, isPaused;
 	void (*populate)(struct LC3 *);

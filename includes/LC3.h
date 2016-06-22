@@ -1,7 +1,6 @@
 #ifndef LC3_H
 #define LC3_H
 
-#include <stdint.h>
 #include <curses.h>
 
 #include "Simulator.h"
