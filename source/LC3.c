@@ -1,25 +1,24 @@
-#include <stdio.h>
-#include <stdlib.h>	 // Early exits are nice
 #include <stdbool.h>	// Much nicer to use true/false
-#include <stdint.h>
-#include <curses.h>
+#include <stdlib.h>	// Early exits are nice
+#include <stdio.h>
 
 #include "Enums.h"
 #include "LC3.h"
 
-static void LC3puts(LC3 *, WINDOW *);
-static void LC3getc(LC3 *, WINDOW *);
-static void  LC3out(LC3 *, WINDOW *);
-static void  LC3out(LC3 *, WINDOW *);
-static void   LC3in(LC3 *, WINDOW *);
+static void LC3puts(struct LC3 *, WINDOW *);
+static void LC3getc(struct LC3 *, WINDOW *);
+static void  LC3out(struct LC3 *, WINDOW *);
+static void  LC3out(struct LC3 *, WINDOW *);
+static void   LC3in(struct LC3 *, WINDOW *);
 
 static void LC3halt(WINDOW *);
 
 static void setcc(unsigned short *, unsigned char *);
 
-//void print_context(LC3 *, WINDOW *, unsigned short selected);
+//void print_context(struct LC3 *, WINDOW *, unsigned short selected);
 
-void print_state(LC3 *simulator, WINDOW *window)
+void
+print_state(struct LC3 *simulator, WINDOW *window)
 {
 	/*
 	 * Print the current state of the simulator to the window provided.
@@ -51,7 +50,7 @@ void print_state(LC3 *simulator, WINDOW *window)
 	wrefresh(window);
 }
 
-void simulate(LC3 *simulator, WINDOW *output)
+void simulate(struct LC3 *simulator, WINDOW *output)
 {
 	unsigned short *DR,	// The destination registers (where to store
 		       		// results).
@@ -271,7 +270,7 @@ static void LC3halt(WINDOW *window)
 	wrefresh(window);
 }
 
-static void LC3puts(LC3 *simulator, WINDOW *window)
+static void LC3puts(struct LC3 *simulator, WINDOW *window)
 {
 	unsigned short  tmp  = simulator->registers[0],
 			orig = simulator->registers[0];
@@ -283,19 +282,19 @@ static void LC3puts(LC3 *simulator, WINDOW *window)
 	simulator->registers[0] = orig;
 }
 
-static void LC3getc(LC3 *simulator, WINDOW *window)
+static void LC3getc(struct LC3 *simulator, WINDOW *window)
 {
 	wtimeout(window, -1);
 	simulator->registers[0] = (unsigned short) wgetch(window);
 	wtimeout(window, 0);
 }
 
-static void LC3out(LC3 *simulator, WINDOW *window)
+static void LC3out(struct LC3 *simulator, WINDOW *window)
 {
 	wechochar(window, (unsigned char) simulator->registers[0]);
 }
 
-static void LC3in(LC3 *simulator, WINDOW *window)
+static void LC3in(struct LC3 *simulator, WINDOW *window)
 {
 	waddstr(window, "\nInput a character> ");
 	wrefresh(window);
