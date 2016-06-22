@@ -20,8 +20,9 @@ LIBS     = -lncurses
 
 # Flags to use when compiling
 CFLAGS = $(INCLUDES) $(LIBS) -std=c11
+DLEVEL = 0
 # Flags to add when compiling the debug version
-DFLAGS = -Wall -Werror -Wpedantic -Wextra -DDEBUG
+DFLAGS = -Wall -Werror -Wpedantic -Wextra -DDEBUG=$(DLEVEL)
 
 GCC6 := $(shell which gcc-6 2>/dev/null)
 

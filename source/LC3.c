@@ -45,7 +45,7 @@ print_state(struct LC3 *simulator, WINDOW *window)
 	// Print the PC, IR, and CC.
 	mvwprintw(window, 1, 37, "PC 0x%04x %hd", simulator->PC, simulator->PC);
 	mvwprintw(window, 2, 37, "IR 0x%04x %hd", simulator->IR, simulator->IR);
-	mvwprintw(window, 3, 37, "CC %c		", simulator->CC);
+	mvwprintw(window, 3, 37, "CC %c	       ", simulator->CC);
 	wrefresh(window);
 }
 
@@ -53,13 +53,13 @@ void simulate(struct LC3 *simulator, WINDOW *output)
 {
 	uint16_t *DR, SR1, SR2;
 
-	uint16_t PCoffset;
+	int16_t PCoffset;
 
 	unsigned char opcode;
 
 	// Increment the PC when we fetch the next instruction.
 	simulator->IR = simulator->memory[simulator->PC++];
-#ifdef DEBUG
+#if defined (DEBUG) && (DEBUG & 0x8)
 	wprintw(output, "IR -- %x\n", simulator->memory[simulator->PC - 1]);
 	wrefresh(output);
 #endif
@@ -74,16 +74,10 @@ void simulate(struct LC3 *simulator, WINDOW *output)
 			// Get a character from the keyboard without
 			// echoing it to the display, storing it in
 			// register 0.
-#ifdef DEBUG
-			wprintw(output, "In GETC instruction");
-#endif
 			LC3getc(simulator, output);
 			break;
 		case OUT:
 			// Display a character stored in register 0.
-#ifdef DEBUG
-			wprintw(output, "In OUT instruction");
-#endif
 			LC3out(simulator,  output);
 			break;
 		case PUTS:
@@ -170,7 +164,7 @@ void simulate(struct LC3 *simulator, WINDOW *output)
 		DR = &(simulator->registers[(simulator->IR >> 9) & 7]);
 		// It also takes a signed 9 bit PC offset, so erase the top 7.
 		// bits, then sign extend the number.
-		PCoffset = ((int16_t) (simulator->IR & 0x1ff) << 7) >> 7;
+		PCoffset = ((int16_t) ((simulator->IR & 0x1ff) << 7)) >> 7;
 		// We then retrieve this value in memory, and store the value
 		// into the destination register.
 		*DR = simulator->memory[simulator->PC + PCoffset];
@@ -247,37 +241,35 @@ void simulate(struct LC3 *simulator, WINDOW *output)
 			SR1 = simulator->registers[(simulator->IR >> 6) & 7];
 			simulator->PC = SR1;
 		}
-		simulator->isPaused = true;
 		break;
 	default:	// Just in case
-#ifdef DEBUG
-		wprintw(output, "Unknown opcode -- '%x'\n", opcode);
-		wrefresh(output);
-#endif
 		break;
 	}
 }
 
 static void LC3halt(WINDOW *window)
 {
-	waddstr(window, "\n\n--- halting the LC-3 ---\n\n");
+	waddstr(window, "\n----- Halting the processor -----\n");
 	wrefresh(window);
 }
 
 static void LC3puts(struct LC3 *simulator, WINDOW *window)
 {
-	uint16_t  tmp  = simulator->registers[0],
-			orig = simulator->registers[0];
+	uint16_t tmp = simulator->registers[0],
+		orig = simulator->registers[0];
 	while (simulator->memory[tmp] != 0x0) {
-		simulator->registers[0] = simulator->memory[tmp];
+		simulator->registers[0] = simulator->memory[tmp++];
 		LC3out(simulator, window);
-		++tmp;
 	}
 	simulator->registers[0] = orig;
 }
 
 static void LC3getc(struct LC3 *simulator, WINDOW *window)
 {
+#if defined (DEBUG) && (DEBUG & 0x10)
+	waddstr(window, "(GETC)");
+	wrefresh(window);
+#endif
 	wtimeout(window, -1);
 	simulator->registers[0] = wgetch(window);
 	wtimeout(window, 0);

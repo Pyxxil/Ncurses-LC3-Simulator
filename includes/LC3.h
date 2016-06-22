@@ -3,7 +3,7 @@
 
 #include <curses.h>
 
-#include "Simulator.h"
+#include "Memory.h"
 
 extern void print_state(struct LC3 *, WINDOW *);
 extern void    simulate(struct LC3 *, WINDOW *);

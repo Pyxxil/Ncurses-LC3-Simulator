@@ -115,8 +115,12 @@ static void run_machine(struct LC3 *simulator)
 					wtimeout(status, -1);
 				}
 #ifdef DEBUG
+  #if (DEBUG & 0x2)
 				print_state(simulator, status);
+  #endif
+  #if (DEBUG & 0x4)
 				simulator->isPaused = true;
+  #endif
 #endif
 			}
 			break;
