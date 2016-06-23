@@ -13,11 +13,13 @@ int main(int argc, char **argv)
 
 	char file[256] = { 0 };
 
-	while ((opt = getopt(argc, argv, "f:")) != -1) {
+	while ((opt = getopt(argc, argv, "f:c:")) != -1) {
 		switch (opt) {
 		case 'f':
 			for (index = 0; argv[optind - 1][index] != '\0'; ++index)
 				file[index] = optarg[index];
+			break;
+		case 'c':
 			break;
 		default:
 			break;
