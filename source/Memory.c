@@ -10,6 +10,8 @@
 #include "Memory.h"
 #include "Error.h"
 
+#define WORD_SIZE 2
+
 void populate_memory(struct LC3 *simulator, char *file_name)
 {
 	/*
@@ -27,25 +29,25 @@ void populate_memory(struct LC3 *simulator, char *file_name)
 
 	uint16_t tmp_PC;
 
-	char buffer[2];
+        int instruction;
 
 	// First line in the .obj file is the starting PC.
-	fread(buffer, sizeof(buffer), 1, file);
-	simulator->PC = tmp_PC = buffer[0] << 8 | buffer[1];
+	fread(&instruction, WORD_SIZE, 1, file);
+	simulator->PC = tmp_PC = 0xffff & (instruction << 8 | instruction >> 8);
 
-	while (fread(buffer, sizeof(buffer), 1, file) == 1)
-#ifdef DEBUG
-	{
-#endif
-		simulator->memory[tmp_PC++] = (buffer[0] & 0xff) << 8 |
-						(buffer[1] & 0xff);
-#ifdef DEBUG
+	while (fread(&instruction, WORD_SIZE, 1, file) == 1) {
+		simulator->memory[tmp_PC++] = 0xffff &
+                        (instruction << 8 | instruction >> 8);
+
+#if defined (DEBUG) && (DEBUG & 0x1)
 		printf("0x%04x - 0x%04x", tmp_PC - 1, simulator->memory[tmp_PC - 1]);
-		printf("   0x%04x  0x%04x\n", buffer[0] & 0xff, buffer[1] & 0xff);
-	}
-#if (DEBUG & 0x1)
-	exit(EXIT_SUCCESS);
+		printf("   0x%04x  0x%04x\n", instruction << 8, instruction >> 8);
 #endif
+
+	}
+
+#if defined (DEBUG) && (DEBUG & 0x1)
+	exit(EXIT_SUCCESS);
 #endif
 
 	if (!feof(file)) {
