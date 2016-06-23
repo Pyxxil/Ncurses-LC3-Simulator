@@ -2,19 +2,6 @@
 #include <stdio.h>
 #include "Error.h"
 
-void usage(char *program)
-{
-	/*
-	 *  The user didn't give enough arguments, so we want
-	 *  to complain and exit the program with a failed status.
-	 *
-	 *  program -- The program name used when running the program.
-	 */
-
-	fprintf(stderr, "Usage: %s <file>\n", program);
-	exit(EXIT_FAILURE);
-}
-
 void unable_to_open_file(char *file)
 {
 	/*

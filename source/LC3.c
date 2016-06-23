@@ -21,7 +21,6 @@ print_state(struct LC3 *simulator, WINDOW *window)
 {
 	/*
 	 * Print the current state of the simulator to the window provided.
-	 *
 	 */
 
 	// Clear, and reborder, the window.
@@ -49,8 +48,11 @@ print_state(struct LC3 *simulator, WINDOW *window)
 	wrefresh(window);
 }
 
-void simulate(struct LC3 *simulator, WINDOW *output)
+void execute_next(struct LC3 *simulator, WINDOW *output)
 {
+        /*
+         * Execute the next instruction of the given simulator.
+         */
 	uint16_t *DR, SR1, SR2;
 
 	int16_t PCoffset;
@@ -59,10 +61,12 @@ void simulate(struct LC3 *simulator, WINDOW *output)
 
 	// Increment the PC when we fetch the next instruction.
 	simulator->IR = simulator->memory[simulator->PC++];
+
 #if defined (DEBUG) && (DEBUG & 0x8)
 	wprintw(output, "IR -- %x\n", simulator->memory[simulator->PC - 1]);
 	wrefresh(output);
 #endif
+
 	// The opcode is in the first 4 bits of the instruction.
 	opcode = (simulator->IR & 0xf000) >> 12;
 

@@ -1,16 +1,34 @@
 #include <string.h>
-#include <stdio.h>
 #include <getopt.h>	// For getopt_long
+#include <stdlib.h>
+#include <stdio.h>
 
 #include "Machine.h"
 
-const char usage[] = "Usage: %s [-fch] file.\n";
+const char usage_string[] =
+	"Usage: %s [OPTION] file.\n"
+	"  -f, --file file         specify the input file to use\n"
+	"  -o, --outfile file      specify the outputfile to write any given\n"
+	"                            assembly file's output to\n"
+	"  -a, --assemble file     assemble the given file into a .obj file,\n"
+	"                            .sym file, and a .bin file\n";
 
-// Some prototyped functions to use.
+
 static void prompt_for_file(char *);
+
+static void usage(char *program_name)
+{
+	printf(usage_string, program_name);
+	exit(EXIT_SUCCESS);
+}
 
 int main(int argc, char **argv)
 {
+	if (argc == 1) {
+		printf(usage_string, argv[0]);
+		return 1;
+	}
+
 	int opt, index;
 
 	const char *short_options = "hf:a:o:";
@@ -19,7 +37,8 @@ int main(int argc, char **argv)
 		{"assemble", required_argument, NULL, 'a'},
 		{"file",     required_argument, NULL, 'f'},
 		{"outfile",  required_argument, NULL, 'o'},
-		{NULL,       0,                 NULL,  0 }
+		{"help",           no_argument, NULL, 'h'},
+		{NULL,                       0, NULL,  0 }
 	};
 
 	char file[256] = { 0 };
@@ -37,26 +56,22 @@ int main(int argc, char **argv)
 			break;
 		case '?':
 		case 'h':
-			printf(usage, argv[0]);
-			return 0;
-
+			usage(argv[0]);
 		default:
 			break;
 		}
 	}
 
-	if (optind == argc) {
-		if (file[0] == '\0')
-			prompt_for_file(file);
-	} else if (optind < argc) {
+	if (optind < argc) {
 		if (((optind + 1) == argc) && (file[0] == '\0')) {
 			for (index = 0; argv[optind][index] != '\0'; ++index)
 				file[index] = argv[optind][index];
+			++optind;
 		}
-	} else {
-		printf(usage, argv[0]);
-		return 1;
 	}
+
+	if (optind < argc)
+		usage(argv[0]);
 
 	start_machine(file);
 

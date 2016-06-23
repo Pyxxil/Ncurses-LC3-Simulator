@@ -22,7 +22,94 @@ static void init_machine(struct LC3 *simulator)
         populate_memory(simulator, file_name);
 }
 
-static void run_machine(struct LC3 *simulator)
+static bool simulate(WINDOW *output, WINDOW *status,
+                struct LC3 *simulator, state *currentState)
+{
+	bool simulating = true;
+	int input;
+
+	wtimeout(status, 0);
+	while (simulating) {
+		switch (input = wgetch(status)) {
+		case 'q':
+		case 'Q':
+			// Quit the program.
+			simulating = false;
+			break;
+		case  27: // 27 is the escape key scan code
+		case 'b':
+		case 'B':
+			// Go back to the main state.
+			*currentState = MAIN;
+			simulator->isPaused = true;
+			return simulating;
+		case 'p':
+		case 'P':
+			simulator->isPaused = !simulator->isPaused;
+			break;
+		case 'r':
+		case 'R':
+			init_machine(simulator);
+                        if (input == 'R')
+                                simulator->isPaused = false;
+			wclear(output);
+			wrefresh(output);
+                        break;
+		default:
+			break;
+		}
+		if (!simulator->isPaused && !simulator->halted) {
+			execute_next(simulator, output);
+			wtimeout(status,  0);
+		} else {
+			print_state(simulator, status);
+			wtimeout(status, -1);
+		}
+
+#ifdef DEBUG
+  #if (DEBUG & 0x2)
+		print_state(simulator, status);
+  #endif
+  #if (DEBUG & 0x4)
+		simulator->isPaused = true;
+  #endif
+#endif
+
+	}
+
+	return simulating;
+
+}
+
+static bool run_main_ui(WINDOW *status, state *currentState)
+{
+	int input;
+
+	bool simulating = true;
+
+	while (simulating) {
+		switch (input = wgetch(status)) {
+		case 'q':
+		case 'Q':
+			// Quit the program.
+			return false;
+		case 'd': // For file dumps.
+		case 'D': // TODO
+			break;
+		case 's':
+		case 'S':
+			// Start simulating the machine.
+			*currentState = SIMULATING;
+			return true;
+		default:
+			break;
+		}
+	}
+
+	return simulating;
+}
+
+void run_machine(struct LC3 *simulator)
 {
 	WINDOW *status, *output, *context;
 
@@ -51,78 +138,17 @@ static void run_machine(struct LC3 *simulator)
 	bool simulating = true;
 	int input;
 
+	simulator->isPaused = false;
+	print_state(simulator, status);
+
 	while (simulating) {
 		switch (currentState) {
 		case MAIN:
-			switch (input = wgetch(status)) {
-			case 'q':
-			case 'Q':
-				// Quit the program.
-				simulating = false;
-				break;
-			case 's':
-			case 'S':
-				// Start simulating the machine.
-				currentState = SIMULATING;
-				simulator->isPaused = false;
-				print_state(simulator, status);
-				break;
-			default:
-				break;
-			}
+			simulating = run_main_ui(status, &currentState);
 			break;
 		case SIMULATING:
-			wtimeout(status, 0);
-			while ((currentState == SIMULATING) && simulating) {
-				switch (input = wgetch(status)) {
-				case 'q':
-				case 'Q':
-					// Quit the program.
-					simulating = false;
-					break;
-				case  27: // 27 is the escape key scan code
-				case 'b':
-				case 'B':
-					// Go back to the main state.
-					currentState = MAIN;
-					simulator->isPaused = true;
-					break;
-				case 'p':
-				case 'P':
-					// Toggle the paused state.
-					simulator->isPaused =
-						!simulator->isPaused;
-					break;
-				case 'r':
-				case 'R':
-					// Reset the simulator.
-					init_machine(simulator);
-					print_state(simulator, status);
-					wclear(output);
-					wtimeout(status, -1);
-					break;
-				default:
-					break;
-				}
-				if (!simulator->isPaused && !simulator->halted) {
-					simulate(simulator, output);
-					wtimeout(status,  0);
-				} else if (simulator->isPaused) {
-					print_state(simulator, status);
-					wtimeout(status, -1);
-				} else if (simulator->halted) {
-					print_state(simulator, status);
-					wtimeout(status, -1);
-				}
-#ifdef DEBUG
-  #if (DEBUG & 0x2)
-				print_state(simulator, status);
-  #endif
-  #if (DEBUG & 0x4)
-				simulator->isPaused = true;
-  #endif
-#endif
-			}
+			simulating = simulate(output, status, simulator,
+					&currentState);
 			break;
 		case MEM:
 			switch (input = wgetch(context)) {
@@ -139,7 +165,6 @@ static void run_machine(struct LC3 *simulator)
 		}
 	}
 
-	// Delete all of the windows, and return to normal mode.
 	endwin();
 }
 
