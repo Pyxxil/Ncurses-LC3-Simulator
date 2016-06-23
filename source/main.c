@@ -1,6 +1,6 @@
 #include <string.h>
 #include <stdio.h>
-#include <getopt.h>	// For getopt
+#include <getopt.h>	// For getopt_long
 
 #include "Machine.h"
 
@@ -10,6 +10,11 @@ static void prompt_for_file(char *);
 int main(int argc, char **argv)
 {
 	int opt, index;
+
+	static struct long_option[] = {
+		{"compile", },
+		{"file",
+	};
 
 	char file[256] = { 0 };
 

@@ -10,6 +10,6 @@ Usage:
 
 First run `make`, and then, in the same directory, run either of the following:
 
-```bash
+```shell
 $ ./LC3Simulator [-f] <file>
 ```
