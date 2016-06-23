@@ -16,11 +16,10 @@ void populate_memory(struct LC3 *simulator, char *file_name)
 	 */
 
 	FILE *file = fopen(file_name, "rb");
+	uint16_t tmp_PC, instruction;
 
 	if (!file || file == NULL)
 		unable_to_open_file(file_name);
-
-	uint16_t tmp_PC, instruction;
 
 	// First line in the .obj file is the starting PC.
 	fread(&tmp_PC, WORD_SIZE, 1, file);

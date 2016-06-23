@@ -31,11 +31,9 @@ int main(int argc, char **argv)
 		error_usage(argv[0]);
 
 	int opt;
-
 	char file[256] = { 0 };
 
 	const char *short_options = "hf:a:o:";
-
 	const struct option long_options[] = {
 		{"assemble", required_argument, NULL, 'a'},
 		{"file",     required_argument, NULL, 'f'},
@@ -48,7 +46,7 @@ int main(int argc, char **argv)
 			long_options, NULL)) != -1) {
 		switch (opt) {
 		case 'f':
-			strcopy(file, optarg);
+			strncpy(file, argv[optind++], sizeof(file));
 			break;
 		case 'a':
 			break;
@@ -63,7 +61,7 @@ int main(int argc, char **argv)
 	}
 
 	if (((optind + 1) == argc) && (file[0] == '\0'))
-		strcpy(file, argv[optind++]);
+		strncpy(file, argv[optind++], sizeof(file));
 	else
 		error_usage(argv[0]);
 

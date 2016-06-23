@@ -1,4 +1,5 @@
 #include <string.h>
+#include <stdio.h>
 
 #include "LC3.h"
 #include "Machine.h"
@@ -23,10 +24,10 @@ static void init_machine(struct LC3 *simulator)
 }
 
 static bool simulate(WINDOW *output, WINDOW *status,
-                struct LC3 *simulator, state *currentState)
+                struct LC3 *simulator, enum STATE *currentState)
 {
-	bool simulating = true;
 	int input;
+	bool simulating = true;
 
 	wtimeout(status, 0);
 	while (simulating) {
@@ -81,10 +82,9 @@ static bool simulate(WINDOW *output, WINDOW *status,
 
 }
 
-static bool run_main_ui(WINDOW *status, state *currentState)
+static bool run_main_ui(WINDOW *status, enum STATE *currentState)
 {
 	int input;
-
 	bool simulating = true;
 
 	while (simulating) {
@@ -109,11 +109,34 @@ static bool run_main_ui(WINDOW *status, state *currentState)
 	return simulating;
 }
 
+static bool view_memory(WINDOW *context, struct LC3 *simulator,
+			enum STATE *currentState)
+{
+	int input;
+	bool simulating = true;
+
+	while (simulating) {
+		switch (input = wgetch(context)) {
+		case 'q':
+		case 'Q':
+			return false;
+		case 'b':
+		case 'B':
+			*currentState = MAIN;
+			return true;
+		default:
+			break;
+		}
+	}
+
+	return simulating;
+}
+
 void run_machine(struct LC3 *simulator)
 {
+	bool simulating = true;
 	WINDOW *status, *output, *context;
-
-	state currentState = MAIN;
+	enum STATE currentState = MAIN;
 
 	initscr();
 
@@ -124,7 +147,8 @@ void run_machine(struct LC3 *simulator)
 
 	status  = newwin(6, COLS, 0, 0);
 	output  = newwin((LINES - 6) / 3, COLS, 6, 0);
-	context = newwin(2 * (LINES - 6) / 3 + 1, COLS, (LINES - 6) / 3 + 6, 0);
+	context = newwin(2 * (LINES - 6) / 3 + 1, COLS,
+			 (LINES - 6) / 3 + 6, 0);
 
 	box(status,  0, 0);
 	box(context, 0, 0);
@@ -135,9 +159,6 @@ void run_machine(struct LC3 *simulator)
 
 	scrollok(output, 1);
 
-	bool simulating = true;
-	int input;
-
 	simulator->isPaused = false;
 	print_state(simulator, status);
 
@@ -146,19 +167,15 @@ void run_machine(struct LC3 *simulator)
 		case MAIN:
 			simulating = run_main_ui(status, &currentState);
 			break;
-		case SIMULATING:
+		case SIM:
 			simulating = simulate(output, status, simulator,
-					&currentState);
+						 &currentState);
 			break;
 		case MEM:
-			switch (input = wgetch(context)) {
-			case 'q':
-			case 'Q':
-				simulating = false;
-				break;
-			default:
-				break;
-			}
+			simulating = view_memory(context, simulator,
+						 &currentState);
+			break;
+		case EDIT:
 			break;
 		default:
 			break;
@@ -170,7 +187,7 @@ void run_machine(struct LC3 *simulator)
 
 void start_machine(char *file)
 {
-	memcpy(file_name, file, 256);
+	strncpy(file_name, file, sizeof(file_name));
 	struct LC3 simulator = init_state;
 	init_machine(&simulator);
 	run_machine(&simulator);

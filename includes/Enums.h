@@ -1,7 +1,7 @@
 #ifndef ENUMS_H
 #define ENUMS_H
 
-enum opcodes {
+enum OPCODE {
 	BR	= 0x0,
 	ADD	= 0x1,
 	LD	= 0x2,
@@ -20,7 +20,7 @@ enum opcodes {
 	TRAP	= 0xf,
 };
 
-enum traps {
+enum TRAP {
 	GETC	= 0x20,
 	OUT	= 0x21,
 	PUTS	= 0x22,
@@ -29,11 +29,12 @@ enum traps {
 	HALT	= 0x25,
 };
 
-typedef enum {
-	MAIN		= 0x0,
-	SIMULATING	= 0x1,
-	MEM		= 0x2,
-} state;
+enum STATE {
+	MAIN	= 0x0,
+	SIM	= 0x1,
+	MEM	= 0x2,
+	EDIT	= 0x3,
+};
 
 #endif // ENUMS_H
 

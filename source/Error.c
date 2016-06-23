@@ -26,4 +26,3 @@ void read_error()
 	fprintf(stderr, "Error: Failed to read to end of file\n");
 	exit(EXIT_FAILURE);
 }
-

@@ -23,11 +23,11 @@ print_state(struct LC3 *simulator, WINDOW *window)
 	 * Print the current state of the simulator to the window provided.
 	 */
 
+	size_t index = 0;
+
 	// Clear, and reborder, the window.
 	wclear(window);
 	box(window, 0, 0);
-
-	size_t index = 0;
 
 	// Print the first four registers.
 	for (; index < 4; ++index)
@@ -53,11 +53,9 @@ void execute_next(struct LC3 *simulator, WINDOW *output)
         /*
          * Execute the next instruction of the given simulator.
          */
-	uint16_t *DR, SR1, SR2;
-
 	int16_t PCoffset;
-
 	unsigned char opcode;
+	uint16_t *DR, SR1, SR2;
 
 	// Increment the PC when we fetch the next instruction.
 	simulator->IR = simulator->memory[simulator->PC++];
