@@ -30,7 +30,9 @@ int main(int argc, char **argv)
 	if (argc == 1)
 		error_usage(argv[0]);
 
-	int opt, index;
+	int opt;
+
+	char file[256] = { 0 };
 
 	const char *short_options = "hf:a:o:";
 
@@ -42,14 +44,11 @@ int main(int argc, char **argv)
 		{NULL,                       0, NULL,  0 }
 	};
 
-	char file[256] = { 0 };
-
 	while ((opt = getopt_long(argc, argv, short_options,
 			long_options, NULL)) != -1) {
 		switch (opt) {
 		case 'f':
-			for (index = 0; argv[optind - 1][index] != '\0'; ++index)
-				file[index] = optarg[index];
+			strcopy(file, optarg);
 			break;
 		case 'a':
 			break;
@@ -63,12 +62,10 @@ int main(int argc, char **argv)
 		}
 	}
 
-	if (optind < argc) {
-		if (((optind + 1) == argc) && (file[0] == '\0'))
-			strcpy(file, argv[optind++]);
-		else
-			error_usage(argv[0]);
-	}
+	if (((optind + 1) == argc) && (file[0] == '\0'))
+		strcpy(file, argv[optind++]);
+	else
+		error_usage(argv[0]);
 
 	if (optind < argc)
 		error_usage(argv[0]);
