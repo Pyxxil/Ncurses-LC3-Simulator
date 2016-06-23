@@ -53,6 +53,10 @@ build: $(OBJS)
 %.o: %.c $(INCDIR)/%.h
 	$(CC) $(CFLAGS) -c $< -o $@
 
+run: build
+	@echo "\n\nRunning program"
+	./$(EXECUTABLE)
+
 # Remove all generated files
 clean:
 	@echo "Cleaning up"
