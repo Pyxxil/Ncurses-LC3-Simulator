@@ -1,5 +1,5 @@
 #include <string.h>
-#include <getopt.h>	// For getopt_long
+#include <getopt.h>
 #include <stdlib.h>
 #include <stdio.h>
 
@@ -13,21 +13,22 @@ const char usage_string[] =
 	"  -a, --assemble file     assemble the given file into a .obj file,\n"
 	"                            .sym file, and a .bin file\n";
 
-
-static void prompt_for_file(char *);
-
 static void usage(char *program_name)
 {
 	printf(usage_string, program_name);
 	exit(EXIT_SUCCESS);
 }
 
+static void error_usage(char *program_name)
+{
+	printf(usage_string, program_name);
+	exit(EXIT_FAILURE);
+}
+
 int main(int argc, char **argv)
 {
-	if (argc == 1) {
-		printf(usage_string, argv[0]);
-		return 1;
-	}
+	if (argc == 1)
+		error_usage(argv[0]);
 
 	int opt, index;
 
@@ -63,32 +64,17 @@ int main(int argc, char **argv)
 	}
 
 	if (optind < argc) {
-		if (((optind + 1) == argc) && (file[0] == '\0')) {
-			for (index = 0; argv[optind][index] != '\0'; ++index)
-				file[index] = argv[optind][index];
-			++optind;
-		}
+		if (((optind + 1) == argc) && (file[0] == '\0'))
+			strcpy(file, argv[optind++]);
+		else
+			error_usage(argv[0]);
 	}
 
 	if (optind < argc)
-		usage(argv[0]);
+		error_usage(argv[0]);
 
 	start_machine(file);
 
 	return 0;
-}
-
-static void prompt_for_file(char *file)
-{
-	/*
-	 * The file wasn't supplied, so prompt the user for it.
-	 *
-	 * buffer -- Where we will store the file name.
-	 * size   -- The size of the provided buffer.
-	 */
-
-	printf("Enter the name of the object file: ");
-	fgets(file, 256, stdin);
-	file[strlen(file) - 1] = '\0';
 }
 
