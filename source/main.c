@@ -13,13 +13,13 @@ const char usage_string[] =
 	"  -a, --assemble file     assemble the given file into a .obj file,\n"
 	"                            .sym file, and a .bin file\n";
 
-static void usage(char *program_name)
+static void usage(char const *const program_name)
 {
 	printf(usage_string, program_name);
 	exit(EXIT_SUCCESS);
 }
 
-static void error_usage(char *program_name)
+static void error_usage(char const *const program_name)
 {
 	printf(usage_string, program_name);
 	exit(EXIT_FAILURE);

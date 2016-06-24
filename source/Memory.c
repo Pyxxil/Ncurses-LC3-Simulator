@@ -5,7 +5,7 @@
 
 #define WORD_SIZE 2
 
-void populate_memory(struct LC3 *simulator, char *file_name)
+void populate_memory(struct LC3 *simulator, char const *file_name)
 {
 	/*
 	 * Populate the memory of the supplied simulator with the contents of

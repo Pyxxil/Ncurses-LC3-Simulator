@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include "Error.h"
 
-void unable_to_open_file(char *file)
+void unable_to_open_file(char const *file)
 {
 	/*
 	 * The file failed to open for some reason, so we want

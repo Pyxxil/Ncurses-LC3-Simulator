@@ -116,6 +116,8 @@ static bool view_memory(WINDOW *context, struct LC3 *simulator,
 	int input;
 	bool simulating = true;
 
+	simulator->isPaused = true;
+
 	while (simulating) {
 		switch (input = wgetch(context)) {
 		case 'q':
@@ -186,7 +188,7 @@ void run_machine(struct LC3 *simulator)
 	endwin();
 }
 
-void start_machine(char *file)
+void start_machine(char const *const file)
 {
 	size_t len = strlen(file) + 1;
 	file_name = (char *) malloc(len);

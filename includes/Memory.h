@@ -12,7 +12,7 @@ struct LC3 {
 	void (*populate)(struct LC3 *);
 };
 
-extern void populate_memory(struct LC3 *, char *);
+extern void populate_memory(struct LC3 *, char const *);
 
 #endif // LC3_H
 
