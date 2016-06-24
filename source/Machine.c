@@ -116,8 +116,6 @@ static bool view_memory(WINDOW *context, struct LC3 *simulator,
 	int input;
 	bool simulating = true;
 
-	simulator->isPaused = true;
-
 	while (simulating) {
 		switch (input = wgetch(context)) {
 		case 'q':

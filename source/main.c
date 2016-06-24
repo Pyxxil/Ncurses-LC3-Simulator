@@ -49,7 +49,7 @@ int main(int argc, char **argv)
 		case 'f':
 			len = strlen(optarg);
 			file = (char *) malloc(len + 1);
-			memcpy(file, optarg, len);
+			strncpy(file, optarg, len);
 			break;
 		case 'a':
 			break;
@@ -67,7 +67,7 @@ int main(int argc, char **argv)
 		// Assume the last argument is the file name
 		len = strlen(argv[optind]);
 		file = (char *) malloc(len + 1);
-		memcpy(file, argv[optind], len);
+		strncpy(file, argv[optind], len);
 		++optind;
 	} else if (file == NULL) {
 		error_usage(argv[0]);
