@@ -3,6 +3,7 @@
   * Output similar to:
   ```
   =====================
+  REG       HEX     DEC
   R0  --  0x0000      0
   R1  --  0x0000      0
   R2  --  0x0000      0
