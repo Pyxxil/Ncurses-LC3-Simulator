@@ -1,11 +1,12 @@
 #include <string.h>
+#include <stdlib.h>
 #include <stdio.h>
 
 #include "LC3.h"
 #include "Machine.h"
 #include "Enums.h"
 
-char file_name[256];
+static char *file_name = NULL;
 
 static const struct LC3 init_state = {
 	.PC		=   0  ,
@@ -99,7 +100,7 @@ static bool run_main_ui(WINDOW *status, enum STATE *currentState)
 		case 's':
 		case 'S':
 			// Start simulating the machine.
-			*currentState = SIMULATING;
+			*currentState = SIM;
 			return true;
 		default:
 			break;
@@ -114,6 +115,8 @@ static bool view_memory(WINDOW *context, struct LC3 *simulator,
 {
 	int input;
 	bool simulating = true;
+
+	simulator->isPaused = true;
 
 	while (simulating) {
 		switch (input = wgetch(context)) {
@@ -187,9 +190,12 @@ void run_machine(struct LC3 *simulator)
 
 void start_machine(char *file)
 {
-	strncpy(file_name, file, sizeof(file_name));
+	size_t len = strlen(file) + 1;
+	file_name = (char *) malloc(len);
+	strncpy(file_name, file, len);
 	struct LC3 simulator = init_state;
 	init_machine(&simulator);
 	run_machine(&simulator);
+	free(file_name);
 }
 

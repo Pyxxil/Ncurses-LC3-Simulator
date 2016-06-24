@@ -31,7 +31,8 @@ int main(int argc, char **argv)
 		error_usage(argv[0]);
 
 	int opt;
-	char file[256] = { 0 };
+	size_t len;
+	char *file = NULL;
 
 	const char *short_options = "hf:a:o:";
 	const struct option long_options[] = {
@@ -46,7 +47,9 @@ int main(int argc, char **argv)
 			long_options, NULL)) != -1) {
 		switch (opt) {
 		case 'f':
-			strncpy(file, argv[optind++], sizeof(file));
+			len = strlen(optarg);
+			file = (char *) malloc(len + 1);
+			memcpy(file, optarg, len);
 			break;
 		case 'a':
 			break;
@@ -60,15 +63,24 @@ int main(int argc, char **argv)
 		}
 	}
 
-	if (((optind + 1) == argc) && (file[0] == '\0'))
-		strncpy(file, argv[optind++], sizeof(file));
-	else
+	if (((optind + 1) == argc) && (file == NULL)) {
+		// Assume the last argument is the file name
+		len = strlen(argv[optind]);
+		file = (char *) malloc(len + 1);
+		memcpy(file, argv[optind], len);
+		++optind;
+	} else if (file == NULL) {
 		error_usage(argv[0]);
+	}
 
-	if (optind < argc)
+	if (optind < argc) {
+		free(file);
 		error_usage(argv[0]);
+	}
 
 	start_machine(file);
+
+	free(file);
 
 	return 0;
 }
