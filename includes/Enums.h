@@ -33,7 +33,14 @@ enum STATE {
 	MAIN	= 0x0,
 	SIM	= 0x1,
 	MEM	= 0x2,
-	EDIT	= 0x3,
+	EDIT	= 0x4,
+};
+
+enum POSITION {
+	TOP	= 0x0,
+	CEN	= 0x1,
+	BOT	= 0x2,
+	REL	= 0x3,
 };
 
 #endif // ENUMS_H

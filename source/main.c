@@ -6,20 +6,20 @@
 #include "Machine.h"
 
 const char usage_string[] =
-	"Usage: %s [OPTION] file.\n"
-	"  -f, --file file         specify the input file to use\n"
-	"  -o, --outfile file      specify the outputfile to write any given\n"
-	"                            assembly file's output to\n"
-	"  -a, --assemble file     assemble the given file into a .obj file,\n"
-	"                            .sym file, and a .bin file\n";
+	"Usage: %s [OPTION] inFile.\n"
+	"  -f, --inFile File     specify the input file to use\n"
+	"  -o, --outFile File    specify the output file to write any given\n"
+	"                          assembly file's output to\n"
+	"  -a, --assemble File   assemble the given file into a .obj file,\n"
+	"                          .sym file, and a .bin file\n";
 
-static void usage(char const *const program_name)
+static void usage(char const *program_name)
 {
 	printf(usage_string, program_name);
 	exit(EXIT_SUCCESS);
 }
 
-static void error_usage(char const *const program_name)
+static void error_usage(char const *program_name)
 {
 	printf(usage_string, program_name);
 	exit(EXIT_FAILURE);
@@ -32,15 +32,15 @@ int main(int argc, char **argv)
 
 	int opt;
 	size_t len;
-	char *file = NULL;
+	char *inFile = NULL;
 
 	const char *short_options = "hf:a:o:";
 	const struct option long_options[] = {
 		{"assemble", required_argument, NULL, 'a'},
 		{"file",     required_argument, NULL, 'f'},
 		{"outfile",  required_argument, NULL, 'o'},
-		{"help",           no_argument, NULL, 'h'},
-		{NULL,                       0, NULL,  0 }
+		{"help",     no_argument,       NULL, 'h'},
+		{NULL,       0,                 NULL,  0 }
 	};
 
 	while ((opt = getopt_long(argc, argv, short_options,
@@ -48,8 +48,8 @@ int main(int argc, char **argv)
 		switch (opt) {
 		case 'f':
 			len = strlen(optarg);
-			file = (char *) malloc(len + 1);
-			strncpy(file, optarg, len);
+			inFile = (char *) malloc(len + 1);
+			strncpy(inFile, optarg, len);
 			break;
 		case 'a':
 			break;
@@ -63,24 +63,24 @@ int main(int argc, char **argv)
 		}
 	}
 
-	if (((optind + 1) == argc) && (file == NULL)) {
-		// Assume the last argument is the file name
+	if (((optind + 1) == argc) && (inFile == NULL)) {
+		// Assume the last argument is the inFile name
 		len = strlen(argv[optind]);
-		file = (char *) malloc(len + 1);
-		strncpy(file, argv[optind], len);
+		inFile = (char *) malloc(len + 1);
+		strncpy(inFile, argv[optind], len);
 		++optind;
-	} else if (file == NULL) {
+	} else if (inFile == NULL) {
 		error_usage(argv[0]);
 	}
 
 	if (optind < argc) {
-		free(file);
+		free(inFile);
 		error_usage(argv[0]);
 	}
 
-	start_machine(file);
+	start_machine(inFile);
 
-	free(file);
+	free(inFile);
 
 	return 0;
 }

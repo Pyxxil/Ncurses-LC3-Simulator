@@ -11,5 +11,5 @@ Usage:
 First run `make`, and then, in the same directory, run the following:
 
 ```shell
-$ ./LC3Simulator [-f] <file>
+$ ./LC3Simulator [OPTION] <file>
 ```

@@ -2,11 +2,13 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#include "LC3.h"
+#include "Memory.h"
 #include "Machine.h"
 #include "Enums.h"
 
 static char *file_name = NULL;
+
+static WINDOW *status, *output, *context;
 
 static const struct LC3 init_state = {
 	.PC		=   0  ,
@@ -24,11 +26,29 @@ static void init_machine(struct LC3 *simulator)
         populate_memory(simulator, file_name);
 }
 
+static void print_view(enum STATE *currentState)
+{
+	mvprintw(0, 0, "Currently Viewing: %- 15s",
+			(*currentState == MEM)  ? "Memory View"	:
+			(*currentState == MAIN) ? "Main View"	:
+			(*currentState == EDIT) ? "Editor"	:
+			(*currentState == SIM)  ? "Simulator"	:
+						"Unknown");
+	refresh();
+
+	wrefresh(status);
+	wrefresh(output);
+	wrefresh(context);
+}
+
+
 static bool simulate(WINDOW *output, WINDOW *status,
-                struct LC3 *simulator, enum STATE *currentState)
+		struct LC3 *simulator, enum STATE *currentState)
 {
 	int input;
 	bool simulating = true;
+
+	print_view(currentState);
 
 	wtimeout(status, 0);
 	while (simulating) {
@@ -49,13 +69,17 @@ static bool simulate(WINDOW *output, WINDOW *status,
 		case 'P':
 			simulator->isPaused = !simulator->isPaused;
 			break;
+		case 's':
+		case 'S':
 		case 'r':
 		case 'R':
 			init_machine(simulator);
-                        if (input == 'R')
+                        if (input == 'R' || input == 'S')
                                 simulator->isPaused = false;
-			wclear(output);
-			wrefresh(output);
+			if (input == 'R' || input == 'r') {
+				wclear(output);
+				wrefresh(output);
+			}
                         break;
 		default:
 			break;
@@ -69,12 +93,12 @@ static bool simulate(WINDOW *output, WINDOW *status,
 		}
 
 #ifdef DEBUG
-  #if (DEBUG & 0x2)
+#if (DEBUG & 0x2)
 		print_state(simulator, status);
-  #endif
-  #if (DEBUG & 0x4)
+#endif
+#if (DEBUG & 0x4)
 		simulator->isPaused = true;
-  #endif
+#endif
 #endif
 
 	}
@@ -87,6 +111,8 @@ static bool run_main_ui(WINDOW *status, enum STATE *currentState)
 {
 	int input;
 	bool simulating = true;
+
+	print_view(currentState);
 
 	while (simulating) {
 		switch (input = wgetch(status)) {
@@ -102,6 +128,10 @@ static bool run_main_ui(WINDOW *status, enum STATE *currentState)
 			// Start simulating the machine.
 			*currentState = SIM;
 			return true;
+		case 'm':
+		case 'M':
+			*currentState = MEM;
+			return true;
 		default:
 			break;
 		}
@@ -116,6 +146,8 @@ static bool view_memory(WINDOW *context, struct LC3 *simulator,
 	int input;
 	bool simulating = true;
 
+	print_view(currentState);
+
 	simulator->isPaused = true;
 
 	while (simulating) {
@@ -127,6 +159,16 @@ static bool view_memory(WINDOW *context, struct LC3 *simulator,
 		case 'B':
 			*currentState = MAIN;
 			return true;
+		case KEY_UP:
+		case 'w':
+		case 'W':
+			wscrl(context, 1);
+			break;
+		case KEY_DOWN:
+		case 's':
+		case 'S':
+			wscrl(context, -1);
+			break;
 		default:
 			break;
 		}
@@ -138,7 +180,6 @@ static bool view_memory(WINDOW *context, struct LC3 *simulator,
 void run_machine(struct LC3 *simulator)
 {
 	bool simulating = true;
-	WINDOW *status, *output, *context;
 	enum STATE currentState = MAIN;
 
 	initscr();
@@ -148,17 +189,16 @@ void run_machine(struct LC3 *simulator)
 	noecho();
 	cbreak();
 
-	status  = newwin(6, COLS, 0, 0);
-	output  = newwin((LINES - 6) / 3, COLS, 6, 0);
-	context = newwin(2 * (LINES - 6) / 3 + 1, COLS,
-			 (LINES - 6) / 3 + 6, 0);
+	status  = newwin(6, COLS, 1, 0);
+	output  = newwin((LINES - 6) / 3, COLS, 7, 0);
+	context = newwin(2 * (LINES - 6) / 3, COLS,
+			(LINES - 6) / 3 + 7, 0);
 
 	box(status,  0, 0);
 	box(context, 0, 0);
 
-	wrefresh(status);
-	wrefresh(output);
-	wrefresh(context);
+	keypad(output, 1);
+	keypad(context, 1);
 
 	scrollok(output, 1);
 
@@ -172,11 +212,11 @@ void run_machine(struct LC3 *simulator)
 			break;
 		case SIM:
 			simulating = simulate(output, status, simulator,
-						 &currentState);
+						&currentState);
 			break;
 		case MEM:
-			simulating = view_memory(context, simulator,
-						 &currentState);
+			simulating = view_memory(output, simulator,
+						&currentState);
 			break;
 		case EDIT:
 			break;
@@ -188,7 +228,7 @@ void run_machine(struct LC3 *simulator)
 	endwin();
 }
 
-void start_machine(char const *const file)
+void start_machine(char const *file)
 {
 	size_t len = strlen(file) + 1;
 	file_name = (char *) malloc(len);

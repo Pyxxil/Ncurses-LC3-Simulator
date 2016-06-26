@@ -1,18 +1,10 @@
-#ifndef SIMULATOR_H
-#define SIMULATOR_H
+#ifndef MEMORY_H
+#define MEMORY_H
 
-#include <stdbool.h>
-#include <stdint.h>
+#include "LC3.h"
 
-struct LC3 {
-	uint16_t PC, memory[0xffff],
-		registers[8], IR;
-	unsigned char CC;
-	bool halted, isPaused;
-	void (*populate)(struct LC3 *);
-};
+extern void populate_memory(struct LC3 *, const char *);
+extern void print_memory(WINDOW *, struct LC3 *, uint16_t *, const char);
 
-extern void populate_memory(struct LC3 *, char const *);
-
-#endif // LC3_H
+#endif // MEMORY_H
 
