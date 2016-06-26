@@ -74,13 +74,13 @@ static bool simulate(WINDOW *output, WINDOW *status,
 		case 'r':
 		case 'R':
 			init_machine(simulator);
-                        if (input == 'R' || input == 'S')
-                                simulator->isPaused = false;
+			if (input == 'R' || input == 'S')
+				simulator->isPaused = false;
 			if (input == 'R' || input == 'r') {
 				wclear(output);
 				wrefresh(output);
 			}
-                        break;
+			break;
 		default:
 			break;
 		}
@@ -202,9 +202,6 @@ void run_machine(struct LC3 *simulator)
 
 	scrollok(output, 1);
 
-	simulator->isPaused = false;
-	print_state(simulator, status);
-
 	while (simulating) {
 		switch (currentState) {
 		case MAIN:
@@ -228,7 +225,7 @@ void run_machine(struct LC3 *simulator)
 	endwin();
 }
 
-void start_machine(char const *file)
+void start_machine(const char *file)
 {
 	size_t len = strlen(file) + 1;
 	file_name = (char *) malloc(len);

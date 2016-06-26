@@ -33,7 +33,7 @@ enum STATE {
 	MAIN	= 0x0,
 	SIM	= 0x1,
 	MEM	= 0x2,
-	EDIT	= 0x4,
+	EDIT	= 0x3,
 };
 
 enum POSITION {

@@ -7,7 +7,8 @@
 
 const char usage_string[] =
 	"Usage: %s [OPTION] inFile.\n"
-	"  -f, --inFile File     specify the input file to use\n"
+	"  -h, --help            show this help text\n"
+	"  -f, --file File       specify the input file to use\n"
 	"  -o, --outFile File    specify the output file to write any given\n"
 	"                          assembly file's output to\n"
 	"  -a, --assemble File   assemble the given file into a .obj file,\n"
