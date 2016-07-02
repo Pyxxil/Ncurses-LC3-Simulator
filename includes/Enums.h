@@ -36,11 +36,9 @@ enum STATE {
 	EDIT	= 0x3,
 };
 
-enum POSITION {
-	TOP	= 0x0,
-	CEN	= 0x1,
-	BOT	= 0x2,
-	REL	= 0x3,
+enum DIRECTION {
+	UP	= 0x0,
+	DOWN	= 0x2,
 };
 
 #endif // ENUMS_H

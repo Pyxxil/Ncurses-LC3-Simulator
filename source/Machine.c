@@ -10,6 +10,7 @@ static char *file_name = NULL;
 
 static WINDOW *status, *output, *context;
 
+
 static const struct LC3 init_state = {
 	.PC		=   0  ,
 	.memory		= { 0 },
@@ -23,7 +24,7 @@ static const struct LC3 init_state = {
 static void init_machine(struct LC3 *simulator)
 {
 	*simulator = init_state;
-        populate_memory(simulator, file_name);
+	populate_memory(simulator, file_name);
 }
 
 static void print_view(enum STATE *currentState)
@@ -140,7 +141,7 @@ static bool run_main_ui(WINDOW *status, enum STATE *currentState)
 	return simulating;
 }
 
-static bool view_memory(WINDOW *context, struct LC3 *simulator,
+static bool view_memory(WINDOW *window, struct LC3 *simulator,
 			enum STATE *currentState)
 {
 	int input;
@@ -151,7 +152,7 @@ static bool view_memory(WINDOW *context, struct LC3 *simulator,
 	simulator->isPaused = true;
 
 	while (simulating) {
-		switch (input = wgetch(context)) {
+		switch (input = wgetch(window)) {
 		case 'q':
 		case 'Q':
 			return false;
@@ -162,12 +163,12 @@ static bool view_memory(WINDOW *context, struct LC3 *simulator,
 		case KEY_UP:
 		case 'w':
 		case 'W':
-			wscrl(context, 1);
+			move_context(window, simulator, UP);
 			break;
 		case KEY_DOWN:
 		case 's':
 		case 'S':
-			wscrl(context, -1);
+			move_context(window, simulator, DOWN);
 			break;
 		default:
 			break;
@@ -188,6 +189,7 @@ void run_machine(struct LC3 *simulator)
 	curs_set(0);
 	noecho();
 	cbreak();
+	start_color();
 
 	status  = newwin(6, COLS, 1, 0);
 	output  = newwin((LINES - 6) / 3, COLS, 7, 0);
@@ -197,10 +199,12 @@ void run_machine(struct LC3 *simulator)
 	box(status,  0, 0);
 	box(context, 0, 0);
 
-	keypad(output, 1);
 	keypad(context, 1);
 
 	scrollok(output, 1);
+
+	output_height = 2 * (LINES - 6) / 3 - 2;
+	memory_output = (uint16_t *) malloc(output_height);
 
 	while (simulating) {
 		switch (currentState) {
@@ -212,7 +216,8 @@ void run_machine(struct LC3 *simulator)
 						&currentState);
 			break;
 		case MEM:
-			simulating = view_memory(output, simulator,
+			create_context(context, simulator, 0, simulator->PC);
+			simulating = view_memory(context, simulator,
 						&currentState);
 			break;
 		case EDIT:
@@ -223,6 +228,7 @@ void run_machine(struct LC3 *simulator)
 	}
 
 	endwin();
+	free(memory_output);
 }
 
 void start_machine(const char *file)

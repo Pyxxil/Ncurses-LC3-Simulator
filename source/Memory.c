@@ -5,6 +5,11 @@
 
 #define WORD_SIZE 2
 
+int selected = 0;
+uint16_t output_height = 0;
+uint16_t *memory_output = NULL;
+uint16_t selected_address = 0;
+
 void populate_memory(struct LC3 *simulator, const char *file_name)
 {
 	/*
@@ -37,21 +42,72 @@ void populate_memory(struct LC3 *simulator, const char *file_name)
 	fclose(file);
 }
 
-/*
-void print_memory(WINDOW *context, const struct LC3 *simulator,
-		uint16_t *selected, const char offset, enum POSITION position)
+static void redraw(WINDOW *window)
 {
-	int rows, columns;
-	getmaxyx(context, &rows, &columns);
-
-	if (position == REL)
-		;
-	if (position == TOP)
-		;
-	else if (position == BOT)
-		;
-	else if (position == CEN)
-		;
+	for (int i = 0; i < output_height; ++i) {
+		if (i == selected) {
+			wattron(window, A_REVERSE | A_BOLD | A_UNDERLINE);
+			mvwprintw(window, i + 1, 1, "0x%04hx   0x%04hx",
+					selected_address, memory_output[i]);
+			wattroff(window, A_REVERSE | A_BOLD | A_UNDERLINE);
+		} else if (i < selected) {
+			mvwprintw(window, i + 1, 1, "0x%04hx   0x%04hx",
+					selected_address - i, memory_output[i]);
+		} else {
+			mvwprintw(window, i + 1, 1, "0x%04hx   0x%04hx",
+					selected_address + i, memory_output[i]);
+		}
+	}
+	wrefresh(window);
 }
-*/
+
+void create_context(WINDOW *window, struct LC3 *simulator, int _selected,
+		uint16_t _selected_address)
+{
+	selected = _selected;
+	selected_address = _selected_address;
+
+	for (int i = 0; i < selected; i++)
+		memory_output[i] = simulator->memory[selected_address - (selected - i)];
+	for (int i = 0; i < output_height; i++)
+		memory_output[i] = simulator->memory[selected_address + i];
+
+	redraw(window);
+}
+
+void move_context(WINDOW *window, struct LC3 *simulator, enum DIRECTION direction)
+{
+	bool _redraw = false;
+	int prev = selected;
+	uint16_t prev_addr = selected_address;
+
+	switch (direction) {
+	case UP:
+		selected_address = (selected_address == 0) ?
+			0 : selected_address - 1;
+		selected = (selected == 0) ?
+			_redraw = true, 0 : selected - 1;
+		break;
+	case DOWN:
+		selected_address = (selected_address == 0) ?
+			0 : selected_address + 1;
+		selected = (selected == (output_height - 1)) ?
+			_redraw = true, output_height - 1 : selected + 1;
+		break;
+	default:
+		break;
+	}
+
+	wattron(window, A_REVERSE | A_BOLD | A_UNDERLINE);
+	mvwprintw(window, selected + 1, 1, "0x%04hx   0x%04hx",
+		selected_address, memory_output[selected]);
+	wattroff(window, A_REVERSE | A_BOLD | A_UNDERLINE);
+	mvwprintw(window, prev + 1, 1, "0x%04hx   0x%04hx",
+		prev_addr, memory_output[prev]);
+
+	if (_redraw) {
+		create_context(window, simulator, selected, selected_address);
+		redraw(window);
+	}
+}
 
