@@ -4,7 +4,6 @@
 
 #include "Memory.h"
 #include "Machine.h"
-#include "Enums.h"
 
 static char *file_name = NULL;
 
@@ -41,7 +40,6 @@ static void print_view(enum STATE *currentState)
 	wrefresh(output);
 	wrefresh(context);
 }
-
 
 static bool simulate(WINDOW *output, WINDOW *status,
 		struct LC3 *simulator, enum STATE *currentState)
@@ -105,7 +103,6 @@ static bool simulate(WINDOW *output, WINDOW *status,
 	}
 
 	return simulating;
-
 }
 
 static bool run_main_ui(WINDOW *status, enum STATE *currentState)
@@ -178,6 +175,26 @@ static bool view_memory(WINDOW *window, struct LC3 *simulator,
 	return simulating;
 }
 
+static void popup_window(const char *message)
+{
+	int lines = 5;
+	int columns = COLS / 2;
+	char string[7];
+
+	WINDOW *popup = newwin((LINES - lines) / 2, (COLS - columns) / 2, 1, 0);
+
+	box(popup, 0, 0);
+	echo();
+
+	mvaddstr(3, 1, message);
+	getstr(string);
+	string[6] = '\0';
+
+	noecho();
+
+	wrefresh(popup);
+}
+
 void run_machine(struct LC3 *simulator)
 {
 	bool simulating = true;
@@ -205,6 +222,8 @@ void run_machine(struct LC3 *simulator)
 
 	output_height = 2 * (LINES - 6) / 3 - 2;
 	memory_output = (uint16_t *) malloc(output_height);
+
+	popup_window("Enter a string: ");
 
 	while (simulating) {
 		switch (currentState) {
