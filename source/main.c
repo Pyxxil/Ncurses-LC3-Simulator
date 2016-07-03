@@ -37,18 +37,19 @@ int main(int argc, char **argv)
 
 	const char *short_options = "hf:a:o:";
 	const struct option long_options[] = {
-		{"assemble", required_argument, NULL, 'a'},
-		{"file",     required_argument,	NULL, 'f'},
-		{"outfile",  required_argument,	NULL, 'o'},
-		{"help",     no_argument,	NULL, 'h'},
-		{NULL,	     0,			NULL,  0 },
+		{ "assemble", required_argument, NULL, 'a' },
+		{ "file",     required_argument, NULL, 'f' },
+		{ "outfile",  required_argument, NULL, 'o' },
+		{ "help",     no_argument,       NULL, 'h' },
+		{ NULL,                       0, NULL,   0 },
 	};
 
 	while ((opt = getopt_long(argc, argv, short_options,
-				  long_options, NULL)) != -1) {
+				  long_options, NULL)) != -1)
+	{
 		switch (opt) {
 		case 'f':
-			len = strlen(optarg);
+			len    = strlen(optarg);
 			inFile = (char *) malloc(len + 1);
 			strncpy(inFile, optarg, len);
 			break;
@@ -65,8 +66,8 @@ int main(int argc, char **argv)
 	}
 
 	if (((optind + 1) == argc) && (inFile == NULL)) {
-		// Assume the last argument is the inFile name
-		len = strlen(argv[optind]);
+	// Assume the last argument is the inFile name
+		len    = strlen(argv[optind]);
 		inFile = (char *) malloc(len + 1);
 		strncpy(inFile, argv[optind], len);
 		++optind;
@@ -84,4 +85,4 @@ int main(int argc, char **argv)
 	free(inFile);
 
 	return 0;
-}
+} /* main */

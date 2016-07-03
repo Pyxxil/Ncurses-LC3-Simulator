@@ -1,38 +1,37 @@
-#include <string.h>
-#include <stdlib.h>
-#include <stdio.h>
+#include <string.h> // strlen is helpful.
+#include <stdlib.h> // uint16_t.
 
 #include "Memory.h"
 #include "Machine.h"
 
-static char *file_name = NULL;
+static char * file_name = NULL;
 
-static WINDOW *status, *output, *context;
+static WINDOW * status, * output, * context;
 
 static const struct LC3 init_state = {
-	.PC		= 0,
-	.memory		= { 0 },
-	.registers	= { 0 },
-	.IR		= 0,
-	.CC		= 'Z',
-	.halted		= false,
-	.isPaused	= true,
+	.PC        =     0,
+	.memory    = { 0 },
+	.registers = { 0 },
+	.IR        =     0,
+	.CC        = 'Z',
+	.halted    = false,
+	.isPaused  = true,
 };
 
-static void init_machine(struct LC3 *simulator)
+static void init_machine(struct LC3 * simulator)
 {
 	*simulator = init_state;
 	populate_memory(simulator, file_name);
 }
 
-static void print_view(enum STATE *currentState)
+static void print_view(enum STATE * currentState)
 {
 	mvprintw(0, 0, "Currently Viewing: %- 15s",
-		 (*currentState == MEM)  ? "Memory View" :
-		 (*currentState == MAIN) ? "Main View"   :
-		 (*currentState == EDIT) ? "Editor"      :
-		 (*currentState == SIM)  ? "Simulator"   :
-		 "Unknown");
+	  (*currentState == MEM) ? "Memory View" :
+	  (*currentState == MAIN) ? "Main View" :
+	  (*currentState == EDIT) ? "Editor" :
+	  (*currentState == SIM) ? "Simulator" :
+	  "Unknown");
 	refresh();
 
 	wrefresh(status);
@@ -40,8 +39,8 @@ static void print_view(enum STATE *currentState)
 	wrefresh(context);
 }
 
-static bool simulate(WINDOW *output, WINDOW *status,
-		     struct LC3 *simulator, enum STATE *currentState)
+static bool simulate(WINDOW * output, WINDOW * status,
+  struct LC3 * simulator, enum STATE * currentState)
 {
 	int input;
 	bool simulating = true;
@@ -56,13 +55,14 @@ static bool simulate(WINDOW *output, WINDOW *status,
 			// Quit the program.
 			simulating = false;
 			break;
-		case  27:	// 27 is the escape key scan code
+		case  27: // 27 is the escape key scan code
 		case 'b':
 		case 'B':
 			// Go back to the main state.
-			*currentState = MAIN;
+			*currentState       = MAIN;
 			simulator->isPaused = true;
 			return simulating;
+
 		case 'p':
 		case 'P':
 			simulator->isPaused = !simulator->isPaused;
@@ -98,13 +98,12 @@ static bool simulate(WINDOW *output, WINDOW *status,
 		simulator->isPaused = true;
 #endif
 #endif
-
 	}
 
 	return simulating;
-}
+} /* simulate */
 
-static bool run_main_ui(WINDOW *status, enum STATE *currentState)
+static bool run_main_ui(WINDOW * status, enum STATE * currentState)
 {
 	int input;
 	bool simulating = true;
@@ -117,28 +116,31 @@ static bool run_main_ui(WINDOW *status, enum STATE *currentState)
 		case 'Q':
 			// Quit the program.
 			return false;
-		case 'd':	// For file dumps.
-		case 'D':	// TODO
+
+		case 'd': // For file dumps.
+		case 'D': // TODO
 			break;
 		case 's':
 		case 'S':
 			// Start simulating the machine.
 			*currentState = SIM;
 			return true;
+
 		case 'm':
 		case 'M':
 			*currentState = MEM;
 			return true;
+
 		default:
 			break;
 		}
 	}
 
 	return simulating;
-}
+} /* run_main_ui */
 
-static bool view_memory(WINDOW *window, struct LC3 *simulator,
-			enum STATE *currentState)
+static bool view_memory(WINDOW * window, struct LC3 * simulator,
+  enum STATE * currentState)
 {
 	int input;
 	bool simulating = true;
@@ -152,10 +154,12 @@ static bool view_memory(WINDOW *window, struct LC3 *simulator,
 		case 'q':
 		case 'Q':
 			return false;
+
 		case 'b':
 		case 'B':
 			*currentState = MAIN;
 			return true;
+
 		case 'j':
 			create_context(window, simulator, 0, 0x0000);
 			break;
@@ -178,15 +182,15 @@ static bool view_memory(WINDOW *window, struct LC3 *simulator,
 	}
 
 	return simulating;
-}
+} /* view_memory */
 
-static void popup_window(const char *message)
+static void popup_window(const char * message)
 {
-	int lines = 5;
+	int lines   = 5;
 	int columns = COLS / 2;
 	char string[7];
 
-	WINDOW *popup = newwin(lines, columns, 10, 10);
+	WINDOW * popup = newwin(lines, columns, 10, 10);
 
 	box(popup, 0, 0);
 	echo();
@@ -200,9 +204,9 @@ static void popup_window(const char *message)
 	wrefresh(popup);
 }
 
-void run_machine(struct LC3 *simulator)
+void run_machine(struct LC3 * simulator)
 {
-	bool simulating = true;
+	bool simulating         = true;
 	enum STATE currentState = MAIN;
 
 	initscr();
@@ -213,13 +217,13 @@ void run_machine(struct LC3 *simulator)
 	cbreak();
 	start_color();
 
-	status = newwin(6, COLS, 1, 0);
-	output = newwin((LINES - 6) / 3, COLS, 7, 0);
+	status  = newwin(6, COLS, 1, 0);
+	output  = newwin((LINES - 6) / 3, COLS, 7, 0);
 	context = newwin(2 * (LINES - 6) / 3, COLS,
-			 (LINES - 6) / 3 + 7, 0);
+	    (LINES - 6) / 3 + 7, 0);
 
-	box(status,  0, 0);
-	box(context, 0,	0);
+	box(status, 0, 0);
+	box(context, 0, 0);
 
 	keypad(context, 1);
 
@@ -231,7 +235,7 @@ void run_machine(struct LC3 *simulator)
 	popup_window("Enter a string: ");
 
 	bkgdset(COLOR_BLACK);
-	wbkgdset(status,  COLOR_BLACK);
+	wbkgdset(status, COLOR_BLACK);
 	wbkgdset(context, COLOR_BLACK);
 	refresh();
 	wrefresh(status);
@@ -244,12 +248,12 @@ void run_machine(struct LC3 *simulator)
 			break;
 		case SIM:
 			simulating = simulate(output, status, simulator,
-					      &currentState);
+			    &currentState);
 			break;
 		case MEM:
 			create_context(context, simulator, 0, simulator->PC);
 			simulating = view_memory(context, simulator,
-						 &currentState);
+			    &currentState);
 			break;
 		case EDIT:
 			break;
@@ -260,9 +264,9 @@ void run_machine(struct LC3 *simulator)
 
 	endwin();
 	free(memory_output);
-}
+} /* run_machine */
 
-void start_machine(const char *file)
+void start_machine(const char * file)
 {
 	size_t len = strlen(file) + 1;
 	file_name = (char *) malloc(len);

@@ -1,6 +1,6 @@
 ## Debugging
-* Add a function to dump the simulator contents
-  * Output similar to:
+* [ ] Add a function to dump the simulator contents
+  * [ ] Output similar to:
   ```
   =====================
   REG       HEX     DEC
@@ -17,20 +17,24 @@
   CC  --  Z
   =====================
   ```
-* Make a log file to help with the above
-  * Output time, current instruction, and any files written
+* [ ] Make a log file to help with the above
+  * [ ] Output time, current instruction, and any files written
 
 ## UI
-* Make a popup for any sim dumps we make
-  * Dismissable with a simple keystroke
-  * Will just be a popup window with a border
-    * Displays dumped contents file name
-    * Displays any current needed information (e.g. The current highlighted
-      memory address)
-    * Allows the user to dump the contents of the output screen (?)
-* Make the UI more scalable
-  * For differing terminal sizes
-* Output the memory context
-  * Make it highlightable
-  * Allow the user to move around
+* [ ] Make a popup for any sim dumps
+  * [ ] Displays dumped contents file name
+  * [ ] Displays any current needed information (e.g. The current highlighted memory address)
+  * [ ] Allows the user to dump the contents of the output screen
+* [ ] Make the UI more scalable
+  * [ ] For differing terminal sizes
+* [x] Output the memory context
+  * [x] Make it highlightable
+  * [x] Allow the user to move around
+* [ ] Popup window for inputting file / changing file
+* [ ] Popup window to figure where the user wants to jump to in memory.
 
+## Additional Features
+* [ ] Allow users to change what keys do what.
+
+## Documentation
+* [ ] Create a file that contains all startup key configurations

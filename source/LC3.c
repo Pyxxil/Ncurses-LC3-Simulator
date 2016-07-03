@@ -4,17 +4,58 @@
 #include "Enums.h"
 #include "LC3.h"
 
-static void LC3puts(struct LC3 *, WINDOW *);
-static void LC3getc(struct LC3 *, WINDOW *);
-static void  LC3out(struct LC3 *, WINDOW *);
-static void  LC3out(struct LC3 *, WINDOW *);
-static void   LC3in(struct LC3 *, WINDOW *);
+static void LC3out(struct LC3 *simulator, WINDOW *window)
+{
+	wechochar(window, (unsigned char) simulator->registers[0]);
+}
 
-static void LC3halt(WINDOW *);
+static void LC3halt(WINDOW *window)
+{
+	waddstr(window, "\n----- Halting the processor -----\n");
+	wrefresh(window);
+}
 
-static void setcc(uint16_t *, unsigned char *);
+static void LC3puts(struct LC3 *simulator, WINDOW *window)
+{
+	uint16_t tmp = simulator->registers[0],
+		 orig = simulator->registers[0];
+	while (simulator->memory[tmp] != 0x0) {
+		simulator->registers[0] = simulator->memory[tmp++];
+		LC3out(simulator, window);
+	}
+	simulator->registers[0] = orig;
+}
 
-//void print_context(struct LC3 *, WINDOW *, uint16_t selected);
+static void LC3getc(struct LC3 *simulator, WINDOW *window)
+{
+#if defined (DEBUG) && (DEBUG & 0x10)
+	waddstr(window, "(GETC)");
+	wrefresh(window);
+#endif
+	wtimeout(window, -1);
+	simulator->registers[0] = wgetch(window);
+	wtimeout(window,  0);
+}
+
+static void LC3in(struct LC3 *simulator, WINDOW *window)
+{
+	waddstr(window, "\nInput a character> ");
+	wrefresh(window);
+	LC3getc(simulator, window);
+}
+
+static void setcc(uint16_t *last_result, unsigned char *CC)
+{
+	/*
+	 * Change the Condition Code based on the value last put into
+	 * a register.
+	 *
+	 */
+
+	if (*last_result == 0) { *CC = 'Z'; }
+	else if ((int16_t) *last_result < 0) { *CC = 'N'; }
+	else { *CC = 'P'; }
+}
 
 void print_state(struct LC3 *simulator, WINDOW *window)
 {
@@ -41,9 +82,9 @@ void print_state(struct LC3 *simulator, WINDOW *window)
 			  simulator->registers[index]);
 
 	// Print the PC, IR, and CC.
-	mvwprintw(	window, 1,	37,	"PC 0x%04x %hd",	simulator->PC,	simulator->PC);
-	mvwprintw(	window, 2,	37,	"IR 0x%04x %hd",	simulator->IR,	simulator->IR);
-	mvwprintw(	window, 3,	37,	"CC %c	       ",        simulator->CC);
+	mvwprintw(window, 1, 37, "PC 0x%04x %hd", simulator->PC, simulator->PC);
+	mvwprintw(window, 2, 37, "IR 0x%04x %hd", simulator->IR, simulator->IR);
+	mvwprintw(window, 3, 37, "CC %c	       ", simulator->CC);
 	wrefresh(window);
 }
 
@@ -246,57 +287,4 @@ void execute_next(struct LC3 *simulator, WINDOW *output)
 	default:	// Just in case
 		break;
 	}
-}
-
-static void LC3halt(WINDOW *window)
-{
-	waddstr(window, "\n----- Halting the processor -----\n");
-	wrefresh(window);
-}
-
-static void LC3puts(struct LC3 *simulator, WINDOW *window)
-{
-	uint16_t tmp = simulator->registers[0],
-		 orig = simulator->registers[0];
-	while (simulator->memory[tmp] != 0x0) {
-		simulator->registers[0] = simulator->memory[tmp++];
-		LC3out(simulator, window);
-	}
-	simulator->registers[0] = orig;
-}
-
-static void LC3getc(struct LC3 *simulator, WINDOW *window)
-{
-#if defined (DEBUG) && (DEBUG & 0x10)
-	waddstr(window, "(GETC)");
-	wrefresh(window);
-#endif
-	wtimeout(window, -1);
-	simulator->registers[0] = wgetch(window);
-	wtimeout(window,  0);
-}
-
-static void LC3out(struct LC3 *simulator, WINDOW *window)
-{
-	wechochar(window, (unsigned char) simulator->registers[0]);
-}
-
-static void LC3in(struct LC3 *simulator, WINDOW *window)
-{
-	waddstr(window, "\nInput a character> ");
-	wrefresh(window);
-	LC3getc(simulator, window);
-}
-
-static void setcc(uint16_t *last_result, unsigned char *CC)
-{
-	/*
-	 * Change the Condition Code based on the value last put into
-	 * a register.
-	 *
-	 */
-
-	if (*last_result == 0) { *CC = 'Z'; }
-	else if ((int16_t) *last_result < 0) { *CC = 'N'; }
-	else { *CC = 'P'; }
 }
