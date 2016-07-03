@@ -157,6 +157,12 @@ static bool view_memory(WINDOW *window, struct LC3 *simulator,
 		case 'B':
 			*currentState = MAIN;
 			return true;
+		case 'j':
+			create_context(window, simulator, 0, 0x0000);
+			break;
+		case 'J':
+			create_context(window, simulator, output_height - 1, 0xfffe);
+			break;
 		case KEY_UP:
 		case 'w':
 		case 'W':
@@ -181,13 +187,13 @@ static void popup_window(const char *message)
 	int columns = COLS / 2;
 	char string[7];
 
-	WINDOW *popup = newwin((LINES - lines) / 2, (COLS - columns) / 2, 1, 0);
+	WINDOW *popup = newwin(lines, columns, 10, 10);
 
 	box(popup, 0, 0);
 	echo();
 
-	mvaddstr(3, 1, message);
-	getstr(string);
+	mvwaddstr(popup, 2, 1, message);
+	wgetstr(popup, string);
 	string[6] = '\0';
 
 	noecho();
@@ -224,6 +230,13 @@ void run_machine(struct LC3 *simulator)
 	memory_output = (uint16_t *) malloc(output_height);
 
 	popup_window("Enter a string: ");
+
+	bkgdset(COLOR_BLACK);
+	wbkgdset(status, COLOR_BLACK);
+	wbkgdset(context, COLOR_BLACK);
+	refresh();
+	wrefresh(status);
+	wrefresh(context);
 
 	while (simulating) {
 		switch (currentState) {
