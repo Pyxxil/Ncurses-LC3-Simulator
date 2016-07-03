@@ -3,5 +3,4 @@
 
 extern void start_machine(const char *);
 
-#endif // MACHINE_H
-
+#endif	// MACHINE_H

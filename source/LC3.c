@@ -16,8 +16,7 @@ static void setcc(uint16_t *, unsigned char *);
 
 //void print_context(struct LC3 *, WINDOW *, uint16_t selected);
 
-void
-print_state(struct LC3 *simulator, WINDOW *window)
+void print_state(struct LC3 *simulator, WINDOW *window)
 {
 	/*
 	 * Print the current state of the simulator to the window provided.
@@ -32,27 +31,27 @@ print_state(struct LC3 *simulator, WINDOW *window)
 	// Print the first four registers.
 	for (; index < 4; ++index)
 		mvwprintw(window, index + 1, 3, "R%d 0x%04x %hd", index,
-			simulator->registers[index],
-			simulator->registers[index]);
+			  simulator->registers[index],
+			  simulator->registers[index]);
 
 	// Print the last 4 registers.
 	for (; index < 8; ++index)
 		mvwprintw(window, index - 3, 20, "R%d 0x%04x %hd", index,
-			simulator->registers[index],
-			simulator->registers[index]);
+			  simulator->registers[index],
+			  simulator->registers[index]);
 
 	// Print the PC, IR, and CC.
-	mvwprintw(window, 1, 37, "PC 0x%04x %hd", simulator->PC, simulator->PC);
-	mvwprintw(window, 2, 37, "IR 0x%04x %hd", simulator->IR, simulator->IR);
-	mvwprintw(window, 3, 37, "CC %c	       ", simulator->CC);
+	mvwprintw(	window, 1,	37,	"PC 0x%04x %hd",	simulator->PC,	simulator->PC);
+	mvwprintw(	window, 2,	37,	"IR 0x%04x %hd",	simulator->IR,	simulator->IR);
+	mvwprintw(	window, 3,	37,	"CC %c	       ",        simulator->CC);
 	wrefresh(window);
 }
 
 void execute_next(struct LC3 *simulator, WINDOW *output)
 {
-        /*
-         * Execute the next instruction of the given simulator.
-         */
+	/*
+	 * Execute the next instruction of the given simulator.
+	 */
 	int16_t PCoffset;
 	unsigned char opcode;
 	uint16_t *DR, SR1, SR2;
@@ -80,7 +79,7 @@ void execute_next(struct LC3 *simulator, WINDOW *output)
 			break;
 		case OUT:
 			// Display a character stored in register 0.
-			LC3out(simulator,  output);
+			LC3out(simulator, output);
 			break;
 		case PUTS:
 			// With the address supplied in register 0,
@@ -91,7 +90,7 @@ void execute_next(struct LC3 *simulator, WINDOW *output)
 			// Give a generic prompt, and then retrieve
 			// one character from the display, store it
 			// in register 0, and display it to the screen.
-			LC3in(simulator,   output);
+			LC3in(simulator, output);
 			break;
 		case PUTSP:
 			break;
@@ -126,7 +125,7 @@ void execute_next(struct LC3 *simulator, WINDOW *output)
 		// memory, and then load the value stored at that address into
 		// the destination register.
 		*DR = simulator->memory[
-			simulator->memory[simulator->PC + PCoffset]];
+				simulator->memory[simulator->PC + PCoffset]];
 		// We then flag for the condition code to be set.
 		setcc(DR, &simulator->CC);
 		break;
@@ -197,8 +196,8 @@ void execute_next(struct LC3 *simulator, WINDOW *output)
 		// BR takes 3 potential conditions, and checks if that condition
 		// is set.
 		if ((((simulator->IR >> 11) & 1) && simulator->CC == 'N') ||
-		   (((simulator->IR >> 10) & 1) && simulator->CC == 'Z')  ||
-		   (((simulator->IR >>  9) & 1) && simulator->CC == 'P')) {
+		    (((simulator->IR >> 10) & 1) && simulator->CC == 'Z') ||
+		    (((simulator->IR >> 9) & 1) && simulator->CC == 'P')) {
 			// If that condition is set, then we want the signed 9
 			// bit PCoffset provided.
 			PCoffset = ((int16_t) ((simulator->IR & 0x1ff) << 7)) >> 7;
@@ -258,7 +257,7 @@ static void LC3halt(WINDOW *window)
 static void LC3puts(struct LC3 *simulator, WINDOW *window)
 {
 	uint16_t tmp = simulator->registers[0],
-		orig = simulator->registers[0];
+		 orig = simulator->registers[0];
 	while (simulator->memory[tmp] != 0x0) {
 		simulator->registers[0] = simulator->memory[tmp++];
 		LC3out(simulator, window);
@@ -274,7 +273,7 @@ static void LC3getc(struct LC3 *simulator, WINDOW *window)
 #endif
 	wtimeout(window, -1);
 	simulator->registers[0] = wgetch(window);
-	wtimeout(window, 0);
+	wtimeout(window,  0);
 }
 
 static void LC3out(struct LC3 *simulator, WINDOW *window)
@@ -301,4 +300,3 @@ static void setcc(uint16_t *last_result, unsigned char *CC)
 	else if ((int16_t) *last_result < 0) { *CC = 'N'; }
 	else { *CC = 'P'; }
 }
-

@@ -38,14 +38,14 @@ int main(int argc, char **argv)
 	const char *short_options = "hf:a:o:";
 	const struct option long_options[] = {
 		{"assemble", required_argument, NULL, 'a'},
-		{"file",     required_argument, NULL, 'f'},
-		{"outfile",  required_argument, NULL, 'o'},
-		{"help",     no_argument,       NULL, 'h'},
-		{NULL,       0,                 NULL,  0 }
+		{"file",     required_argument,	NULL, 'f'},
+		{"outfile",  required_argument,	NULL, 'o'},
+		{"help",     no_argument,	NULL, 'h'},
+		{NULL,	     0,			NULL,  0 },
 	};
 
 	while ((opt = getopt_long(argc, argv, short_options,
-			long_options, NULL)) != -1) {
+				  long_options, NULL)) != -1) {
 		switch (opt) {
 		case 'f':
 			len = strlen(optarg);
@@ -85,4 +85,3 @@ int main(int argc, char **argv)
 
 	return 0;
 }
-

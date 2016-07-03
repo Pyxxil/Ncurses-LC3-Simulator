@@ -41,5 +41,4 @@ enum DIRECTION {
 	DOWN	= 0x2,
 };
 
-#endif // ENUMS_H
-
+#endif	// ENUMS_H

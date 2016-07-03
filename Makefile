@@ -63,4 +63,3 @@ run: build
 clean:
 	@echo "Cleaning up"
 	rm $(EXECUTABLE) $(OBJS)
-

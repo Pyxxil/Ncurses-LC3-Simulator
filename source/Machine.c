@@ -9,15 +9,14 @@ static char *file_name = NULL;
 
 static WINDOW *status, *output, *context;
 
-
 static const struct LC3 init_state = {
-	.PC		=   0  ,
+	.PC		= 0,
 	.memory		= { 0 },
 	.registers	= { 0 },
-	.IR		=   0  ,
-	.CC		=  'Z' ,
+	.IR		= 0,
+	.CC		= 'Z',
 	.halted		= false,
-	.isPaused	=  true,
+	.isPaused	= true,
 };
 
 static void init_machine(struct LC3 *simulator)
@@ -29,11 +28,11 @@ static void init_machine(struct LC3 *simulator)
 static void print_view(enum STATE *currentState)
 {
 	mvprintw(0, 0, "Currently Viewing: %- 15s",
-			(*currentState == MEM)  ? "Memory View"	:
-			(*currentState == MAIN) ? "Main View"	:
-			(*currentState == EDIT) ? "Editor"	:
-			(*currentState == SIM)  ? "Simulator"	:
-						"Unknown");
+		 (*currentState == MEM)  ? "Memory View" :
+		 (*currentState == MAIN) ? "Main View"   :
+		 (*currentState == EDIT) ? "Editor"      :
+		 (*currentState == SIM)  ? "Simulator"   :
+		 "Unknown");
 	refresh();
 
 	wrefresh(status);
@@ -42,7 +41,7 @@ static void print_view(enum STATE *currentState)
 }
 
 static bool simulate(WINDOW *output, WINDOW *status,
-		struct LC3 *simulator, enum STATE *currentState)
+		     struct LC3 *simulator, enum STATE *currentState)
 {
 	int input;
 	bool simulating = true;
@@ -57,7 +56,7 @@ static bool simulate(WINDOW *output, WINDOW *status,
 			// Quit the program.
 			simulating = false;
 			break;
-		case  27: // 27 is the escape key scan code
+		case  27:	// 27 is the escape key scan code
 		case 'b':
 		case 'B':
 			// Go back to the main state.
@@ -85,7 +84,7 @@ static bool simulate(WINDOW *output, WINDOW *status,
 		}
 		if (!simulator->isPaused && !simulator->halted) {
 			execute_next(simulator, output);
-			wtimeout(status,  0);
+			wtimeout(status, 0);
 		} else {
 			print_state(simulator, status);
 			wtimeout(status, -1);
@@ -118,8 +117,8 @@ static bool run_main_ui(WINDOW *status, enum STATE *currentState)
 		case 'Q':
 			// Quit the program.
 			return false;
-		case 'd': // For file dumps.
-		case 'D': // TODO
+		case 'd':	// For file dumps.
+		case 'D':	// TODO
 			break;
 		case 's':
 		case 'S':
@@ -214,13 +213,13 @@ void run_machine(struct LC3 *simulator)
 	cbreak();
 	start_color();
 
-	status  = newwin(6, COLS, 1, 0);
-	output  = newwin((LINES - 6) / 3, COLS, 7, 0);
+	status = newwin(6, COLS, 1, 0);
+	output = newwin((LINES - 6) / 3, COLS, 7, 0);
 	context = newwin(2 * (LINES - 6) / 3, COLS,
-			(LINES - 6) / 3 + 7, 0);
+			 (LINES - 6) / 3 + 7, 0);
 
 	box(status,  0, 0);
-	box(context, 0, 0);
+	box(context, 0,	0);
 
 	keypad(context, 1);
 
@@ -232,7 +231,7 @@ void run_machine(struct LC3 *simulator)
 	popup_window("Enter a string: ");
 
 	bkgdset(COLOR_BLACK);
-	wbkgdset(status, COLOR_BLACK);
+	wbkgdset(status,  COLOR_BLACK);
 	wbkgdset(context, COLOR_BLACK);
 	refresh();
 	wrefresh(status);
@@ -245,12 +244,12 @@ void run_machine(struct LC3 *simulator)
 			break;
 		case SIM:
 			simulating = simulate(output, status, simulator,
-						&currentState);
+					      &currentState);
 			break;
 		case MEM:
 			create_context(context, simulator, 0, simulator->PC);
 			simulating = view_memory(context, simulator,
-						&currentState);
+						 &currentState);
 			break;
 		case EDIT:
 			break;
@@ -273,4 +272,3 @@ void start_machine(const char *file)
 	run_machine(&simulator);
 	free(file_name);
 }
-

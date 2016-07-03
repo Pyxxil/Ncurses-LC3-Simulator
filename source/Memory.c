@@ -50,23 +50,23 @@ static void redraw(WINDOW *window)
 	for (int i = 0; i < output_height; ++i) {
 		if (i < selected) {
 			mvwprintw(window, i + 1, 1, memory_format,
-					selected_address - selected + i, memory_output[i]);
+				  selected_address - selected + i, memory_output[i]);
 		} else {
 			mvwprintw(window, i + 1, 1, memory_format,
-					selected_address + i, memory_output[i]);
+				  selected_address + i, memory_output[i]);
 		}
 	}
 
 	wattron(window, memory_attrs);
 	mvwprintw(window, selected + 1, 1, memory_format,
-		selected_address, memory_output[selected]);
+		  selected_address, memory_output[selected]);
 	wattroff(window, memory_attrs);
 
 	wrefresh(window);
 }
 
 void create_context(WINDOW *window, struct LC3 *simulator, int _selected,
-		uint16_t _selected_address)
+		    uint16_t _selected_address)
 {
 	selected = _selected;
 	selected_address = _selected_address;
@@ -104,14 +104,13 @@ void move_context(WINDOW *window, struct LC3 *simulator, enum DIRECTION directio
 
 	wattron(window, memory_attrs);
 	mvwprintw(window, selected + 1, 1, memory_format,
-		selected_address, memory_output[selected]);
+		  selected_address, memory_output[selected]);
 	wattroff(window, memory_attrs);
 	mvwprintw(window, prev + 1, 1, memory_format,
-		prev_addr, memory_output[prev]);
+		  prev_addr, memory_output[prev]);
 
 	if (_redraw) {
 		create_context(window, simulator, selected, selected_address);
 		redraw(window);
 	}
 }
-
