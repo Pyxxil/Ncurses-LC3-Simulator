@@ -18,4 +18,4 @@ extern void print_memory(WINDOW *, struct program *, uint16_t *, const char);
 extern void create_context(WINDOW *, struct LC3 *, int, uint16_t);
 extern void move_context(WINDOW *, struct LC3 *, enum DIRECTION);
 
-#endif	// MEMORY_H
+#endif // MEMORY_H

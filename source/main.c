@@ -52,8 +52,7 @@ int main(int argc, char **argv)
 	};
 
 	while ((opt = getopt_long(argc, argv, short_options,
-				  long_options, NULL)) != -1)
-	{
+				  long_options, NULL)) != -1) {
 		switch (opt) {
 		case 'f':
 			len	    = strlen(optarg);
@@ -71,7 +70,6 @@ int main(int argc, char **argv)
 			prog.errno = EXIT_SUCCESS;
 			usage(&prog);
 			return prog.errno;
-
 		default:
 			break;
 		}

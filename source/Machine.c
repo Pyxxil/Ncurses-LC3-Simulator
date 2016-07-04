@@ -61,7 +61,6 @@ static bool simulate(WINDOW *output, WINDOW *status,
 			*currentState = MAIN;
 			prog->simulator.isPaused = true;
 			return simulating;
-
 		case 'p':
 		case 'P':
 			prog->simulator.isPaused = !(prog->simulator.isPaused);
@@ -115,7 +114,6 @@ static bool run_main_ui(WINDOW *status, enum STATE *currentState)
 		case 'Q':
 			// Quit the program.
 			return false;
-
 		case 'd': // For file dumps.
 		case 'D': // TODO
 			break;
@@ -124,12 +122,10 @@ static bool run_main_ui(WINDOW *status, enum STATE *currentState)
 			// Start simulating the machine.
 			*currentState = SIM;
 			return true;
-
 		case 'm':
 		case 'M':
 			*currentState = MEM;
 			return true;
-
 		default:
 			break;
 		}
@@ -153,12 +149,10 @@ static bool view_memory(WINDOW *window, struct program *prog,
 		case 'q':
 		case 'Q':
 			return false;
-
 		case 'b':
 		case 'B':
 			*currentState = MAIN;
 			return true;
-
 		case 'j':
 			create_context(window, &(prog->simulator), 0, 0x0000);
 			break;
