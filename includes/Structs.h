@@ -25,9 +25,6 @@ struct program {
 	char	  *name;
 	char	  *infile;
 	char	  *outfile;
-	char	  *name;
-	char	  *infile;
-	char	  *outfile;
 	struct LC3 simulator;
 };
 

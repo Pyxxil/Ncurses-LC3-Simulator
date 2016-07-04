@@ -45,8 +45,8 @@ debug: CFLAGS += $(DFLAGS)
 debug: build
 
 # Use ctags to generate tags for the c files
-tags:
-	ctags $(SRC)
+tags: $(SRC)
+	ctags $^
 
 # Build the executable file
 build: $(OBJS)

@@ -87,7 +87,7 @@ int main(int argc, char **argv)
 	if (optind < argc) {
 		free(prog.infile);
 		usage(&prog);
-		return prog.EXIT_FAILURE;
+		return EXIT_FAILURE;
 	}
 
 	start_machine(&prog);

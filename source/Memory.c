@@ -76,13 +76,13 @@ void generate_context(WINDOW *window, struct LC3 *simulator, int _selected,
 	selected	 = _selected;
 	selected_address = _selected_address;
 
-	selected = ((selected_address + (output_height - selected)) > 0xfffe) ?
-		(output_height - (0xfffe - selected_address)) : selected;
+	selected = ((selected_address + (output_height - 1 - selected)) > 0xfffe) ?
+		(output_height - (0xfffe - selected_address)) - 1 : selected;
 
 	for (int i = 0; i < selected; i++)
 		memory_output[i] =
 			simulator->memory[selected_address - selected + i].value;
-	for (int i = 0; i < (output_height - 1); i++)
+	for (int i = 0; i < output_height; i++)
 		memory_output[i] = simulator->memory[selected_address + i].value;
 
 	redraw(window);
@@ -105,7 +105,7 @@ void move_context(WINDOW *window, struct LC3 *simulator, enum DIRECTION directio
 		selected_address = (selected_address == 0xfffe) ?
 			0xfffe : selected_address + 1;
 		selected	= (selected == (output_height - 1)) ?
-			_redraw = true, output_height - 1 : selected + 1;
+			_redraw = true, (output_height - 1) : selected + 1;
 		break;
 	default:
 		break;
@@ -119,7 +119,7 @@ void move_context(WINDOW *window, struct LC3 *simulator, enum DIRECTION directio
 		  prev_addr, memory_output[prev]);
 
 	if (_redraw) {
-		create_context(window, simulator, selected, selected_address);
+		generate_context(window, simulator, selected, selected_address);
 		redraw(window);
 	}
 } /* move_context */
