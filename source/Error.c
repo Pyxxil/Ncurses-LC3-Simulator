@@ -1,8 +1,9 @@
 #include <stdlib.h>
 #include <stdio.h>
+
 #include "Error.h"
 
-void unable_to_open_file(char const *file)
+void unable_to_open_file(const char *file)
 {
 	/*
 	 * The file failed to open for some reason, so we want

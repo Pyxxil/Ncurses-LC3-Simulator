@@ -13,7 +13,7 @@ uint16_t selected_address = 0;
 static const char *memory_format       = "0x%04hx\t\t0x%04hx";
 static const unsigned int memory_attrs = A_REVERSE;
 
-void populate_memory(struct LC3 *simulator, const char *file_name)
+void populate_memory(struct program *prog)
 {
 	/*
 	 * Populate the memory of the supplied simulator with the contents of
@@ -23,18 +23,18 @@ void populate_memory(struct LC3 *simulator, const char *file_name)
 	 * file_name -- The file we want to read the memory from.
 	 */
 
-	FILE *file = fopen(file_name, "rb");
+	FILE *file = fopen(prog->infile, "rb");
 	uint16_t tmp_PC, instruction;
 
 	if (!file || file == NULL)
-		unable_to_open_file(file_name);
+		unable_to_open_file(prog->infile);
 
 	// First line in the .obj file is the starting PC.
 	fread(&tmp_PC, WORD_SIZE, 1, file);
-	simulator->PC = tmp_PC = 0xffff & (tmp_PC << 8 | tmp_PC >> 8);
+	prog->simulator.PC = tmp_PC = 0xffff & (tmp_PC << 8 | tmp_PC >> 8);
 
 	while (fread(&instruction, WORD_SIZE, 1, file) == 1)
-		simulator->memory[tmp_PC++] = 0xffff
+		prog->simulator.memory[tmp_PC++].value = 0xffff
 			& (instruction << 8 | instruction >> 8);
 
 	if (!feof(file)) {
@@ -72,9 +72,10 @@ void create_context(WINDOW *window, struct LC3 *simulator, int _selected,
 	selected_address = _selected_address;
 
 	for (int i = 0; i < selected; i++)
-		memory_output[i] = simulator->memory[selected_address - selected + i];
+		memory_output[i] =
+			simulator->memory[selected_address - selected + i].value;
 	for (int i = 0; i < (output_height - 1); i++)
-		memory_output[i] = simulator->memory[selected_address + i];
+		memory_output[i] = simulator->memory[selected_address + i].value;
 
 	redraw(window);
 }

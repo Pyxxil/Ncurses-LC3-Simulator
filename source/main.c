@@ -4,8 +4,9 @@
 #include <stdio.h>
 
 #include "Machine.h"
+#include "Structs.h"
 
-const char usage_string[] =
+static const char usage_string[] =
 	"Usage: %s [OPTION] inFile.\n"
 	"  -h, --help            show this help text\n"
 	"  -f, --file File       specify the input file to use\n"
@@ -14,34 +15,40 @@ const char usage_string[] =
 	"  -a, --assemble File   assemble the given file into a .obj file,\n"
 	"                          .sym file, and a .bin file\n";
 
-static void usage(char const *program_name)
+static void usage(struct program *prog)
 {
-	printf(usage_string, program_name);
-	exit(EXIT_SUCCESS);
+	printf(usage_string, prog->name);
 }
 
-static void error_usage(char const *program_name)
+static void prompt_flag_not_implemented(const char flag)
 {
-	printf(usage_string, program_name);
-	exit(EXIT_FAILURE);
+	printf("''%c' is currently not currently implemented.", flag);
 }
 
 int main(int argc, char **argv)
 {
-	if (argc == 1)
-		error_usage(argv[0]);
+	struct program prog = {
+		.name	 = *argv,
+		.infile	 = NULL,
+		.outfile = NULL,
+	};
+
+	if (argc == 1) {
+		prog.errno = EXIT_FAILURE;
+		usage(&prog);
+		return prog.errno;
+	}
 
 	int opt;
 	size_t len;
-	char *inFile = NULL;
 
 	const char *short_options = "hf:a:o:";
 	const struct option long_options[] = {
 		{ "assemble", required_argument, NULL, 'a' },
 		{ "file",     required_argument, NULL, 'f' },
 		{ "outfile",  required_argument, NULL, 'o' },
-		{ "help",     no_argument,       NULL, 'h' },
-		{ NULL,                       0, NULL,   0 },
+		{ "help",     no_argument,	 NULL, 'h' },
+		{ NULL,			      0, NULL,	 0 },
 	};
 
 	while ((opt = getopt_long(argc, argv, short_options,
@@ -49,40 +56,49 @@ int main(int argc, char **argv)
 	{
 		switch (opt) {
 		case 'f':
-			len    = strlen(optarg);
-			inFile = (char *) malloc(len + 1);
-			strncpy(inFile, optarg, len);
+			len	    = strlen(optarg);
+			prog.infile = (char *) malloc(len + 1);
+			strncpy(prog.infile, optarg, len);
 			break;
 		case 'a':
+			prompt_flag_not_implemented('a');
 			break;
 		case 'o':
+			prompt_flag_not_implemented('o');
 			break;
 		case '?':
 		case 'h':
-			usage(argv[0]);
+			prog.errno = EXIT_SUCCESS;
+			usage(&prog);
+			return prog.errno;
+
 		default:
 			break;
 		}
 	}
 
-	if (((optind + 1) == argc) && (inFile == NULL)) {
+	if (((optind + 1) == argc) && (prog.infile == NULL)) {
 	// Assume the last argument is the inFile name
-		len    = strlen(argv[optind]);
-		inFile = (char *) malloc(len + 1);
-		strncpy(inFile, argv[optind], len);
+		len	    = strlen(argv[optind]);
+		prog.infile = (char *) malloc(len + 1);
+		strncpy(prog.infile, argv[optind], len);
 		++optind;
-	} else if (inFile == NULL) {
-		error_usage(argv[0]);
+	} else if (prog.infile == NULL) {
+		prog.errno = EXIT_FAILURE;
+		usage(&prog);
+		return prog.errno;
 	}
 
 	if (optind < argc) {
-		free(inFile);
-		error_usage(argv[0]);
+		free(prog.infile);
+		prog.errno = EXIT_FAILURE;
+		usage(&prog);
+		return prog.errno;
 	}
 
-	start_machine(inFile);
+	start_machine(&prog);
 
-	free(inFile);
+	free(prog.infile);
 
-	return 0;
+	return prog.errno;
 } /* main */
