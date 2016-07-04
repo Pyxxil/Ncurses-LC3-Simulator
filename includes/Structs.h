@@ -7,24 +7,27 @@
 struct memory_slot {
 	uint16_t address;
 	uint16_t value;
-	char    *label;
-	char    *instruction;
+	char	*label;
+	char	*instruction;
 };
 
 struct LC3 {
-	unsigned char CC;
-	uint16_t PC;
-	uint16_t IR;
-	uint16_t registers[8];
-	bool isHalted;
-	bool isPaused;
+	unsigned char	   CC;
+	uint16_t	   PC;
+	uint16_t	   IR;
+	uint16_t	   registers[8];
+	bool		   isHalted;
+	bool		   isPaused;
 	struct memory_slot memory[0xffff];
 };
 
 struct program {
-	char *name;
-	char *infile;
-	char *outfile;
+	char	  *name;
+	char	  *infile;
+	char	  *outfile;
+	char	  *name;
+	char	  *infile;
+	char	  *outfile;
 	struct LC3 simulator;
 };
 

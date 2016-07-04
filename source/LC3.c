@@ -54,7 +54,8 @@ static void setcc(uint16_t *last_result, unsigned char *CC)
 
 	if (*last_result == 0) *CC = 'Z';
 	else if ((int16_t) *last_result < 0) *CC = 'N';
-	else *CC = 'P'; }
+	else *CC = 'P';
+}
 
 void print_state(struct LC3 *simulator, WINDOW *window)
 {
@@ -69,16 +70,18 @@ void print_state(struct LC3 *simulator, WINDOW *window)
 	box(window, 0, 0);
 
 	// Print the first four registers.
-	for (; index < 4; ++index)
+	for (; index < 4; ++index) {
 		mvwprintw(window, index + 1, 3, "R%d 0x%04x %hd", index,
 			  simulator->registers[index],
 			  simulator->registers[index]);
+	}
 
 	// Print the last 4 registers.
-	for (; index < 8; ++index)
+	for (; index < 8; ++index) {
 		mvwprintw(window, index - 3, 20, "R%d 0x%04x %hd", index,
 			  simulator->registers[index],
 			  simulator->registers[index]);
+	}
 
 	// Print the PC, IR, and CC.
 	mvwprintw(window, 1, 37, "PC 0x%04x %hd", simulator->PC, simulator->PC);
@@ -240,8 +243,7 @@ void execute_next(struct LC3 *simulator, WINDOW *output)
 		// is set.
 		if ((((simulator->IR >> 11) & 1) && simulator->CC == 'N') ||
 		    (((simulator->IR >> 10) & 1) && simulator->CC == 'Z') ||
-		    (((simulator->IR >> 9) & 1) && simulator->CC == 'P'))
-		{
+		    (((simulator->IR >> 9) & 1) && simulator->CC == 'P')) {
 			// If that condition is set, then we want the signed 9
 			// bit PCoffset provided.
 			PCoffset = ((int16_t) ((simulator->IR & 0x1ff) << 7)) >> 7;

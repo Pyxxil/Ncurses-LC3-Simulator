@@ -51,8 +51,7 @@ int main(int argc, char **argv)
 	};
 
 	while ((opt = getopt_long(argc, argv, short_options,
-				  long_options, NULL)) != -1)
-	{
+				  long_options, NULL)) != -1) {
 		switch (opt) {
 		case 'f':
 			len	    = strlen(optarg);
