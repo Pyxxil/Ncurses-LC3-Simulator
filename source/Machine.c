@@ -160,11 +160,11 @@ static bool view_memory(WINDOW *window, struct program *prog,
 			return true;
 
 		case 'j':
-			create_context(window, &(prog->simulator), 0, 0x0000);
+			generate_context(window, &(prog->simulator), 0, 0x0000);
 			break;
 		case 'J':
-			create_context(window, &(prog->simulator),
-				       output_height - 1, 0xfffe);
+			generate_context(window, &(prog->simulator),
+					 output_height - 1, 0xfffe);
 			break;
 		case KEY_UP:
 		case 'w':
@@ -251,8 +251,8 @@ void run_machine(struct program *prog)
 			simulating = simulate(output, status, prog, &currentState);
 			break;
 		case MEM:
-			create_context(context, &(prog->simulator), 0,
-				       prog->simulator.PC);
+			generate_context(context, &(prog->simulator), 0,
+					 prog->simulator.PC);
 			simulating = view_memory(context, prog, &currentState);
 			break;
 		case EDIT:

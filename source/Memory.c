@@ -65,11 +65,19 @@ static void redraw(WINDOW *window)
 	wrefresh(window);
 }
 
-void create_context(WINDOW *window, struct LC3 *simulator, int _selected,
-		    uint16_t _selected_address)
+/*
+ * Given a currently selected index and address, populate the memory_output
+ * array to contain relative values.
+ */
+
+void generate_context(WINDOW *window, struct LC3 *simulator, int _selected,
+		      uint16_t _selected_address)
 {
 	selected	 = _selected;
 	selected_address = _selected_address;
+
+	selected = ((selected_address + (output_height - selected)) > 0xfffe) ?
+		(output_height - (0xfffe - selected_address)) : selected;
 
 	for (int i = 0; i < selected; i++)
 		memory_output[i] =

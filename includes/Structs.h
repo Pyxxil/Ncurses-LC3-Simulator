@@ -22,7 +22,6 @@ struct LC3 {
 };
 
 struct program {
-	int errno;
 	char *name;
 	char *infile;
 	char *outfile;

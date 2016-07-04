@@ -34,9 +34,8 @@ int main(int argc, char **argv)
 	};
 
 	if (argc == 1) {
-		prog.errno = EXIT_FAILURE;
 		usage(&prog);
-		return prog.errno;
+		return EXIT_FAILURE;
 	}
 
 	int opt;
@@ -68,10 +67,8 @@ int main(int argc, char **argv)
 			break;
 		case '?':
 		case 'h':
-			prog.errno = EXIT_SUCCESS;
 			usage(&prog);
-			return prog.errno;
-
+			return EXIT_SUCCESS;
 		default:
 			break;
 		}
@@ -84,21 +81,19 @@ int main(int argc, char **argv)
 		strncpy(prog.infile, argv[optind], len);
 		++optind;
 	} else if (prog.infile == NULL) {
-		prog.errno = EXIT_FAILURE;
 		usage(&prog);
-		return prog.errno;
+		return EXIT_FAILURE;
 	}
 
 	if (optind < argc) {
 		free(prog.infile);
-		prog.errno = EXIT_FAILURE;
 		usage(&prog);
-		return prog.errno;
+		return prog.EXIT_FAILURE;
 	}
 
 	start_machine(&prog);
 
 	free(prog.infile);
 
-	return prog.errno;
+	return 0;
 } /* main */
