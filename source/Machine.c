@@ -38,6 +38,32 @@ static void print_view(enum STATE *currentState)
 	wrefresh(context);
 }
 
+static int popup_window(const char *message)
+{
+	int lines   = 5;
+	int columns = COLS / 2;
+	int ret;
+	char string[7];
+
+	WINDOW *popup = newwin(lines, columns, (LINES - lines) / 2, (COLS - columns) / 2);
+
+	box(popup, 0, 0);
+	echo();
+
+	mvwaddstr(popup, 2, 1, message);
+	wgetstr(popup, string);
+	string[6] = '\0';
+
+	ret = (int) strtol(string, (char **) NULL, 16);
+
+	noecho();
+
+	wrefresh(popup);
+	delwin(popup);
+
+	return ret;
+}
+
 static bool simulate(WINDOW *output, WINDOW *status,
 		     struct program *prog, enum STATE *currentState)
 {
@@ -139,6 +165,7 @@ static bool view_memory(WINDOW *window, struct program *prog,
 {
 	int input;
 	bool simulating = true;
+	int jump_addr;
 
 	print_view(currentState);
 
@@ -154,7 +181,8 @@ static bool view_memory(WINDOW *window, struct program *prog,
 			*currentState = MAIN;
 			return true;
 		case 'j':
-			generate_context(window, &(prog->simulator), 0, 0x0000);
+			jump_addr = popup_window("Enter a hex address to jump to: ");
+			generate_context(window, &(prog->simulator), 0, jump_addr);
 			break;
 		case 'J':
 			generate_context(window, &(prog->simulator),
@@ -177,26 +205,6 @@ static bool view_memory(WINDOW *window, struct program *prog,
 
 	return simulating;
 } /* view_memory */
-
-static void popup_window(const char *message)
-{
-	int lines   = 5;
-	int columns = COLS / 2;
-	char string[7];
-
-	WINDOW *popup = newwin(lines, columns, 10, 10);
-
-	box(popup, 0, 0);
-	echo();
-
-	mvwaddstr(popup, 2, 1, message);
-	wgetstr(popup, string);
-	string[6] = '\0';
-
-	noecho();
-
-	wrefresh(popup);
-}
 
 void run_machine(struct program *prog)
 {
@@ -224,7 +232,7 @@ void run_machine(struct program *prog)
 	scrollok(output, 1);
 
 	output_height = 2 * (LINES - 6) / 3 - 2;
-	memory_output = (uint16_t *) malloc(output_height);
+	memory_output = (uint16_t *) malloc(sizeof(uint16_t) * output_height);
 
 	popup_window("Enter a string: ");
 
