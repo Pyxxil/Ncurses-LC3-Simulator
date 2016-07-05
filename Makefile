@@ -26,7 +26,7 @@ DFLAGS = -Wall -Werror -Wpedantic -Wextra -DDEBUG=$(DLEVEL)
 
 GCC6 := $(shell which gcc-6 2>/dev/null)
 
-EXECFLAGS =
+RM = rm -f
 
 
 # Default target if none are given
@@ -57,9 +57,9 @@ build: $(OBJS)
 
 run: build
 	@echo "\n\nRunning program"
-	./$(EXECUTABLE) $(EXECFLAGS)
+	./$(EXECUTABLE)
 
 # Remove all generated files
 clean:
 	@echo "Cleaning up"
-	rm $(EXECUTABLE) $(OBJS)
+	$(RM) $(EXECUTABLE) $(OBJS)

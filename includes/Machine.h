@@ -3,6 +3,6 @@
 
 #include "Structs.h"
 
-extern void start_machine(struct program *);
+extern void run_machine(struct program *);
 
 #endif	// MACHINE_H

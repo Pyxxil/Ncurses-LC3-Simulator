@@ -55,13 +55,24 @@ static int popup_window(const char *message)
 	string[6] = '\0';
 
 	ret = (int) strtol(string, (char **) NULL, 16);
-
 	noecho();
 
-	wrefresh(popup);
-	delwin(popup);
-
 	return ret;
+}
+
+static void prompt(const char *message, char *file)
+{
+	int lines   = 5;
+	int columns = COLS / 2;
+
+	WINDOW *popup = newwin(lines, columns, (LINES - lines) / 2, (COLS - columns) / 2);
+
+	box(popup, 0, 0);
+	echo();
+
+	mvwaddstr(popup, 2, 1, message);
+	wgetstr(popup, file);
+	noecho();
 }
 
 static bool simulate(WINDOW *output, WINDOW *status,
@@ -208,9 +219,6 @@ static bool view_memory(WINDOW *window, struct program *prog,
 
 void run_machine(struct program *prog)
 {
-	bool simulating		= true;
-	enum STATE currentState = MAIN;
-
 	initscr();
 
 	raw();
@@ -218,6 +226,16 @@ void run_machine(struct program *prog)
 	noecho();
 	cbreak();
 	start_color();
+
+	if (prog->infile == NULL) {
+		prog->infile = (char *) malloc(sizeof(char) * (COLS + 1));
+		prompt("Enter the .obj file: ", prog->infile);
+	}
+	prog->simulator = init_state;
+	init_machine(prog);
+
+	bool simulating		= true;
+	enum STATE currentState = MAIN;
 
 	status	= newwin(6, COLS, 1, 0);
 	output	= newwin((LINES - 6) / 3, COLS, 7, 0);
@@ -233,16 +251,6 @@ void run_machine(struct program *prog)
 
 	output_height = 2 * (LINES - 6) / 3 - 2;
 	memory_output = (uint16_t *) malloc(sizeof(uint16_t) * output_height);
-
-	popup_window("Enter a string: ");
-
-	bkgdset(COLOR_BLACK);
-	wbkgdset(status, COLOR_BLACK);
-	wbkgdset(context, COLOR_BLACK);
-
-	refresh();
-	wrefresh(status);
-	wrefresh(context);
 
 	while (simulating) {
 		switch (currentState) {
@@ -267,10 +275,3 @@ void run_machine(struct program *prog)
 	endwin();
 	free(memory_output);
 } /* run_machine */
-
-void start_machine(struct program *prog)
-{
-	prog->simulator = init_state;
-	init_machine(prog);
-	run_machine(prog);
-}

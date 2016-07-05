@@ -1,28 +1,25 @@
 #include <string.h>
 #include <getopt.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <stdio.h>
 
 #include "Machine.h"
 #include "Structs.h"
 
-static const char usage_string[] =
+const char usage_string[] =
 	"Usage: %s [OPTION] inFile.\n"
 	"  -h, --help            show this help text\n"
 	"  -f, --file File       specify the input file to use\n"
 	"  -o, --outFile File    specify the output file to write any given\n"
 	"                          assembly file's output to\n"
 	"  -a, --assemble File   assemble the given file into a .obj file,\n"
-	"                          .sym file, and a .bin file\n";
+	"                          .sym file, and a .bin file\n"
+	"  -l. --log-file File   specify which file to use as a log file when\n";
 
 static void usage(struct program *prog)
 {
 	printf(usage_string, prog->name);
-}
-
-static void prompt_flag_not_implemented(const char flag)
-{
-	printf("''%c' is currently not currently implemented.", flag);
 }
 
 int main(int argc, char **argv)
@@ -33,20 +30,16 @@ int main(int argc, char **argv)
 		.outfile = NULL,
 	};
 
-	if (argc == 1) {
-		usage(&prog);
-		return EXIT_FAILURE;
-	}
-
 	int opt;
 	size_t len;
 
-	const char *short_options = "hf:a:o:";
+	const char *short_options = "hf:a:o:l:";
 	const struct option long_options[] = {
 		{ "assemble", required_argument, NULL, 'a' },
 		{ "file",     required_argument, NULL, 'f' },
 		{ "outfile",  required_argument, NULL, 'o' },
 		{ "help",     no_argument,	 NULL, 'h' },
+		{ "logfile",  required_argument, NULL, 'l' },
 		{ NULL,			      0, NULL,	 0 },
 	};
 
@@ -55,14 +48,14 @@ int main(int argc, char **argv)
 		switch (opt) {
 		case 'f':
 			len	    = strlen(optarg);
-			prog.infile = (char *) malloc(len + 1);
+			prog.infile = (char *) malloc(sizeof(char) * (len + 1));
 			strncpy(prog.infile, optarg, len);
 			break;
 		case 'a':
-			prompt_flag_not_implemented('a');
 			break;
 		case 'o':
-			prompt_flag_not_implemented('o');
+			break;
+		case 'l':
 			break;
 		case '?':
 		case 'h':
@@ -73,15 +66,12 @@ int main(int argc, char **argv)
 		}
 	}
 
-	if (((optind + 1) == argc) && (prog.infile == NULL)) {
-	// Assume the last argument is the inFile name
+	if ((argc != 1) && ((optind + 1) == argc) && (prog.infile == NULL)) {
+	// Assume the last argument is the file name.
 		len	    = strlen(argv[optind]);
-		prog.infile = (char *) malloc(len + 1);
+		prog.infile = (char *) malloc(sizeof(char) * (len + 1));
 		strncpy(prog.infile, argv[optind], len);
 		++optind;
-	} else if (prog.infile == NULL) {
-		usage(&prog);
-		return EXIT_FAILURE;
 	}
 
 	if (optind < argc) {
@@ -90,7 +80,7 @@ int main(int argc, char **argv)
 		return EXIT_FAILURE;
 	}
 
-	start_machine(&prog);
+	run_machine(&prog);
 
 	free(prog.infile);
 
