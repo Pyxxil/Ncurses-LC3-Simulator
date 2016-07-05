@@ -28,10 +28,6 @@ static void LC3puts(struct LC3 *simulator, WINDOW *window)
 
 static void LC3getc(struct LC3 *simulator, WINDOW *window)
 {
-#if defined(DEBUG) && (DEBUG & 0x10)
-	waddstr(window, "(GETC)");
-	wrefresh(window);
-#endif
 	wtimeout(window, -1);
 	simulator->registers[0] = wgetch(window);
 	wtimeout(window, 0);
@@ -102,11 +98,6 @@ void execute_next(struct LC3 *simulator, WINDOW *output)
 	// Increment the PC when we fetch the next instruction.
 	simulator->IR = simulator->memory[simulator->PC++].value;
 
-#if defined(DEBUG) && (DEBUG & 0x8)
-	wprintw(output, "IR -- %x\n", simulator->memory[simulator->PC - 1]);
-	wrefresh(output);
-#endif
-
 	// The opcode is in the first 4 bits of the instruction.
 	opcode = (simulator->IR & 0xf000) >> 12;
 
@@ -145,7 +136,7 @@ void execute_next(struct LC3 *simulator, WINDOW *output)
 			// to stop the execution of the machine.
 			simulator->isHalted = true;
 			break;
-		default: // Just in case
+		default:
 			break;
 		}
 		break;
@@ -290,7 +281,7 @@ void execute_next(struct LC3 *simulator, WINDOW *output)
 			simulator->PC = SR1;
 		}
 		break;
-	default: // Just in case
+	default:
 		break;
 	}
-} /* execute_next */
+}

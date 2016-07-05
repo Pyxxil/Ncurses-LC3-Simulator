@@ -33,6 +33,10 @@ static void print_view(enum STATE *currentState)
 		 "Unknown");
 	refresh();
 
+	touchwin(status);
+	touchwin(output);
+	touchwin(context);
+
 	wrefresh(status);
 	wrefresh(output);
 	wrefresh(context);
@@ -56,6 +60,7 @@ static int popup_window(const char *message)
 
 	ret = (int) strtol(string, (char **) NULL, 16);
 	noecho();
+	delwin(popup);
 
 	return ret;
 }
@@ -124,19 +129,10 @@ static bool simulate(WINDOW *output, WINDOW *status,
 			print_state(&(prog->simulator), status);
 			wtimeout(status, -1);
 		}
-
-#ifdef DEBUG
-#if (DEBUG & 0x2)
-		print_state(simulator, status);
-#endif
-#if (DEBUG & 0x4)
-		simulator->isPaused = true;
-#endif
-#endif
 	}
 
 	return simulating;
-} /* simulate */
+}
 
 static bool run_main_ui(WINDOW *status, enum STATE *currentState)
 {
@@ -169,7 +165,7 @@ static bool run_main_ui(WINDOW *status, enum STATE *currentState)
 	}
 
 	return simulating;
-} /* run_main_ui */
+}
 
 static bool view_memory(WINDOW *window, struct program *prog,
 			enum STATE *currentState)
@@ -192,12 +188,10 @@ static bool view_memory(WINDOW *window, struct program *prog,
 			*currentState = MAIN;
 			return true;
 		case 'j':
+		case 'J':
 			jump_addr = popup_window("Enter a hex address to jump to: ");
 			generate_context(window, &(prog->simulator), 0, jump_addr);
-			break;
-		case 'J':
-			generate_context(window, &(prog->simulator),
-					 output_height - 1, 0xfffe);
+			touchwin(window);
 			break;
 		case KEY_UP:
 		case 'w':
@@ -215,7 +209,7 @@ static bool view_memory(WINDOW *window, struct program *prog,
 	}
 
 	return simulating;
-} /* view_memory */
+}
 
 void run_machine(struct program *prog)
 {
@@ -274,4 +268,4 @@ void run_machine(struct program *prog)
 
 	endwin();
 	free(memory_output);
-} /* run_machine */
+}

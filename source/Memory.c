@@ -122,4 +122,4 @@ void move_context(WINDOW *window, struct LC3 *simulator, enum DIRECTION directio
 		generate_context(window, simulator, selected, selected_address);
 		redraw(window);
 	}
-} /* move_context */
+}

@@ -85,4 +85,4 @@ int main(int argc, char **argv)
 	free(prog.infile);
 
 	return 0;
-} /* main */
+}
