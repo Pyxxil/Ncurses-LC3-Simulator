@@ -38,6 +38,7 @@ ifdef GCC6
 # on the system
 debug: CC = gcc-6
 endif
+
 # Add the debug flags
 debug: CFLAGS += $(DFLAGS)
 # Build the system

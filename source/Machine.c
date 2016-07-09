@@ -33,10 +33,6 @@ static void print_view(enum STATE *currentState)
 		 "Unknown");
 	refresh();
 
-	touchwin(status);
-	touchwin(output);
-	touchwin(context);
-
 	wrefresh(status);
 	wrefresh(output);
 	wrefresh(context);
