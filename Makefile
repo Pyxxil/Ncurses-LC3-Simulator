@@ -46,7 +46,7 @@ debug: build
 
 # Use ctags to generate tags for the c files
 tags: $(SRC)
-	ctags $^
+	ctags --sort=yes --verbose $(wildcard $(INCDIR)/*.h) $^
 
 # Build the executable file
 build: $(OBJS)

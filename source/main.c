@@ -8,7 +8,7 @@
 #include "Structs.h"
 
 const char usage_string[] =
-	"Usage: %s [OPTION] inFile.\n"
+	"Usage: %s [OPTION] <file>.\n"
 	"  -h, --help            show this help text\n"
 	"  -f, --file File       specify the input file to use\n"
 	"  -o, --outFile File    specify the output file to write any given\n"
@@ -17,21 +17,27 @@ const char usage_string[] =
 	"                          .sym file, and a .bin file\n"
 	"  -l. --log-file File   specify which file to use as a log file when\n";
 
-static void usage(struct program *prog)
+static void usage(FILE* file, struct program *prog)
 {
-	printf(usage_string, prog->name);
+	fprintf(file, usage_string, prog->name);
+}
+
+static void grabfile(struct program *prog, const char *string)
+{
+	size_t len = strlen(string) + 1;
+	prog->infile = malloc(sizeof(char) * len);
+	strncpy(prog->infile, string, len);
 }
 
 int main(int argc, char **argv)
 {
 	struct program prog = {
-		.name	 = *argv,
+		.name	 = NULL,
 		.infile	 = NULL,
 		.outfile = NULL,
 	};
 
-	int opt;
-	size_t len;
+	int opt, ret = EXIT_SUCCESS;
 
 	const char *short_options = "hf:a:o:l:";
 	const struct option long_options[] = {
@@ -47,9 +53,12 @@ int main(int argc, char **argv)
 				  long_options, NULL)) != -1) {
 		switch (opt) {
 		case 'f':
-			len	    = strlen(optarg);
-			prog.infile = (char *) malloc(sizeof(char) * (len + 1));
-			strncpy(prog.infile, optarg, len);
+			if (prog.infile != NULL) {
+				fprintf(stderr, "Error: Multiple input files given.\n");
+				return EXIT_FAILURE;
+			} else {
+				grabfile(&prog, optarg);
+			}
 			break;
 		case 'a':
 			break;
@@ -59,30 +68,29 @@ int main(int argc, char **argv)
 			break;
 		case '?':
 		case 'h':
-			usage(&prog);
+			usage(stdin, &prog);
 			return EXIT_SUCCESS;
 		default:
 			break;
 		}
 	}
 
-	if ((argc != 1) && ((optind + 1) == argc) && (prog.infile == NULL)) {
 	// Assume the last argument is the file name.
-		len	    = strlen(argv[optind]);
-		prog.infile = (char *) malloc(sizeof(char) * (len + 1));
-		strncpy(prog.infile, argv[optind], len);
-		++optind;
-	}
+	if ((argc != 1) && ((optind + 1) == argc) && (prog.infile == NULL))
+		grabfile(&prog, argv[optind++]);
 
 	if (optind < argc) {
-		free(prog.infile);
-		usage(&prog);
-		return EXIT_FAILURE;
+		usage(stderr, &prog);
+		ret = EXIT_FAILURE;
+		goto error_exit;
 	}
 
 	run_machine(&prog);
 
+error_exit:
 	free(prog.infile);
+	free(prog.outfile);
+	free(prog.name);
 
-	return 0;
+	return ret;
 }
