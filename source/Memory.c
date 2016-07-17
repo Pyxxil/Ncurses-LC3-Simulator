@@ -13,21 +13,22 @@ uint16_t selected_address = 0;
 static const char *memory_format       = "0x%04hx\t\t0x%04hx";
 static const unsigned int memory_attrs = A_REVERSE;
 
-void populate_memory(struct program *prog)
-{
-	/*
-	 * Populate the memory of the supplied simulator with the contents of
-	 * the provided file.
-	 *
-	 * simulator -- The simulator whose memory we want to populate.
-	 * file_name -- The file we want to read the memory from.
-	 */
+/*
+ * Populate the memory of the supplied simulator with the contents of
+ * the provided file.
+ *
+ * prog -- The program we want to populate the memory of, which also contains the
+ *         file we will read the memory from.
+ */
 
+int populate_memory(struct program *prog)
+{
 	FILE *file = fopen(prog->infile, "rb");
 	uint16_t tmp_PC, instruction;
 
-	if (!file || file == NULL)
-		unable_to_open_file(prog->infile);
+	if (file == NULL || !file) {
+		return 1;
+	}
 
 	// First line in the .obj file is the starting PC.
 	fread(&tmp_PC, WORD_SIZE, 1, file);
@@ -40,9 +41,12 @@ void populate_memory(struct program *prog)
 	if (!feof(file)) {
 		fclose(file);
 		read_error();
+		tidyup(prog);
+		return 2;
 	}
 
 	fclose(file);
+	return 0;
 }
 
 static void redraw(WINDOW *window)
@@ -79,10 +83,12 @@ void generate_context(WINDOW *window, struct LC3 *simulator, int _selected,
 	selected = ((selected_address + (output_height - 1 - selected)) > 0xfffe) ?
 		(output_height - (0xfffe - selected_address)) - 1 : selected;
 
-	for (int i = 0; i < selected; i++)
+	int i = 0;
+
+	for (; i < selected; i++)
 		memory_output[i] =
 			simulator->memory[selected_address - selected + i].value;
-	for (int i = 0; i < output_height; i++)
+	for (; i < output_height; i++)
 		memory_output[i] = simulator->memory[selected_address + i].value;
 
 	redraw(window);
@@ -96,16 +102,13 @@ void move_context(WINDOW *window, struct LC3 *simulator, enum DIRECTION directio
 
 	switch (direction) {
 	case UP:
-		selected_address = (selected_address == 0) ?
-			0 : selected_address - 1;
-		selected	= (selected == 0) ?
-			_redraw = true, 0 : selected - 1;
+		selected_address -= (selected_address == 0) ? 0 : 1;
+		selected	  = (selected == 0) ? _redraw = true, 0 : selected - 1;
 		break;
 	case DOWN:
-		selected_address = (selected_address == 0xfffe) ?
-			0xfffe : selected_address + 1;
-		selected	= (selected == (output_height - 1)) ?
-			_redraw = true, (output_height - 1) : selected + 1;
+		selected_address += (selected_address == 0xfffe) ? 0 : 1;
+		selected	  = (selected == (output_height - 1)) ? _redraw = true,
+					(output_height - 1) : selected + 1;
 		break;
 	default:
 		break;

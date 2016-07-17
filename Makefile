@@ -9,7 +9,7 @@ SRCDIR = source
 # Source files
 SRC   := $(wildcard $(SRCDIR)/*.c)
 # Object files (gathered by substitution)
-OBJS  := $(SRC:%.c=%.o)
+OBJS  := $(SRC:.c=.o)
 
 # Includes directory
 INCDIR   = includes
@@ -28,14 +28,12 @@ GCC6 := $(shell which gcc-6 2>/dev/null)
 RM = rm -f
 
 
-# Default target if none are given
-.PHONY: default
+# Default target if none is given.
 default: build
 
 ifdef GCC6
 # Using Homebrew's version of gcc-6 for debug, because clang throws a
-# warning when -lncurses is linked but not used, but only if it exists
-# on the system
+# warning when -lncurses is linked but not used.
 debug: CC = gcc-6
 endif
 

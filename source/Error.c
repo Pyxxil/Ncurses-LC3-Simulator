@@ -3,27 +3,23 @@
 
 #include "Error.h"
 
-void unable_to_open_file(const char *file)
-{
-	/*
-	 * The file failed to open for some reason, so we want
-	 * to complain and exit the program with a failed status.
-	 *
-	 * file -- The file we tried to open
-	 */
-
-	fprintf(stderr, "Error: Failed to load file \"%s\"\n", file);
-	exit(EXIT_FAILURE);
-}
+/*
+ * Failed to read to the end of the file for some reason,
+ * so we want to complain and exit the program with a failed
+ * status.
+ */
 
 void read_error()
 {
-	/*
-	 * Failed to read to the end of the file for some reason,
-	 * so we want to complain and exit the program with a failed
-	 * status.
-	 */
-
 	fprintf(stderr, "Error: Failed to read to end of file\n");
-	exit(EXIT_FAILURE);
+}
+
+void tidyup(struct program *prog)
+{
+	if (prog->infile != NULL)
+		free(prog->infile);
+	if (prog->outfile != NULL)
+		free(prog->outfile);
+	if (prog->name != NULL)
+		free(prog->name);
 }

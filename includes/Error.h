@@ -1,7 +1,10 @@
 #ifndef ERROR_H
 #define ERROR_H
 
-extern void unable_to_open_file(const char *);
+#include "Structs.h"
+
 extern void read_error();
+
+extern void tidyup(struct program *);
 
 #endif // ERROR_H

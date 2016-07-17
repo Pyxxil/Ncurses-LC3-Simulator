@@ -6,6 +6,7 @@
 #include "LC3.h"
 
 static WINDOW *status, *output, *context;
+static int MSGWIDTH, MSGHEIGHT;
 
 static const struct LC3 init_state = {
 	.PC	   =	 0,
@@ -17,10 +18,30 @@ static const struct LC3 init_state = {
 	.isPaused  = true,
 };
 
-static void init_machine(struct program *prog)
+static void prompt(const char *err, const char *message, char *file)
 {
+	int msgwidth = MSGWIDTH + strlen(message);
+
+	WINDOW *popup = newwin(MSGHEIGHT, msgwidth, (LINES - MSGHEIGHT) / 2,
+			       (COLS - msgwidth) / 2);
+
+	box(popup, 0, 0);
+	echo();
+
+	if (err != NULL)
+		mvwaddstr(popup, MSGHEIGHT / 2 - 1, 1, err);
+	mvwaddstr(popup, MSGHEIGHT / 2, 1, message);
+	wgetstr(popup, file);
+	noecho();
+}
+
+static int init_machine(struct program *prog)
+{
+	int ret;
 	prog->simulator = init_state;
-	populate_memory(prog);
+	while ((ret = populate_memory(prog)) == 1)
+		prompt("Invalid file name.", "Enter the .obj file: ", prog->infile);
+	return ret;
 }
 
 static void print_view(enum STATE *currentState)
@@ -40,44 +61,29 @@ static void print_view(enum STATE *currentState)
 
 static int popup_window(const char *message)
 {
-	int lines   = 5;
-	int columns = COLS / 2;
-	int ret;
+	int ret, msgwidth = MSGWIDTH + strlen(message);
 	char string[7];
 
-	WINDOW *popup = newwin(lines, columns, (LINES - lines) / 2, (COLS - columns) / 2);
+	WINDOW *popup = newwin(MSGHEIGHT, msgwidth, (LINES - MSGHEIGHT) / 2,
+			       (COLS - msgwidth) / 2);
 
 	box(popup, 0, 0);
 	echo();
 
 	mvwaddstr(popup, 2, 1, message);
 	wgetstr(popup, string);
-	string[6] = '\0';
 
-	ret = (int) strtol(string, (char **) NULL, 16);
+	string[6] = '\0';
+	ret	  = (int) strtol(string, (char **) NULL, 16);
+
 	noecho();
 	delwin(popup);
 
 	return ret;
 }
 
-static void prompt(const char *message, char *file)
-{
-	int lines   = 5;
-	int columns = COLS / 2;
-
-	WINDOW *popup = newwin(lines, columns, (LINES - lines) / 2, (COLS - columns) / 2);
-
-	box(popup, 0, 0);
-	echo();
-
-	mvwaddstr(popup, 2, 1, message);
-	wgetstr(popup, file);
-	noecho();
-}
-
-static bool simulate(WINDOW *output, WINDOW *status,
-		     struct program *prog, enum STATE *currentState)
+static bool simview(WINDOW *output, WINDOW *status, struct program *prog,
+		    enum STATE *currentState)
 {
 	int input;
 	bool simulating = true;
@@ -94,8 +100,7 @@ static bool simulate(WINDOW *output, WINDOW *status,
 			break;
 		case  27: // 27 is the escape key scan code
 		case 'b':
-		case 'B':
-			// Go back to the main state.
+		case 'B': // Go back to the main state.
 			*currentState = MAIN;
 			prog->simulator.isPaused = true;
 			return simulating;
@@ -130,14 +135,13 @@ static bool simulate(WINDOW *output, WINDOW *status,
 	return simulating;
 }
 
-static bool run_main_ui(WINDOW *status, enum STATE *currentState)
+static bool mainview(WINDOW *status, enum STATE *currentState)
 {
 	int input;
-	bool simulating = true;
 
 	print_view(currentState);
 
-	while (simulating) {
+	while (1) {
 		switch (input = wgetch(status)) {
 		case 'q':
 		case 'Q':
@@ -147,34 +151,29 @@ static bool run_main_ui(WINDOW *status, enum STATE *currentState)
 		case 'D': // TODO
 			break;
 		case 's':
-		case 'S':
-			// Start simulating the machine.
+		case 'S': // Start simulating the machine.
 			*currentState = SIM;
 			return true;
 		case 'm':
-		case 'M':
+		case 'M': // View the memory contents.
 			*currentState = MEM;
 			return true;
 		default:
 			break;
 		}
 	}
-
-	return simulating;
 }
 
-static bool view_memory(WINDOW *window, struct program *prog,
-			enum STATE *currentState)
+static bool memview(WINDOW *window, struct program *prog,
+		    enum STATE *currentState)
 {
-	int input;
-	bool simulating = true;
-	int jump_addr;
+	int input, jump_addr;
 
 	print_view(currentState);
 
 	prog->simulator.isPaused = true;
 
-	while (simulating) {
+	while (1) {
 		switch (input = wgetch(window)) {
 		case 'q':
 		case 'Q':
@@ -203,8 +202,6 @@ static bool view_memory(WINDOW *window, struct program *prog,
 			break;
 		}
 	}
-
-	return simulating;
 }
 
 void run_machine(struct program *prog)
@@ -217,20 +214,26 @@ void run_machine(struct program *prog)
 	cbreak();
 	start_color();
 
+
+	MSGHEIGHT = 5;
+	MSGWIDTH  = COLS / 2;
+
 	if (prog->infile == NULL) {
-		prog->infile = (char *) malloc(sizeof(char) * (COLS + 1));
-		prompt("Enter the .obj file: ", prog->infile);
+		prog->infile = (char *) malloc(sizeof(char) * MSGWIDTH);
+		prompt((const char *) NULL, "Enter the .obj file: ", prog->infile);
 	}
+
 	prog->simulator = init_state;
-	init_machine(prog);
+	if (init_machine(prog)) {
+		return;
+	}
 
 	bool simulating		= true;
 	enum STATE currentState = MAIN;
 
 	status	= newwin(6, COLS, 1, 0);
 	output	= newwin((LINES - 6) / 3, COLS, 7, 0);
-	context = newwin(2 * (LINES - 6) / 3, COLS,
-			 (LINES - 6) / 3 + 7, 0);
+	context = newwin(2 * (LINES - 6) / 3, COLS, (LINES - 6) / 3 + 7, 0);
 
 	box(status, 0, 0);
 	box(context, 0, 0);
@@ -245,15 +248,15 @@ void run_machine(struct program *prog)
 	while (simulating) {
 		switch (currentState) {
 		case MAIN:
-			simulating = run_main_ui(status, &currentState);
+			simulating = mainview(status, &currentState);
 			break;
 		case SIM:
-			simulating = simulate(output, status, prog, &currentState);
+			simulating = simview(output, status, prog, &currentState);
 			break;
 		case MEM:
 			generate_context(context, &(prog->simulator), 0,
 					 prog->simulator.PC);
-			simulating = view_memory(context, prog, &currentState);
+			simulating = memview(context, prog, &currentState);
 			break;
 		case EDIT:
 			break;
@@ -262,6 +265,6 @@ void run_machine(struct program *prog)
 		}
 	}
 
-	endwin();
 	free(memory_output);
+	endwin();
 }
