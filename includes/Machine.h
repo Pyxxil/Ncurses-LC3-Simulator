@@ -5,6 +5,6 @@
 
 extern int mem_populated;
 
-extern void run_machine(struct program *);
+extern void start_machine(struct program *);
 
 #endif // MACHINE_H

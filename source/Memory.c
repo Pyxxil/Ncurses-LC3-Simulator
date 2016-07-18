@@ -34,9 +34,10 @@ int populate_memory(struct program *prog)
 	fread(&tmp_PC, WORD_SIZE, 1, file);
 	prog->simulator.PC = tmp_PC = 0xffff & (tmp_PC << 8 | tmp_PC >> 8);
 
-	while (fread(&instruction, WORD_SIZE, 1, file) == 1)
+	while (fread(&instruction, WORD_SIZE, 1, file) == 1) {
 		prog->simulator.memory[tmp_PC++].value = 0xffff
 			& (instruction << 8 | instruction >> 8);
+	}
 
 	if (!feof(file)) {
 		fclose(file);
@@ -48,6 +49,11 @@ int populate_memory(struct program *prog)
 	fclose(file);
 	return 0;
 }
+
+/*
+ * Redraw the memory view. Called after every time the user moves up / down in
+ * the area.
+ */
 
 static void redraw(WINDOW *window)
 {
@@ -62,8 +68,8 @@ static void redraw(WINDOW *window)
 	}
 
 	wattron(window, SELECTATTR);
-	mvwprintw(window, selected + 1, 1, MEMFORMAT,
-		  selected_address, memory_output[selected]);
+	mvwprintw(window, selected + 1, 1, MEMFORMAT, selected_address,
+		  memory_output[selected]);
 	wattroff(window, SELECTATTR);
 
 	wrefresh(window);
@@ -120,8 +126,6 @@ void move_context(WINDOW *window, struct LC3 *simulator, enum DIRECTION directio
 	wattroff(window, SELECTATTR);
 	mvwprintw(window, prev + 1, 1, MEMFORMAT, prev_addr, memory_output[prev]);
 
-	if (_redraw) {
+	if (_redraw)
 		generate_context(window, simulator, selected, selected_address);
-		redraw(window);
-	}
 }

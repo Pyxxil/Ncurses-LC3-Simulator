@@ -46,7 +46,11 @@ static int init_machine(struct program *prog)
 	return ret;
 }
 
-static void print_view(enum STATE *currentState)
+/*
+ * Print the current state at the top of the screen.
+ */
+
+static void sstate(enum STATE *currentState)
 {
 	mvprintw(0, 0, "Currently Viewing: %- 15s",
 		 (*currentState == MEM) ? "Memory View" :
@@ -89,7 +93,7 @@ static bool simview(WINDOW *output, WINDOW *status, struct program *prog,
 {
 	int input;
 
-	print_view(currentState);
+	sstate(currentState);
 
 	wtimeout(status, 0);
 	while (1) {
@@ -135,7 +139,7 @@ static bool mainview(WINDOW *status, enum STATE *currentState)
 {
 	int input;
 
-	print_view(currentState);
+	sstate(currentState);
 
 	while (1) {
 		switch (input = wgetch(status)) {
@@ -164,7 +168,7 @@ static bool memview(WINDOW *window, struct program *prog,
 {
 	int input, jump_addr;
 
-	print_view(currentState);
+	sstate(currentState);
 
 	prog->simulator.isPaused = true;
 
@@ -203,40 +207,10 @@ static bool memview(WINDOW *window, struct program *prog,
 	}
 }
 
-void run_machine(struct program *prog)
+static void run_machine(struct program *prog)
 {
-	initscr();
-
-	raw();
-	curs_set(0);
-	noecho();
-	cbreak();
-	start_color();
-
-	MSGHEIGHT = 5;
-	MSGWIDTH  = COLS / 2;
-
-	if (prog->infile == NULL) {
-		prog->infile = (char *) malloc(sizeof(char) * MSGWIDTH);
-		prompt((const char *) NULL, "Enter the .obj file: ", prog->infile);
-	}
-
-	prog->simulator = init_state;
-	if (init_machine(prog)) return;
-
 	bool simulating		= true;
 	enum STATE currentState = MAIN;
-
-	status	= newwin(6, COLS, 1, 0);
-	output	= newwin((LINES - 6) / 3, COLS, 7, 0);
-	context = newwin(2 * (LINES - 6) / 3, COLS, (LINES - 6) / 3 + 7, 0);
-
-	box(status, 0, 0);
-	box(context, 0, 0);
-
-	keypad(context, 1);
-
-	scrollok(output, 1);
 
 	output_height = 2 * (LINES - 6) / 3 - 2;
 	memory_output = (uint16_t *) malloc(sizeof(uint16_t) * output_height);
@@ -260,6 +234,7 @@ void run_machine(struct program *prog)
 			simulating = memview(context, prog, &currentState);
 			break;
 		case EDIT:
+			currentState = MAIN;
 			break;
 		default:
 			break;
@@ -267,5 +242,41 @@ void run_machine(struct program *prog)
 	}
 
 	free(memory_output);
+}
+
+void start_machine(struct program *prog)
+{
+	initscr();
+
+	raw();
+	curs_set(0);
+	noecho();
+	cbreak();
+	start_color();
+
+	MSGHEIGHT = 5;
+	MSGWIDTH  = COLS / 2;
+
+	if (prog->infile == NULL) {
+		prog->infile = (char *) malloc(sizeof(char) * MSGWIDTH);
+		prompt((const char *) NULL, "Enter the .obj file: ", prog->infile);
+	}
+
+	status	= newwin(6, COLS, 1, 0);
+	output	= newwin((LINES - 6) / 3, COLS, 7, 0);
+	context = newwin(2 * (LINES - 6) / 3, COLS, (LINES - 6) / 3 + 7, 0);
+
+	box(status, 0, 0);
+	box(context, 0, 0);
+
+	keypad(context, 1);
+
+	scrollok(output, 1);
+
+	prog->simulator = init_state;
+	if (init_machine(prog)) return;
+
+	run_machine(prog);
+
 	endwin();
 }
