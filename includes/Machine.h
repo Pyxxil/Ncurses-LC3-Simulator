@@ -3,6 +3,8 @@
 
 #include "Structs.h"
 
+extern int mem_populated;
+
 extern void run_machine(struct program *);
 
-#endif	// MACHINE_H
+#endif // MACHINE_H

@@ -39,12 +39,12 @@ struct Token {
 	RET = 0x1b,
 
 	// Trap codes
-	GETC   = 0x1c,
-	IN     = 0x1d,
-	OUT    = 0x1e,
-	PUTS   = 0x1f,
-	PUTSP  = 0x20,
-	HALT   = 0x21,
+	GETC  = 0x1c,
+	IN    = 0x1d,
+	OUT   = 0x1e,
+	PUTS  = 0x1f,
+	PUTSP = 0x20,
+	HALT  = 0x21,
 };
 
 struct Parser {

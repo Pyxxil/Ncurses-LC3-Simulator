@@ -18,7 +18,7 @@ const char usage_string[] =
 	"                          .sym file, and a .bin file\n"
 	"  -l. --log-file File   specify which file to use as a log file when\n";
 
-static void usage(FILE* file, struct program *prog)
+static void usage(FILE *file, struct program *prog)
 {
 	fprintf(file, usage_string, prog->name);
 }
@@ -27,11 +27,12 @@ static void usage(FILE* file, struct program *prog)
  * Copy the contents of one string to another, allocating enough memory to the
  * string we want to copy to.
  */
-static void strmcpy(char *to, const char *from)
+
+static void strmcpy(char **to, const char *from)
 {
 	size_t len = strlen(from) + 1;
-	to = malloc(sizeof(char) * len);
-	strncpy(to, from, len);
+	*to = malloc(sizeof(char) * len);
+	strncpy(*to, from, len);
 }
 
 int main(int argc, char **argv)
@@ -63,7 +64,7 @@ int main(int argc, char **argv)
 				tidyup(&prog);
 				return EXIT_FAILURE;
 			} else {
-				strmcpy(prog.infile, optarg);
+				strmcpy(&(prog.infile), optarg);
 			}
 			break;
 		case 'a': // FALLTHROUGH
@@ -81,8 +82,10 @@ int main(int argc, char **argv)
 	}
 
 	// Assume the last argument is the file name.
-	if ((argc != 1) && ((optind + 1) == argc) && (prog.infile == NULL))
-		strmcpy(prog.infile, argv[optind++]);
+	if ((argc > 1) && ((optind + 1) == argc) && (prog.infile == NULL)) {
+		strmcpy(&(prog.infile), argv[optind]);
+		optind++;
+	}
 
 	if (optind < argc) {
 		usage(stderr, &prog);

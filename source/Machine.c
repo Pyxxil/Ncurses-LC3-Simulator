@@ -7,6 +7,7 @@
 
 static WINDOW *status, *output, *context;
 static int MSGWIDTH, MSGHEIGHT;
+int mem_populated = -1;
 
 static const struct LC3 init_state = {
 	.PC	   =	 0,
@@ -214,7 +215,6 @@ void run_machine(struct program *prog)
 	cbreak();
 	start_color();
 
-
 	MSGHEIGHT = 5;
 	MSGWIDTH  = COLS / 2;
 
@@ -224,9 +224,7 @@ void run_machine(struct program *prog)
 	}
 
 	prog->simulator = init_state;
-	if (init_machine(prog)) {
-		return;
-	}
+	if (init_machine(prog)) return;
 
 	bool simulating		= true;
 	enum STATE currentState = MAIN;
@@ -254,8 +252,13 @@ void run_machine(struct program *prog)
 			simulating = simview(output, status, prog, &currentState);
 			break;
 		case MEM:
-			generate_context(context, &(prog->simulator), 0,
-					 prog->simulator.PC);
+			if (mem_populated == -1) {
+				generate_context(context, &(prog->simulator), 0,
+						 prog->simulator.PC);
+			} else {
+				generate_context(context, &(prog->simulator), selected,
+						 mem_populated);
+			}
 			simulating = memview(context, prog, &currentState);
 			break;
 		case EDIT:

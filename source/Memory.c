@@ -1,17 +1,18 @@
 #include <stdio.h>
 
+#include "Machine.h"
 #include "Memory.h"
 #include "Error.h"
 
 #define WORD_SIZE 2
 
-int selected = 0;
+uint16_t selected	  = 0;
 uint16_t output_height	  = 0;
-uint16_t *memory_output	  = NULL;
 uint16_t selected_address = 0;
+uint16_t *memory_output	  = NULL;
 
-static const char *memory_format       = "0x%04hx\t\t0x%04hx";
-static const unsigned int memory_attrs = A_REVERSE;
+static const char *MEMFORMAT	     = "0x%04hx\t\t0x%04hx";
+static const unsigned int SELECTATTR = A_REVERSE | A_BOLD;
 
 /*
  * Populate the memory of the supplied simulator with the contents of
@@ -26,9 +27,8 @@ int populate_memory(struct program *prog)
 	FILE *file = fopen(prog->infile, "rb");
 	uint16_t tmp_PC, instruction;
 
-	if (file == NULL || !file) {
+	if (file == NULL || !file)
 		return 1;
-	}
 
 	// First line in the .obj file is the starting PC.
 	fread(&tmp_PC, WORD_SIZE, 1, file);
@@ -53,18 +53,18 @@ static void redraw(WINDOW *window)
 {
 	for (int i = 0; i < output_height; ++i) {
 		if (i < selected) {
-			mvwprintw(window, i + 1, 1, memory_format,
+			mvwprintw(window, i + 1, 1, MEMFORMAT,
 				  selected_address - selected + i, memory_output[i]);
 		} else {
-			mvwprintw(window, i + 1, 1, memory_format,
+			mvwprintw(window, i + 1, 1, MEMFORMAT,
 				  selected_address + i, memory_output[i]);
 		}
 	}
 
-	wattron(window, memory_attrs);
-	mvwprintw(window, selected + 1, 1, memory_format,
+	wattron(window, SELECTATTR);
+	mvwprintw(window, selected + 1, 1, MEMFORMAT,
 		  selected_address, memory_output[selected]);
-	wattroff(window, memory_attrs);
+	wattroff(window, SELECTATTR);
 
 	wrefresh(window);
 }
@@ -92,6 +92,7 @@ void generate_context(WINDOW *window, struct LC3 *simulator, int _selected,
 		memory_output[i] = simulator->memory[selected_address + i].value;
 
 	redraw(window);
+	mem_populated = selected_address;
 }
 
 void move_context(WINDOW *window, struct LC3 *simulator, enum DIRECTION direction)
@@ -107,19 +108,17 @@ void move_context(WINDOW *window, struct LC3 *simulator, enum DIRECTION directio
 		break;
 	case DOWN:
 		selected_address += (selected_address == 0xfffe) ? 0 : 1;
-		selected	  = (selected == (output_height - 1)) ? _redraw = true,
-					(output_height - 1) : selected + 1;
+		selected	  = (selected == (output_height - 1)) ?
+			_redraw	  = true, (output_height - 1) : selected + 1;
 		break;
 	default:
 		break;
 	}
 
-	wattron(window, memory_attrs);
-	mvwprintw(window, selected + 1, 1, memory_format,
-		  selected_address, memory_output[selected]);
-	wattroff(window, memory_attrs);
-	mvwprintw(window, prev + 1, 1, memory_format,
-		  prev_addr, memory_output[prev]);
+	wattron(window, SELECTATTR);
+	mvwprintw(window, selected + 1, 1, MEMFORMAT, selected_address, memory_output[selected]);
+	wattroff(window, SELECTATTR);
+	mvwprintw(window, prev + 1, 1, MEMFORMAT, prev_addr, memory_output[prev]);
 
 	if (_redraw) {
 		generate_context(window, simulator, selected, selected_address);
