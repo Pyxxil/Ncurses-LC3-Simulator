@@ -29,8 +29,9 @@ static void prompt(const char *err, const char *message, char *file)
 	box(popup, 0, 0);
 	echo();
 
-	if (err != NULL)
-		mvwaddstr(popup, MSGHEIGHT / 2 - 1, 1, err);
+	if (err != NULL) // We have an error message to show the user.
+		mvwaddstr(popup, MSGHEIGHT / 2 - 1, (MSGWIDTH - strlen(err)) / 2, err);
+
 	mvwaddstr(popup, MSGHEIGHT / 2, 1, message);
 	wgetstr(popup, file);
 	noecho();
@@ -87,35 +88,31 @@ static bool simview(WINDOW *output, WINDOW *status, struct program *prog,
 		    enum STATE *currentState)
 {
 	int input;
-	bool simulating = true;
 
 	print_view(currentState);
 
 	wtimeout(status, 0);
-	while (simulating) {
+	while (1) {
 		switch (input = wgetch(status)) {
-		case 'q':
-		case 'Q':
-			// Quit the program.
-			simulating = false;
-			break;
+		case 'q': // FALLTHROUGH
+		case 'Q': // Quit the program.
+			return false;
 		case  27: // 27 is the escape key scan code
-		case 'b':
+		case 'b': // FALLTHROUGH
 		case 'B': // Go back to the main state.
 			*currentState = MAIN;
 			prog->simulator.isPaused = true;
-			return simulating;
+			return true;
 		case 'p':
 		case 'P':
 			prog->simulator.isPaused = !(prog->simulator.isPaused);
 			break;
-		case 's':
-		case 'S':
-		case 'r':
-		case 'R':
+		case 's': // FALLTHROUGH
+		case 'S': // FALLTHROUGH
+		case 'r': // FALLTHROUGH
+		case 'R': // Reset the machine to it's original state.
 			init_machine(prog);
-			if (input == 'R' || input == 'S')
-				prog->simulator.isPaused = false;
+			prog->simulator.isPaused = input == 'R' || input == 'S';
 			if (input == 'R' || input == 'r') {
 				wclear(output);
 				wrefresh(output);
@@ -132,8 +129,6 @@ static bool simview(WINDOW *output, WINDOW *status, struct program *prog,
 			wtimeout(status, -1);
 		}
 	}
-
-	return simulating;
 }
 
 static bool mainview(WINDOW *status, enum STATE *currentState)
@@ -144,18 +139,17 @@ static bool mainview(WINDOW *status, enum STATE *currentState)
 
 	while (1) {
 		switch (input = wgetch(status)) {
-		case 'q':
-		case 'Q':
-			// Quit the program.
+		case 'q': // FALLTHROUGH
+		case 'Q': // Quit the program.
 			return false;
 		case 'd': // For file dumps.
 		case 'D': // TODO
 			break;
-		case 's':
+		case 's': // FALLTHROUGH
 		case 'S': // Start simulating the machine.
 			*currentState = SIM;
 			return true;
-		case 'm':
+		case 'm': // FALLTHROUGH
 		case 'M': // View the memory contents.
 			*currentState = MEM;
 			return true;
@@ -176,29 +170,33 @@ static bool memview(WINDOW *window, struct program *prog,
 
 	while (1) {
 		switch (input = wgetch(window)) {
-		case 'q':
-		case 'Q':
+		case 'q': // FALLTHROUGH
+		case 'Q': // Quit the program.
 			return false;
-		case 'b':
-		case 'B':
+		case 'b': // FALLTHROUGH
+		case 'B': // Go back to the main view.
 			*currentState = MAIN;
 			return true;
-		case 'j':
-		case 'J':
+		case 'j': // FALLTHROUGH
+		case 'J': // Jump to an address in memory.
 			jump_addr = popup_window("Enter a hex address to jump to: ");
 			generate_context(window, &(prog->simulator), 0, jump_addr);
 			touchwin(window);
 			break;
-		case KEY_UP:
-		case 'w':
-		case 'W':
+		case KEY_UP: // FALLTHROUGH
+		case 'w': // FALLTHROUGH
+		case 'W': // Up button pressed, so move the view up.
 			move_context(window, &(prog->simulator), UP);
 			break;
-		case KEY_DOWN:
-		case 's':
-		case 'S':
+		case KEY_DOWN: // FALLTHROUGH
+		case 's': // FALLTHROUGH
+		case 'S': // Down button pressed, so move the view down.
 			move_context(window, &(prog->simulator), DOWN);
 			break;
+		case 'e': // FALLTHROUGH
+		case 'E': // User wants to edit the currently selected value.
+			*currentState = EDIT;
+			return true;
 		default:
 			break;
 		}

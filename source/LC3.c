@@ -40,25 +40,25 @@ static void LC3in(struct LC3 *simulator, WINDOW *window)
 	LC3getc(simulator, window);
 }
 
+/*
+ * Change the Condition Code based on the value last put into
+ * a register.
+ *
+ */
+
 static void setcc(uint16_t *last_result, unsigned char *CC)
 {
-	/*
-	 * Change the Condition Code based on the value last put into
-	 * a register.
-	 *
-	 */
-
 	if (*last_result == 0) *CC = 'Z';
 	else if ((int16_t) *last_result < 0) *CC = 'N';
 	else *CC = 'P';
 }
 
+/*
+ * Print the current state of the simulator to the window provided.
+ */
+
 void print_state(struct LC3 *simulator, WINDOW *window)
 {
-	/*
-	 * Print the current state of the simulator to the window provided.
-	 */
-
 	size_t index = 0;
 
 	// Clear, and reborder, the window.
@@ -86,11 +86,12 @@ void print_state(struct LC3 *simulator, WINDOW *window)
 	wrefresh(window);
 }
 
+/*
+ * Execute the next instruction of the given simulator.
+ */
+
 void execute_next(struct LC3 *simulator, WINDOW *output)
 {
-	/*
-	 * Execute the next instruction of the given simulator.
-	 */
 	int16_t PCoffset;
 	unsigned char opcode;
 	uint16_t *DR, SR1, SR2;
