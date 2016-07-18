@@ -1,7 +1,6 @@
 #ifndef PARSER_H
 #define PARSER_H
 
-
 struct Token {
 	ORIG = 0x01,
 	END  = 0x02,

@@ -1,5 +1,4 @@
 #include <stdbool.h> // Much nicer to use true/false
-#include <stdlib.h>  // Early exits are nice
 
 #include "Enums.h"
 #include "LC3.h"
