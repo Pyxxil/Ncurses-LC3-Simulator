@@ -5,22 +5,19 @@
 #include "Argparse.h"
 #include "Error.h"
 
-static const char errprefix[] = "\n\t\t- ";
+static const char errprefix[] = "\n\t";
 
-#define ERR(DO_MUL, ON, errc, errv, errstring, arg) \
-	do { 			\
-		if ((DO_MUL)) { 						\
-			*errv |= MUL_##ON; 					\
-		} else { 							\
-			(*(errc))++; 						\
-			*(errv) |= (ON); 					\
-		} 								\
+static unsigned int errcount, errvalue;
+
+static inline void strmcpy(char **, char const *);
+
+
+#define ERR(mask, errstring, arg) 						\
+	do { 									\
+		errvalue |= errvalue & (mask) ? MUL_##mask : mask; 		\
+		errcount++; 							\
 		if (*(errstring) == NULL) {					\
-			strmcpy(errstring, errprefix);				\
-			*(errstring) = (char *) realloc(*errstring,		\
-				sizeof(char) * (strlen(errprefix) + 1 + 	\
-				strlen(arg)));					\
-			strcat(*(errstring), arg);				\
+			strmcpy(errstring, arg);				\
 		} else { 							\
 			*(errstring) = (char *) realloc(*(errstring), 		\
 				sizeof(char) * (strlen(*(errstring)) + 1 + 	\
@@ -68,11 +65,56 @@ static void usage(const char *prog_name)
  * string we want to copy to.
  */
 
-static inline void strmcpy(char **to, const char *from)
+static inline void strmcpy(char **to, char const *from)
 {
 	size_t len = strlen(from) + 1;
 	*to = (char *) malloc(sizeof(char) * len);
 	strncpy(*to, from, len);
+}
+
+static unsigned int errhandle(struct program *prog) {
+	if (errcount > 1)
+		fprintf(stderr, "ERROR: There were some error's while parsing your options.\n");
+	else
+		fprintf(stderr, "ERROR: There was an error while parsing your options.\n");
+
+
+	if (errvalue & MUL_INPUT_FILES) {
+		fprintf(stderr, "\nThe following files were seen as input files "
+				"and couldn't be decided upo:.");
+		fprintf(stderr, "%s%s",   errprefix, prog->infile);
+		fprintf(stderr, "%s%s\n", errprefix, input_files);
+	}
+
+	if (errvalue & MUL_INCORRECT_OPT) {
+		fprintf(stderr, "\nThe following options weren't recognised:");
+		fprintf(stderr, "%s%s\n", errprefix, incorrect_opts);
+	} else if (errvalue & INCORRECT_OPT) {
+		fprintf(stderr, "\nThe following option wasn't recognised.");
+		fprintf(stderr, "%s\n", incorrect_opts);
+	}
+
+	if (errvalue & MUL_NO_ARG_PROVIDED) {
+		fprintf(stderr, "\nThe following options require arguments:");
+		fprintf(stderr, "%s%s\n", errprefix, no_args_provided);
+	} else if (errvalue & NO_ARG_PROVIDED) {
+		fprintf(stderr, "\n%s requires an argument.\n", no_args_provided);
+	}
+
+	if (errvalue & MUL_WARN_DEPRECATED) {
+
+	} else if (errvalue & WARN_DEPRECATED) {
+
+	}
+
+	if (errvalue & MUL_WARN_UNIMPLEMENTED) {
+		fprintf(stderr, "\nThe following options aren't fully implemented:");
+		fprintf(stderr, "%s%s\n", errprefix, unimplemented_opts);
+	} else if (errvalue & WARN_UNIMPLEMENTED) {
+		fprintf(stderr, "\n%s is not fully implemented.\n", unimplemented_opts);
+	}
+
+	return errvalue;
 }
 
 
@@ -90,65 +132,56 @@ unsigned int argparse(int argcount, char **argvals, struct program *prog)
 {
 	int argindex = 1;
 
-	unsigned int errcount = 0,
-		errvalue = 0;
-
 	// First argument is program name.
 	strmcpy(&prog->name, argvals[0]);
 
 	char const *currentarg = (char const *) NULL;
 
 	while (argindex < argcount) {
-		currentarg = argvals[argindex];
+		currentarg = argvals[argindex++];
 
 		if (!strcmp(currentarg, "--help") || !strcmp(currentarg, "-h")) {
-			errvalue |= HELP_FLAG;
-			return errvalue;
+			usage(prog->name);
+			exit(EXIT_SUCCESS);
 		} else if (!strcmp(currentarg, "--assemble") || !strcmp(currentarg, "-a")) {
-			if (argindex + 1 == argcount || argvals[argindex + 1][0] == '-') {
-				ERR(errvalue & NO_ARG_PROVIDED, NO_ARG_PROVIDED,
-					&errcount, &errvalue, &no_args_provided, currentarg);
+			// TODO: Implement this opt
+			ERR(WARN_UNIMPLEMENTED, &unimplemented_opts, currentarg);
+
+			if (argindex == argcount || argvals[argindex][0] == '-')
+				ERR(NO_ARG_PROVIDED, &no_args_provided, currentarg);
+			else
 				argindex++;
-			} else {
-				// TODO: Implement this opt
-				argindex += 2;
-			}
 		} else if (!strcmp(currentarg, "--infile")   || !strcmp(currentarg, "-f")) {
-			if (argindex + 1 == argcount || argvals[argindex + 1][0] == '-') {
-				ERR(errvalue & NO_ARG_PROVIDED, NO_ARG_PROVIDED, \
-					&errcount, &errvalue, &no_args_provided, currentarg);
+			if (argindex == argcount || argvals[argindex][0] == '-') {
+				ERR(NO_ARG_PROVIDED, &no_args_provided, currentarg);
+			} else {
+				if (prog->infile == NULL)
+					strmcpy(&prog->infile, argvals[argindex]);
+				else
+					ERR(MUL_INPUT_FILES, &input_files, argvals[argindex]);
+
 				argindex++;
-			} else {
-				if (prog->infile == NULL) {
-					strmcpy(&prog->infile, argvals[argindex + 1]);
-				} else {
-					ERR(0, MUL_INPUT_FILES, &errcount, &errvalue,
-						&input_files, currentarg);
-				}
-				argindex += 2;
 			}
-
 		} else if (!strcmp(currentarg, "--outfile")  || !strcmp(currentarg, "-o")) {
-
+			// TODO: Implement this opt
+			ERR(WARN_UNIMPLEMENTED, &unimplemented_opts, currentarg);
 		} else if (!strcmp(currentarg, "--logfile")  || !strcmp(currentarg, "-l")) {
-
+			// TODO: Implement this opt
+			ERR(WARN_UNIMPLEMENTED, &unimplemented_opts, currentarg);
 		} else {
-			argindex++;
 			if (currentarg[0] != '-') {
-				if (prog->infile == NULL) {
+				if (prog->infile == NULL)
 					strmcpy(&prog->infile, currentarg);
-				} else {
-					ERR(0, MUL_INPUT_FILES, &errcount, &errvalue,
-						&input_files, currentarg);
-				}
-			} else if (errvalue & INCORRECT_OPT) {
-				errvalue |= MUL_INCORRECT_OPT;
+				else
+					ERR(MUL_INPUT_FILES, &input_files, currentarg);
 			} else {
-				errvalue |= INCORRECT_OPT;
-				errcount++;
+				ERR(INCORRECT_OPT, &incorrect_opts, currentarg);
 			}
 		}
 	}
+
+	if (errvalue)
+		return errhandle(prog);
 
 	return errvalue;
 }
