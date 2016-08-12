@@ -4,107 +4,57 @@
 #include <getopt.h>
 #include <stdio.h>
 
+#include "Argparse.h"
 #include "Machine.h"
 #include "Structs.h"
-#include "Error.h"
 
-const char usage_string[] =
-	"Usage: %s [OPTION] <file>.\n"
-	"  -h, --help            show this help text\n"
-	"  -f, --infile File     specify the input file to use\n"
-	"  -o, --outfile File    specify the output file to write any given\n"
-	"                          assembly file's output to\n"
-	"  -a, --assemble File   assemble the given file into a .obj file,\n"
-	"                          .sym file, and a .bin file\n"
-	"  -l. --log-file File   specify which file to use as a log file when\n";
+static struct program prog = {
+	.name 	 = NULL,
+	.infile  = NULL,
+	.outfile = NULL,
+};
 
-static void usage(FILE *file, struct program *prog)
-{
-	fprintf(file, usage_string, prog->name);
-}
 
 /*
- * Copy the contents of one string to another, allocating enough memory to the
- * string we want to copy to.
+ * Give an accurate error description.
  */
 
-static void strmcpy(char **to, const char *from)
+static void handle(int errval)
 {
-	size_t len = strlen(from) + 1;
-	*to = malloc(sizeof(char) * len);
-	strncpy(*to, from, len);
-}
-
-/*
- * Parse the command line arguments.
- */
-
-static int parse_opts(int argc, char **argv, struct program *prog)
-{
-	int opt, err = 0;
-
-	const char *short_options = "hf:a:o:l:";
-	const struct option long_options[] = {
-		{ "assemble", required_argument, NULL, 'a' },
-		{ "infile",   required_argument, NULL, 'f' },
-		{ "outfile",  required_argument, NULL, 'o' },
-		{ "logfile",  required_argument, NULL, 'l' },
-		{ "help",     no_argument,	 NULL, 'h' },
-		{ NULL,			      0, NULL,	 0 },
-	};
-
-	while ((opt = getopt_long(argc, argv, short_options,
-				  long_options, NULL)) != -1) {
-		switch (opt) {
-		case 'f':
-			if (prog->infile != NULL)
-				err |= MULTIPLE_INPUT_FILES;
-			else
-				strmcpy(&(prog->infile), optarg);
-			break;
-		case 'a': // FALLTHROUGH
-		case 'o': // FALLTHROUGH
-		case 'l':
-			err |= NOT_IMPLEMENTED_OPT;
-			break;
-		case '?':
-			err |= INCORRECT_OPTS;
-			break;
-		case 'h':
-			err |= HELP_FLAG;
-			break;
-		default:
-			break;
-		}
+	if (errval & MUL_INCORRECT_OPT) {
+		fprintf(stderr, "\t- An incorrect opt was supplied.\n");
+	} else if (errval & INCORRECT_OPT) {
+		fprintf(stderr, "\t- The following flags you wanted to use are "
+				"incorrect.\n\t\t- %s\n", incorrect_opts);
 	}
 
-	// Assume the last argument is the file name.
-	if ((argc > 1) && ((optind + 1) == argc) && (prog->infile == NULL))
-		strmcpy(&(prog->infile), argv[optind++]);
+	if (errval & MUL_INPUT_FILES) {
+		fprintf(stderr, "\t- Multiple input files were given.\n"
+				"\t  - The following were interpreted as input files.\n"
+				"\t\t- %s\n", input_files);
+	}
 
-	if (optind < argc)
-		err |= INCORRECT_OPTS;
-
-	return err;
+	if (errval & MUL_NOT_IMPLEMENTED) {
+		fprintf(stderr, "\t- The following flags you wanted to use are "
+				"not fully implemented.\n\t\t%s\n",
+				unimplemented_opts);
+	} else if (errval & NOT_IMPLEMENTED_OPT) {
+		fprintf(stderr, "\t- The %s flag is not fully implemented. \n", unimplemented_opts);
+	}
 }
+
 
 int main(int argc, char **argv)
 {
-	struct program prog = {
-		.name	 = NULL,
-		.infile	 = NULL,
-		.outfile = NULL,
-	};
+	unsigned int errval = argparse(argc, argv, &prog);
 
-	int err = parse_opts(argc, argv, &prog);
-
-	if (!err) {
+	if (!errval)
 		start_machine(&prog);
-		tidyup(&prog);
-		return 0;
-	} else { // TODO: Give a better description of the error.
-		usage(stderr, &prog);
-		tidyup(&prog);
-		return 1;
-	}
+	else
+		printf("%#x\n", errval); //handle(errval);
+
+	tidyup(&prog);
+
+	return errval;
 }
+

@@ -1,3 +1,12 @@
+## Features
+* [x] Run .obj files
+* [ ] Handle files as input or generated
+  * Mostly there, just need an option to switch the file while running
+* [ ] Assemble Files
+  * [ ] Output a .obj file, .sym file, .bin file, and .hex file
+  * [ ] Proper Error Handling
+* [ ]
+
 ## Debugging
 * [ ] Add a function to dump the simulator contents
   * [ ] Output similar to:
@@ -30,11 +39,12 @@
 * [x] Output the memory context
   * [x] Make it highlightable
   * [x] Allow the user to move around
-* [ ] Popup window for inputting file / changing file
-* [ ] Popup window to figure where the user wants to jump to in memory.
+* [x] Popup window for inputting file / changing file
+* [x] Popup window to figure where the user wants to jump to in memory.
 
 ## Additional Features
 * [ ] Allow users to change what keys do what.
+* [ ] Proper Error Handling (in general)
 
 ## Documentation
 * [ ] Create a file that contains all startup key configurations

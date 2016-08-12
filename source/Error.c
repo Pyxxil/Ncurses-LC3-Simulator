@@ -9,10 +9,19 @@
  * status.
  */
 
-void read_error()
+
+char *input_files           = NULL,
+	*incorrect_opts     = NULL,
+	*unimplemented_opts = NULL,
+	*deprecated_opts    = NULL,
+	*no_args_provided    = NULL;
+
+
+inline void read_error()
 {
 	fprintf(stderr, "Error: Failed to read to end of file\n");
 }
+
 
 void tidyup(struct program *prog)
 {
@@ -22,4 +31,13 @@ void tidyup(struct program *prog)
 		free(prog->outfile);
 	if (prog->name != NULL)
 		free(prog->name);
+	if (input_files != NULL)
+		free(input_files);
+	if (incorrect_opts != NULL)
+		free(incorrect_opts);
+	if (unimplemented_opts != NULL)
+		free(unimplemented_opts);
+	if (deprecated_opts != NULL)
+		free(deprecated_opts);
 }
+

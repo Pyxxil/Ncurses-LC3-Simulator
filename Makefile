@@ -19,23 +19,15 @@ INCLUDES = -I$(INCDIR)
 LIBS     = -lncurses
 
 # Flags to use when compiling
-CFLAGS = $(INCLUDES) $(LIBS) -std=c11
+CFLAGS = $(INCLUDES) $(LIBS) -std=c11 -O2 -g
 # Flags to add when compiling the debug version
 DFLAGS = -Wall -Werror -Wpedantic -Wextra
-
-GCC6 := $(shell which gcc-6 2>/dev/null)
 
 RM = rm -f
 
 
 # Default target if none is given.
 default: build
-
-ifdef GCC6
-# Using Homebrew's version of gcc-6 for debug, because clang throws a
-# warning when -lncurses is linked but not used.
-debug: CC = gcc-6
-endif
 
 # Add the debug flags
 debug: CFLAGS += $(DFLAGS)
@@ -52,9 +44,6 @@ build: $(OBJS)
 
 %.o: %.c $(INCDIR)/%.h
 	$(CC) $(CFLAGS) -c $< -o $@
-
-run: build
-	./$(EXECUTABLE)
 
 # Remove all generated files
 clean:

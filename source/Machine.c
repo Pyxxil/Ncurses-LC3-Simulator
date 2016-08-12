@@ -257,11 +257,6 @@ void start_machine(struct program *prog)
 	MSGHEIGHT = 5;
 	MSGWIDTH  = COLS / 2;
 
-	if (prog->infile == NULL) {
-		prog->infile = (char *) malloc(sizeof(char) * MSGWIDTH);
-		prompt((const char *) NULL, "Enter the .obj file: ", prog->infile);
-	}
-
 	status	= newwin(6, COLS, 1, 0);
 	output	= newwin((LINES - 6) / 3, COLS, 7, 0);
 	context = newwin(2 * (LINES - 6) / 3, COLS, (LINES - 6) / 3 + 7, 0);
@@ -273,10 +268,14 @@ void start_machine(struct program *prog)
 
 	scrollok(output, 1);
 
-	prog->simulator = init_state;
-	if (init_machine(prog)) return;
+	if (prog->infile == NULL) {
+		prog->infile = (char *) malloc(sizeof(char) * MSGWIDTH);
+		prompt((const char *) NULL, "Enter the .obj file: ", prog->infile);
+	}
 
-	run_machine(prog);
+	prog->simulator = init_state;
+	if (!init_machine(prog))
+		run_machine(prog);
 
 	endwin();
 }
