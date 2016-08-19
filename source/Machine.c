@@ -10,16 +10,16 @@ static int MSGWIDTH, MSGHEIGHT;
 int mem_populated = -1;
 
 static const struct LC3 init_state = {
-	.PC	   =	 0,
-	.memory	   = { { 0 } },
-	.registers = { 0 },
-	.IR	   =	 0,
-	.CC	   = 'Z',
-	.isHalted  = false,
-	.isPaused  = true,
+	.memory	   = {{ 0 }},
+	.registers =  { 0 },
+	.IR	   =    0,
+	.PC	   =    0,
+	.CC	   =   'Z',
+	.isHalted  =  false,
+	.isPaused  =   true,
 };
 
-static void prompt(const char *err, const char *message, char *file)
+static void prompt(char const *err, char const *message, char *file)
 {
 	int msgwidth = MSGWIDTH + strlen(message);
 
@@ -29,7 +29,7 @@ static void prompt(const char *err, const char *message, char *file)
 	box(popup, 0, 0);
 	echo();
 
-	if (err != NULL) // We have an error message to show the user.
+	if (err != NULL)
 		mvwaddstr(popup, MSGHEIGHT / 2 - 1, (MSGWIDTH - strlen(err)) / 2, err);
 
 	mvwaddstr(popup, MSGHEIGHT / 2, 1, message);
@@ -65,7 +65,7 @@ static void sstate(enum STATE *currentState)
 	wrefresh(context);
 }
 
-static int popup_window(const char *message)
+static int popup_window(char const *message)
 {
 	int ret, msgwidth = MSGWIDTH + strlen(message);
 	char string[7];
@@ -270,7 +270,7 @@ void start_machine(struct program *prog)
 
 	if (prog->infile == NULL) {
 		prog->infile = (char *) malloc(sizeof(char) * MSGWIDTH);
-		prompt((const char *) NULL, "Enter the .obj file: ", prog->infile);
+		prompt((char const *) NULL, "Enter the .obj file: ", prog->infile);
 	}
 
 	prog->simulator = init_state;

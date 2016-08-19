@@ -13,23 +13,23 @@ static inline void strmcpy(char **, char const *);
 
 
 #define ERR(mask, errstring, arg) 						\
-	do { 									\
-		errvalue |= errvalue & (mask) ? MUL_##mask : mask; 		\
-		errcount++; 							\
+	do {									\
+		errvalue |= errvalue & (mask) ? MUL_##mask : mask;		\
+		errcount++;							\
 		if (*(errstring) == NULL) {					\
 			strmcpy(errstring, arg);				\
-		} else { 							\
-			*(errstring) = (char *) realloc(*(errstring), 		\
-				sizeof(char) * (strlen(*(errstring)) + 1 + 	\
-				strlen(errprefix) + strlen(arg))); 		\
-			strcat(*(errstring), errprefix); 			\
-			strcat(*(errstring), arg); 				\
-		} 								\
+		} else {							\
+			*(errstring) = (char *) realloc(*(errstring),		\
+				sizeof(char) * (strlen(*(errstring)) + 1 +	\
+				strlen(errprefix) + strlen(arg)));		\
+			strcat(*(errstring), errprefix);			\
+			strcat(*(errstring), arg);				\
+		}								\
 	} while (0)
 
 
 static const char _usage[] =
-	"Usage: %s [OPTION] <file>.\n"
+	"Usage: %s [OPTION] <file>.                                           \n"
 	"  -h, --help           show this help text.                          \n"
 	"  -f, --infile File    specify the input file to use.                \n"
 	"  -o, --outfile File   specify the prefix of the output file to write\n"
@@ -54,7 +54,7 @@ static const char _usage[] =
  * This should only be printed when the user passes -h as a flag.
  */
 
-static void usage(const char *prog_name)
+static void usage(char const *prog_name)
 {
 	printf(_usage, prog_name);
 }

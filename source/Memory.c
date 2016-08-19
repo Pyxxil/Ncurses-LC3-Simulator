@@ -11,8 +11,8 @@ uint16_t output_height	  = 0;
 uint16_t selected_address = 0;
 uint16_t *memory_output	  = NULL;
 
-static const char *MEMFORMAT	     = "0x%04hx\t\t0x%04hx";
-static const unsigned int SELECTATTR = A_REVERSE | A_BOLD;
+static char const *const MEMFORMAT = "0x%04hx\t\t0x%04hx";
+static unsigned int const SELECTATTR = A_REVERSE | A_BOLD;
 
 /*
  * Populate the memory of the supplied simulator with the contents of
@@ -50,6 +50,7 @@ int populate_memory(struct program *prog)
 	return 0;
 }
 
+
 /*
  * Redraw the memory view. Called after every time the user moves up / down in
  * the area.
@@ -74,6 +75,7 @@ static void redraw(WINDOW *window)
 
 	wrefresh(window);
 }
+
 
 /*
  * Given a currently selected index and address, populate the memory_output
@@ -129,3 +131,4 @@ void move_context(WINDOW *window, struct LC3 *simulator, enum DIRECTION directio
 	if (_redraw)
 		generate_context(window, simulator, selected, selected_address);
 }
+

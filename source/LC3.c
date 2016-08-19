@@ -285,3 +285,4 @@ void execute_next(struct LC3 *simulator, WINDOW *output)
 		break;
 	}
 }
+
