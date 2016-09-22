@@ -3,6 +3,7 @@
 
 #include "Error.h"
 
-unsigned int argparse(int, char **, struct program *);
+void errhandle(struct program const *);
+int argparse(int, char **, struct program *);
 
 #endif // ARGPARSE_H

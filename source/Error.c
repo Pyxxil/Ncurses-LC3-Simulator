@@ -9,7 +9,7 @@
  * status.
  */
 
-char *input_files           = NULL,
+char *input_files       = NULL,
 	*incorrect_opts     = NULL,
 	*unimplemented_opts = NULL,
 	*deprecated_opts    = NULL,
@@ -39,4 +39,3 @@ void tidyup(struct program *prog)
 	if (unimplemented_opts != NULL)
 		free(unimplemented_opts);
 }
-

@@ -8,15 +8,18 @@
 int main(int argc, char **argv)
 {
 	struct program prog = {
-		.name 	 = NULL,
+		.name    = NULL,
 		.infile  = NULL,
 		.outfile = NULL,
 	};
 
-	unsigned int errval = argparse(argc, argv, &prog);
+	int errval = argparse(argc, argv, &prog);
 
-	if (!errval)
+	if (!errval) {
 		start_machine(&prog);
+	} else {
+		errhandle(&prog);
+	}
 
 	tidyup(&prog);
 
