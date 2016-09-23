@@ -9,7 +9,7 @@ static WINDOW *status, *output, *context;
 static int MSGWIDTH, MSGHEIGHT;
 int mem_populated = -1;
 
-static const struct LC3 init_state = {
+static struct LC3 const init_state = {
 	.memory	   = {{ 0 }},
 	.registers =  { 0 },
 	.IR	   =    0,
@@ -60,9 +60,11 @@ static void sstate(enum STATE *currentState)
 		 "Unknown");
 	refresh();
 
-	wrefresh(status);
-	wrefresh(output);
-	wrefresh(context);
+	wnoutrefresh(status);
+	wnoutrefresh(output);
+	wnoutrefresh(context);
+
+	doupdate();
 }
 
 static int popup_window(char const *message)
@@ -135,7 +137,7 @@ static bool simview(WINDOW *output, WINDOW *status, struct program *prog,
 	}
 }
 
-static bool mainview(WINDOW *status, enum STATE *currentState)
+static bool mainview(WINDOW *status, enum STATE *currentState, struct program *prog)
 {
 	int input;
 
@@ -157,6 +159,12 @@ static bool mainview(WINDOW *status, enum STATE *currentState)
 		case 'M': // View the memory contents.
 			*currentState = MEM;
 			return true;
+		case 'f': // FALLTHROUGH
+		case 'F':
+			// prog->infile = (char *) malloc(sizeof(char) * MSGWIDTH);
+			prompt((char const *) NULL, "Enter the .obj file: ", prog->infile);
+			if (init_machine(prog)) return false;
+			break;
 		default:
 			break;
 		}
@@ -164,7 +172,7 @@ static bool mainview(WINDOW *status, enum STATE *currentState)
 }
 
 static bool memview(WINDOW *window, struct program *prog,
-		    enum STATE *currentState)
+		enum STATE *currentState)
 {
 	int input, jump_addr;
 
@@ -218,7 +226,7 @@ static void run_machine(struct program *prog)
 	while (simulating) {
 		switch (currentState) {
 		case MAIN:
-			simulating = mainview(status, &currentState);
+			simulating = mainview(status, &currentState, prog);
 			break;
 		case SIM:
 			simulating = simview(output, status, prog, &currentState);
