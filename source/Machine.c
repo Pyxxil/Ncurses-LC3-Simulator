@@ -24,7 +24,7 @@ static void prompt(char const *err, char const *message, char *file)
 	int msgwidth = MSGWIDTH + strlen(message);
 
 	WINDOW *popup = newwin(MSGHEIGHT, msgwidth, (LINES - MSGHEIGHT) / 2,
-			       (COLS - msgwidth) / 2);
+			(COLS - msgwidth) / 2);
 
 	box(popup, 0, 0);
 	echo();
@@ -53,11 +53,11 @@ static int init_machine(struct program *prog)
 static void sstate(enum STATE *currentState)
 {
 	mvprintw(0, 0, "Currently Viewing: %- 15s",
-		 (*currentState == MEM) ? "Memory View" :
-		 (*currentState == MAIN) ? "Main View" :
-		 (*currentState == EDIT) ? "Editor" :
-		 (*currentState == SIM) ? "Simulator" :
-		 "Unknown");
+		(*currentState == MEM) ? "Memory View" :
+		(*currentState == MAIN) ? "Main View" :
+		(*currentState == EDIT) ? "Editor" :
+		(*currentState == SIM) ? "Simulator" :
+		"Unknown");
 	refresh();
 
 	wnoutrefresh(status);
@@ -73,7 +73,7 @@ static int popup_window(char const *message)
 	char string[7];
 
 	WINDOW *popup = newwin(MSGHEIGHT, msgwidth, (LINES - MSGHEIGHT) / 2,
-			       (COLS - msgwidth) / 2);
+			(COLS - msgwidth) / 2);
 
 	box(popup, 0, 0);
 	echo();
@@ -91,7 +91,7 @@ static int popup_window(char const *message)
 }
 
 static bool simview(WINDOW *output, WINDOW *status, struct program *prog,
-		    enum STATE *currentState)
+		enum STATE *currentState)
 {
 	int input;
 
@@ -234,10 +234,10 @@ static void run_machine(struct program *prog)
 		case MEM:
 			if (mem_populated == -1) {
 				generate_context(context, &(prog->simulator), 0,
-						 prog->simulator.PC);
+						prog->simulator.PC);
 			} else {
 				generate_context(context, &(prog->simulator), selected,
-						 mem_populated);
+						mem_populated);
 			}
 			simulating = memview(context, prog, &currentState);
 			break;
