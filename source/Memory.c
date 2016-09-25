@@ -24,7 +24,7 @@ static unsigned int const SELECTATTR = A_REVERSE | A_BOLD;
 
 int populate_memory(struct program *prog)
 {
-	FILE *file = fopen(prog->infile, "rb");
+	FILE *file = fopen(prog->objfile, "rb");
 	uint16_t tmp_PC, instruction;
 
 	if (file == NULL || !file)

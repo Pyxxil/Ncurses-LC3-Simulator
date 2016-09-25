@@ -9,8 +9,8 @@ int main(int argc, char **argv)
 {
 	struct program prog = {
 		.name    = NULL,
-		.infile  = NULL,
-		.outfile = NULL,
+		.objfile = NULL,
+		.logfile = NULL,
 	};
 
 	unsigned long long errval = argparse(argc, argv, &prog);

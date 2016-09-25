@@ -28,10 +28,10 @@ void tidyup(struct program *prog)
 		free(prog->name);
 	if (input_files != NULL)
 		free(input_files);
-	if (prog->infile != NULL)
-		free(prog->infile);
-	if (prog->outfile != NULL)
-		free(prog->outfile);
+	if (prog->objfile != NULL)
+		free(prog->objfile);
+	if (prog->logfile != NULL)
+		free(prog->logfile);
 	if (incorrect_opts != NULL)
 		free(incorrect_opts);
 	if (deprecated_opts != NULL)

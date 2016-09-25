@@ -22,9 +22,9 @@ struct LC3 {
 };
 
 struct program {
-	char	  *name;
-	char	  *infile;
-	char	  *outfile;
+	char *name;
+	char *logfile;
+	char *objfile;
 	struct LC3 simulator;
 };
 
