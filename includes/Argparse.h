@@ -4,6 +4,6 @@
 #include "Error.h"
 
 void errhandle(struct program const *);
-int argparse(int, char **, struct program *);
+unsigned long long argparse(int, char **, struct program *);
 
 #endif // ARGPARSE_H

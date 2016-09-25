@@ -13,9 +13,10 @@ int main(int argc, char **argv)
 		.outfile = NULL,
 	};
 
-	int errval = argparse(argc, argv, &prog);
+	unsigned long long errval = argparse(argc, argv, &prog);
 
-	if (!errval) {
+	if (!(errval)) {
+		
 		start_machine(&prog);
 	} else {
 		errhandle(&prog);
