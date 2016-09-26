@@ -15,11 +15,10 @@ int main(int argc, char **argv)
 
 	unsigned long long errval = argparse(argc, argv, &prog);
 
-	if (!(errval)) {
-		
-		start_machine(&prog);
-	} else {
+	if (errval & (0xFFFFll << 32)) {
 		errhandle(&prog);
+	} else {
+		start_machine(&prog);
 	}
 
 	tidyup(&prog);
