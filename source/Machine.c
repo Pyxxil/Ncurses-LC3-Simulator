@@ -2,6 +2,7 @@
 #include <stdlib.h> // uint16_t.
 
 #include "Machine.h"
+#include "Logging.h"
 #include "Memory.h"
 #include "LC3.h"
 
@@ -29,8 +30,10 @@ static void prompt(char const *err, char const *message, char *file)
 	box(popup, 0, 0);
 	echo();
 
-	if (err != NULL)
-		mvwaddstr(popup, MSGHEIGHT / 2 - 1, (MSGWIDTH - strlen(err)) / 2, err);
+	if (err != NULL) {
+		mvwaddstr(popup, MSGHEIGHT / 2 - 1,
+			(MSGWIDTH - strlen(err)) / 2, err);
+	}
 
 	mvwaddstr(popup, MSGHEIGHT / 2, 1, message);
 	wgetstr(popup, file);
@@ -41,8 +44,12 @@ static int init_machine(struct program *prog)
 {
 	int ret;
 	prog->simulator = init_state;
-	while ((ret = populate_memory(prog)) == 1)
-		prompt("Invalid file name.", "Enter the .obj file: ", prog->infile);
+
+	while ((ret = populate_memory(prog)) == 1) {
+		prompt("Invalid file name.", "Enter the .obj file: ",
+			prog->objfile);
+	}
+
 	return ret;
 }
 
@@ -91,7 +98,7 @@ static int popup_window(char const *message)
 }
 
 static bool simview(WINDOW *output, WINDOW *status, struct program *prog,
-		enum STATE *currentState)
+			enum STATE *currentState)
 {
 	int input;
 
@@ -137,7 +144,8 @@ static bool simview(WINDOW *output, WINDOW *status, struct program *prog,
 	}
 }
 
-static bool mainview(WINDOW *status, enum STATE *currentState, struct program *prog)
+static bool mainview(WINDOW *status, enum STATE *currentState,
+			struct program *prog)
 {
 	int input;
 
@@ -150,6 +158,8 @@ static bool mainview(WINDOW *status, enum STATE *currentState, struct program *p
 			return false;
 		case 'd': // For file dumps.
 		case 'D': // TODO
+			if (logDump(prog))
+				return false;
 			break;
 		case 's': // FALLTHROUGH
 		case 'S': // Start simulating the machine.
@@ -161,8 +171,10 @@ static bool mainview(WINDOW *status, enum STATE *currentState, struct program *p
 			return true;
 		case 'f': // FALLTHROUGH
 		case 'F':
-			// prog->infile = (char *) malloc(sizeof(char) * MSGWIDTH);
-			prompt((char const *) NULL, "Enter the .obj file: ", prog->infile);
+			// prog->objfile = (char *) malloc(sizeof(char) *
+			// 		MSGWIDTH);
+			prompt((char const *) NULL, "Enter the .obj file: ",
+				prog->objfile);
 			if (init_machine(prog)) return false;
 			break;
 		default:
@@ -191,8 +203,10 @@ static bool memview(WINDOW *window, struct program *prog,
 			return true;
 		case 'j': // FALLTHROUGH
 		case 'J': // Jump to an address in memory.
-			jump_addr = popup_window("Enter a hex address to jump to: ");
-			generate_context(window, &(prog->simulator), 0, jump_addr);
+			jump_addr = popup_window(
+					"Enter a hex address to jump to: ");
+			generate_context(window, &(prog->simulator), 0,
+					jump_addr);
 			touchwin(window);
 			break;
 		case KEY_UP: // FALLTHROUGH
@@ -236,8 +250,8 @@ static void run_machine(struct program *prog)
 				generate_context(context, &(prog->simulator), 0,
 						prog->simulator.PC);
 			} else {
-				generate_context(context, &(prog->simulator), selected,
-						mem_populated);
+				generate_context(context, &(prog->simulator),
+						selected, mem_populated);
 			}
 			simulating = memview(context, prog, &currentState);
 			break;
@@ -276,9 +290,10 @@ void start_machine(struct program *prog)
 
 	scrollok(output, 1);
 
-	if (prog->infile == NULL) {
-		prog->infile = (char *) malloc(sizeof(char) * MSGWIDTH);
-		prompt((char const *) NULL, "Enter the .obj file: ", prog->infile);
+	if (prog->objfile == NULL) {
+		prog->objfile = (char *) malloc(sizeof(char) * MSGWIDTH);
+		prompt((char const *) NULL, "Enter the .obj file: ",
+			prog->objfile);
 	}
 
 	prog->simulator = init_state;
