@@ -50,6 +50,17 @@ int populate_memory(struct program *prog)
 	return 0;
 }
 
+void update(WINDOW *window, struct LC3 *simulator)
+{
+	memory_output[selected] = simulator->memory[selected_address].value;
+	wattron(window, SELECTATTR);
+	mvwprintw(window, selected + 1, 1, MEMFORMAT, selected_address,
+			memory_output[selected]);
+	wattroff(window, SELECTATTR);
+
+	wrefresh(window);
+}
+
 
 /*
  * Redraw the memory view. Called after every time the user moves up / down in
@@ -61,7 +72,8 @@ static void redraw(WINDOW *window)
 	for (int i = 0; i < output_height; ++i) {
 		if (i < selected) {
 			mvwprintw(window, i + 1, 1, MEMFORMAT,
-				  selected_address - selected + i, memory_output[i]);
+				  selected_address - selected + i,
+				  memory_output[i]);
 		} else {
 			mvwprintw(window, i + 1, 1, MEMFORMAT,
 				  selected_address + i, memory_output[i]);
@@ -70,7 +82,7 @@ static void redraw(WINDOW *window)
 
 	wattron(window, SELECTATTR);
 	mvwprintw(window, selected + 1, 1, MEMFORMAT, selected_address,
-		  memory_output[selected]);
+			memory_output[selected]);
 	wattroff(window, SELECTATTR);
 
 	wrefresh(window);
@@ -88,7 +100,8 @@ void generate_context(WINDOW *window, struct LC3 *simulator, int _selected,
 	selected	 = _selected;
 	selected_address = _selected_address;
 
-	selected = ((selected_address + (output_height - 1 - selected)) > 0xfffe) ?
+	selected =
+		((selected_address + (output_height - 1 - selected)) > 0xfffe) ?
 		(output_height - (0xfffe - selected_address)) - 1 : selected;
 
 	int i = 0;
@@ -103,7 +116,8 @@ void generate_context(WINDOW *window, struct LC3 *simulator, int _selected,
 	mem_populated = selected_address;
 }
 
-void move_context(WINDOW *window, struct LC3 *simulator, enum DIRECTION direction)
+void move_context(WINDOW *window, struct LC3 *simulator,
+		enum DIRECTION direction)
 {
 	bool _redraw	   = false;
 	int prev	   = selected;
@@ -112,21 +126,21 @@ void move_context(WINDOW *window, struct LC3 *simulator, enum DIRECTION directio
 	switch (direction) {
 	case UP:
 		selected_address -= (selected_address == 0) ? 0 : 1;
-		selected	  = (selected == 0) ? _redraw = true, 0 : selected - 1;
+		selected = (selected == 0) ? _redraw = true, 0 : selected - 1;
 		break;
 	case DOWN:
 		selected_address += (selected_address == 0xfffe) ? 0 : 1;
-		selected	  = (selected == (output_height - 1)) ?
-			_redraw	  = true, (output_height - 1) : selected + 1;
-		break;
-	default:
+		selected = (selected == (output_height - 1)) ? _redraw = true,
+				(output_height - 1) : selected + 1;
 		break;
 	}
 
 	wattron(window, SELECTATTR);
-	mvwprintw(window, selected + 1, 1, MEMFORMAT, selected_address, memory_output[selected]);
+	mvwprintw(window, selected + 1, 1, MEMFORMAT, selected_address,
+			memory_output[selected]);
 	wattroff(window, SELECTATTR);
-	mvwprintw(window, prev + 1, 1, MEMFORMAT, prev_addr, memory_output[prev]);
+	mvwprintw(window, prev + 1, 1, MEMFORMAT, prev_addr,
+			memory_output[prev]);
 
 	if (_redraw)
 		generate_context(window, simulator, selected, selected_address);
