@@ -80,16 +80,6 @@ static void sstate(enum STATE *currentState)
 	doupdate();
 }
 
-static bool allxdigit(char const *string)
-{
-	for (int i = 0; *(string + i); i++) {
-		if (!isxdigit(*(string + i)))
-			return false;
-	}
-
-	return true;
-}
-
 static int popup_window(char const *message, int original_value)
 {
 	int msgwidth = MSGWIDTH + strlen(message);

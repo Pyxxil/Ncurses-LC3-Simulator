@@ -7,8 +7,6 @@
 struct memory_slot {
 	uint16_t address;
 	uint16_t value;
-	char	*label;
-	char	*instruction;
 };
 
 struct LC3 {

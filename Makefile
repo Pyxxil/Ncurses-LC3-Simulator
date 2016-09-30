@@ -64,3 +64,5 @@ asm: $(ASM)
 clean:
 	$(RM) $(EXECUTABLE) $(OBJS) $(ASM)
 
+-include $(DEPFILES)
+
