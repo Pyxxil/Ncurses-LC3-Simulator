@@ -9,19 +9,31 @@ extern char *input_files,
        *deprecated_opts,
        *no_args_provided;
 
-#define HELP_FLAG 			0x0001
-#define NO_ARG_PROVIDED 		0x0002
-#define INCORRECT_OPT 			0x0004
+/*
+ * Flags:    0x00000000FFFF
+ * Warnings: 0x0000FFFF0000
+ * Errors:   0xFFFF00000000
+ */
 
-#define WARN_DEPRECATED 		0x0010
-#define WARN_UNIMPLEMENTED 		0x0020
+// Flags
+#define HELP 				0x000000000001
+#define ASSEMBLE 			0x000000000002
+#define ASSEMBLE_ONLY 			0x000000000004
 
-#define MUL_INCORRECT_OPT 		0x0100
-#define MUL_INPUT_FILES 		0x0200
-#define MUL_NO_ARG_PROVIDED 		0x0400
+// Warnings
+#define WARN_DEPRECATED 		0x000000010000
+#define WARN_UNIMPLEMENTED 		0x000000020000
 
-#define MUL_WARN_UNIMPLEMENTED 		0x1000
-#define MUL_WARN_DEPRECATED 		0x2000
+#define MUL_WARN_UNIMPLEMENTED 		0x000000100000
+#define MUL_WARN_DEPRECATED 		0x000000200000
+
+// Errors
+#define NO_ARG_PROVIDED 		0x000100000000
+#define INCORRECT_OPT 			0x000200000000
+
+#define MUL_INCORRECT_OPT 		0x001000000000
+#define MUL_INPUT_FILES 		0x002000000000
+#define MUL_NO_ARG_PROVIDED 		0x004000000000
 
 extern void read_error(void);
 

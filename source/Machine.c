@@ -1,6 +1,8 @@
 #include <string.h> // strlen is helpful.
 #include <stdlib.h> // uint16_t.
+#include <ctype.h>  // isxdigit
 
+#include "Keyboard.h"
 #include "Machine.h"
 #include "Logging.h"
 #include "Memory.h"
@@ -67,6 +69,10 @@ static void sstate(enum STATE *currentState)
 		"Unknown");
 	refresh();
 
+	touchwin(status);
+	touchwin(output);
+	touchwin(context);
+
 	wnoutrefresh(status);
 	wnoutrefresh(output);
 	wnoutrefresh(context);
@@ -74,10 +80,10 @@ static void sstate(enum STATE *currentState)
 	doupdate();
 }
 
-static int popup_window(char const *message)
+static int popup_window(char const *message, int original_value)
 {
-	int ret, msgwidth = MSGWIDTH + strlen(message);
-	char string[7];
+	int msgwidth = MSGWIDTH + strlen(message);
+	char string[7] = { 0 };
 
 	WINDOW *popup = newwin(MSGHEIGHT, msgwidth, (LINES - MSGHEIGHT) / 2,
 			(COLS - msgwidth) / 2);
@@ -89,7 +95,13 @@ static int popup_window(char const *message)
 	wgetstr(popup, string);
 
 	string[6] = '\0';
-	ret	  = (int) strtol(string, (char **) NULL, 16);
+
+	char *end = NULL;
+
+	int ret = (int) strtol(string, &end, 16);
+
+	if (*end)
+		ret = original_value;
 
 	noecho();
 	delwin(popup);
@@ -101,45 +113,40 @@ static bool simview(WINDOW *output, WINDOW *status, struct program *prog,
 			enum STATE *currentState)
 {
 	int input;
+	static int timeout = 0;
 
 	sstate(currentState);
 
-	wtimeout(status, 0);
 	while (1) {
-		switch (input = wgetch(status)) {
-		case 'q': // FALLTHROUGH
-		case 'Q': // Quit the program.
+		wtimeout(status, timeout);
+		input = wgetch(status);
+		if (input == QUIT) {
 			return false;
-		case  27: // 27 is the escape key scan code
-		case 'b': // FALLTHROUGH
-		case 'B': // Go back to the main state.
+		} else if (input == GOBACK) {
 			*currentState = MAIN;
 			prog->simulator.isPaused = true;
 			return true;
-		case 'p':
-		case 'P':
+		} else if (input == PAUSE) {
 			prog->simulator.isPaused = !(prog->simulator.isPaused);
-			break;
-		case 's': // FALLTHROUGH
-		case 'S': // FALLTHROUGH
-		case 'r': // FALLTHROUGH
-		case 'R': // Reset the machine to it's original state.
+		} else if (input == START || input == RUN) {
+			if (!prog->simulator.isHalted)
+				prog->simulator.isPaused = false;
+		} else if (input == RESTART) {
+			mem_populated = -1;
 			init_machine(prog);
-			prog->simulator.isPaused = input == 'R' || input == 'S';
-			if (input == 'R' || input == 'r') {
-				wclear(output);
-				wrefresh(output);
-			}
-			break;
-		default:
-			break;
-		}
-		if (!(prog->simulator.isPaused) && !(prog->simulator.isHalted)) {
+			wclear(output);
+			wrefresh(output);
+		} else if (input == STEP_NEXT) {
 			execute_next(&(prog->simulator), output);
-			wtimeout(status, 0);
+			prog->simulator.isPaused = true;
+			print_state(&(prog->simulator), status);
+		} if (!(prog->simulator.isPaused) &&
+				!(prog->simulator.isHalted)) {
+			execute_next(&(prog->simulator), output);
+			timeout = 0;
 		} else {
 			print_state(&(prog->simulator), status);
-			wtimeout(status, -1);
+			timeout = -1;
 		}
 	}
 }
@@ -152,33 +159,23 @@ static bool mainview(WINDOW *status, enum STATE *currentState,
 	sstate(currentState);
 
 	while (1) {
-		switch (input = wgetch(status)) {
-		case 'q': // FALLTHROUGH
-		case 'Q': // Quit the program.
+		input = wgetch(status);
+		if (input == QUIT) {
 			return false;
-		case 'd': // For file dumps.
-		case 'D': // TODO
+		} else if (input == LOGDUMP) {
 			if (logDump(prog))
 				return false;
-			break;
-		case 's': // FALLTHROUGH
-		case 'S': // Start simulating the machine.
+		} else if (input == SIMVIEW) {
 			*currentState = SIM;
 			return true;
-		case 'm': // FALLTHROUGH
-		case 'M': // View the memory contents.
+		} else if (input == MEMVIEW) {
 			*currentState = MEM;
 			return true;
-		case 'f': // FALLTHROUGH
-		case 'F':
-			// prog->objfile = (char *) malloc(sizeof(char) *
-			// 		MSGWIDTH);
+		} else if (input == FILESEL) {
 			prompt((char const *) NULL, "Enter the .obj file: ",
 				prog->objfile);
-			if (init_machine(prog)) return false;
-			break;
-		default:
-			break;
+			if (init_machine(prog))
+				return false;
 		}
 	}
 }
@@ -186,45 +183,42 @@ static bool mainview(WINDOW *status, enum STATE *currentState,
 static bool memview(WINDOW *window, struct program *prog,
 		enum STATE *currentState)
 {
-	int input, jump_addr;
+	int input, jump_addr, new_value;
 
 	sstate(currentState);
 
-	prog->simulator.isPaused = true;
-
 	while (1) {
-		switch (input = wgetch(window)) {
-		case 'q': // FALLTHROUGH
-		case 'Q': // Quit the program.
+		input = wgetch(window);
+		if (input == QUIT) {
 			return false;
-		case 'b': // FALLTHROUGH
-		case 'B': // Go back to the main view.
+		} else if (input == GOBACK) {
 			*currentState = MAIN;
 			return true;
-		case 'j': // FALLTHROUGH
-		case 'J': // Jump to an address in memory.
+		} else if (input == JUMP) {
 			jump_addr = popup_window(
-					"Enter a hex address to jump to: ");
+					"Enter a hex address to jump to: ",
+					selected_address);
+
+			if (jump_addr == selected_address)
+				continue;
+
 			generate_context(window, &(prog->simulator), 0,
 					jump_addr);
-			touchwin(window);
-			break;
-		case KEY_UP: // FALLTHROUGH
-		case 'w': // FALLTHROUGH
-		case 'W': // Up button pressed, so move the view up.
+		} else if (input == KEYUP) {
 			move_context(window, &(prog->simulator), UP);
-			break;
-		case KEY_DOWN: // FALLTHROUGH
-		case 's': // FALLTHROUGH
-		case 'S': // Down button pressed, so move the view down.
+		} else if (input == KEYDOWN) {
 			move_context(window, &(prog->simulator), DOWN);
-			break;
-		case 'e': // FALLTHROUGH
-		case 'E': // User wants to edit the currently selected value.
-			*currentState = EDIT;
-			return true;
-		default:
-			break;
+		} else if (input == EDITFILE) {
+			new_value = popup_window(
+					"Enter the new instruction (in hex): ",
+					prog->simulator.memory[
+						selected_address].value);
+			prog->simulator.memory[selected_address].value =
+				new_value;
+			update(window, &(prog->simulator));
+			sstate(currentState);
+		} else if (input == SETPC) {
+			prog->simulator.PC = selected_address;
 		}
 	}
 }
@@ -238,17 +232,20 @@ static void run_machine(struct program *prog)
 	memory_output = (uint16_t *) malloc(sizeof(uint16_t) * output_height);
 
 	while (simulating) {
+		sstate(&currentState);
+
 		switch (currentState) {
 		case MAIN:
 			simulating = mainview(status, &currentState, prog);
 			break;
 		case SIM:
-			simulating = simview(output, status, prog, &currentState);
+			simulating = simview(output, status, prog,
+					&currentState);
 			break;
 		case MEM:
 			if (mem_populated == -1) {
-				generate_context(context, &(prog->simulator), 0,
-						prog->simulator.PC);
+				generate_context(context, &(prog->simulator),
+						0, prog->simulator.PC);
 			} else {
 				generate_context(context, &(prog->simulator),
 						selected, mem_populated);
@@ -256,7 +253,6 @@ static void run_machine(struct program *prog)
 			simulating = memview(context, prog, &currentState);
 			break;
 		case EDIT:
-			currentState = MAIN;
 			break;
 		default:
 			break;

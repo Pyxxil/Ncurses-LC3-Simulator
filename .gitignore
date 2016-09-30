@@ -38,6 +38,7 @@ part1.c
 LC3Simulator
 tags
 *.asm
+*.s
 
 # Valgrind files
 vgcore.*

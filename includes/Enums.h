@@ -37,8 +37,8 @@ enum STATE {
 };
 
 enum DIRECTION {
-	UP   = 0x0,
-	DOWN = 0x2,
+	UP          = 0x0,
+	DOWN        = 0x2,
 };
 
 #endif // ENUMS_H

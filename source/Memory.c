@@ -11,7 +11,7 @@ uint16_t output_height	  = 0;
 uint16_t selected_address = 0;
 uint16_t *memory_output	  = NULL;
 
-static char const *const MEMFORMAT = "0x%04hx\t\t0x%04hx";
+static char const *const MEMFORMAT = "0x%04hx\t\t%s\t\t0x%04hx";
 static unsigned int const SELECTATTR = A_REVERSE | A_BOLD;
 
 /*
@@ -35,8 +35,12 @@ int populate_memory(struct program *prog)
 	prog->simulator.PC = tmp_PC = 0xffff & (tmp_PC << 8 | tmp_PC >> 8);
 
 	while (fread(&instruction, WORD_SIZE, 1, file) == 1) {
-		prog->simulator.memory[tmp_PC++].value = 0xffff
-			& (instruction << 8 | instruction >> 8);
+		prog->simulator.memory[tmp_PC] = (struct memory_slot) {
+			.value = 0xffff & (instruction << 8 | instruction >> 8),
+			.address = tmp_PC,
+		};
+
+		tmp_PC++;
 	}
 
 	if (!feof(file)) {
@@ -50,30 +54,49 @@ int populate_memory(struct program *prog)
 	return 0;
 }
 
+static void wprint(WINDOW *window, struct LC3 *simulator, size_t address,
+		int y, int x)
+{
+	char binary[] = "0000000000000000";
+
+	for (size_t i = 0; i < 16; i++) {
+		if ((simulator->memory[address].value >> i) & 1)
+			binary[15 - i] = '1';
+	}
+
+	mvwprintw(window, y, x, MEMFORMAT, address, binary,
+			simulator->memory[address].value);
+	wrefresh(window);
+}
+
+void update(WINDOW *window, struct LC3 *simulator)
+{
+	memory_output[selected] = simulator->memory[selected_address].value;
+	wattron(window, SELECTATTR);
+	wprint(window, simulator, selected_address, selected + 1, 1);
+	wattroff(window, SELECTATTR);
+}
 
 /*
  * Redraw the memory view. Called after every time the user moves up / down in
  * the area.
  */
 
-static void redraw(WINDOW *window)
+static void redraw(WINDOW *window, struct LC3 *simulator)
 {
 	for (int i = 0; i < output_height; ++i) {
 		if (i < selected) {
-			mvwprintw(window, i + 1, 1, MEMFORMAT,
-				  selected_address - selected + i, memory_output[i]);
+			wprint(window, simulator,
+				selected_address - selected + i, i + 1, 1);
 		} else {
-			mvwprintw(window, i + 1, 1, MEMFORMAT,
-				  selected_address + i, memory_output[i]);
+			wprint(window, simulator, selected_address + i,
+				i + 1, 1);
 		}
 	}
 
 	wattron(window, SELECTATTR);
-	mvwprintw(window, selected + 1, 1, MEMFORMAT, selected_address,
-		  memory_output[selected]);
+	wprint(window, simulator, selected_address, selected + 1, 1);
 	wattroff(window, SELECTATTR);
-
-	wrefresh(window);
 }
 
 
@@ -85,10 +108,11 @@ static void redraw(WINDOW *window)
 void generate_context(WINDOW *window, struct LC3 *simulator, int _selected,
 		      uint16_t _selected_address)
 {
-	selected	 = _selected;
+	selected = _selected;
 	selected_address = _selected_address;
 
-	selected = ((selected_address + (output_height - 1 - selected)) > 0xfffe) ?
+	selected =
+		((selected_address + (output_height - 1 - selected)) > 0xfffe) ?
 		(output_height - (0xfffe - selected_address)) - 1 : selected;
 
 	int i = 0;
@@ -99,34 +123,33 @@ void generate_context(WINDOW *window, struct LC3 *simulator, int _selected,
 	for (; i < output_height; i++)
 		memory_output[i] = simulator->memory[selected_address + i].value;
 
-	redraw(window);
+	redraw(window, simulator);
 	mem_populated = selected_address;
 }
 
-void move_context(WINDOW *window, struct LC3 *simulator, enum DIRECTION direction)
+void move_context(WINDOW *window, struct LC3 *simulator,
+		enum DIRECTION direction)
 {
-	bool _redraw	   = false;
-	int prev	   = selected;
+	bool _redraw = false;
+	int prev = selected;
 	uint16_t prev_addr = selected_address;
 
 	switch (direction) {
 	case UP:
 		selected_address -= (selected_address == 0) ? 0 : 1;
-		selected	  = (selected == 0) ? _redraw = true, 0 : selected - 1;
+		selected = (selected == 0) ? _redraw = true, 0 : selected - 1;
 		break;
 	case DOWN:
 		selected_address += (selected_address == 0xfffe) ? 0 : 1;
-		selected	  = (selected == (output_height - 1)) ?
-			_redraw	  = true, (output_height - 1) : selected + 1;
-		break;
-	default:
+		selected = (selected == (output_height - 1)) ? _redraw = true,
+				(output_height - 1) : selected + 1;
 		break;
 	}
 
 	wattron(window, SELECTATTR);
-	mvwprintw(window, selected + 1, 1, MEMFORMAT, selected_address, memory_output[selected]);
+	wprint(window, simulator, selected_address, selected + 1, 1);
 	wattroff(window, SELECTATTR);
-	mvwprintw(window, prev + 1, 1, MEMFORMAT, prev_addr, memory_output[prev]);
+	wprint(window, simulator, prev_addr, prev + 1, 1);
 
 	if (_redraw)
 		generate_context(window, simulator, selected, selected_address);

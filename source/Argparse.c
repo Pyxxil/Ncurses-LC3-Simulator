@@ -8,7 +8,7 @@
 static const char errprefix[] = "\n\t";
 static size_t prefixsize;
 
-static unsigned int errcount, errvalue;
+static unsigned long long errcount, errvalue;
 
 static const char _usage[] =
 	"Usage: %s [OPTION] <file>.                                           \n"
@@ -18,6 +18,13 @@ static const char _usage[] =
 	"  -l. --log-file File  specify which file to use as a log file when. \n"
 	"  -o, --objfile        specify the object file to read from.         \n"
 ;
+
+#define ERR(string, args...) 					\
+	do {							\
+		fprintf(stderr, "\n");				\
+		fprintf(stderr, string, ##args);		\
+		fprintf(stderr, "\n");				\
+	} while (0)
 
 
 /*
@@ -47,8 +54,8 @@ static inline void strmcpy(char **to, char const *from)
  * the string we'll print when we throw an error.
  */
 
-static void ERROR(unsigned int error, unsigned int mul, char **errorString,
-		char const *arg)
+static void error(unsigned long long error, unsigned long long mul,
+		char **errorString, char const *arg)
 {
 	errvalue |= errvalue & error ? mul : error;
 	errcount ++;
@@ -67,47 +74,29 @@ static void ERROR(unsigned int error, unsigned int mul, char **errorString,
 void errhandle(struct program const *prog)
 {
 	if (errcount > 1) {
-		fprintf(stderr, "ERROR: There were some error's while parsing "
-				"your options.\n");
+		ERR("There were some error's while parsing your options.");
 	} else {
-		fprintf(stderr, "ERROR: There was an error while parsing your "
-				"options.\n");
+		ERR("There was an error while parsing your options.");
 	}
 
-
 	if (errvalue & MUL_INPUT_FILES) {
-		fprintf(stderr, "\nThe following files were seen as input files "
-				"and couldn't be decided upon:");
-		fprintf(stderr, "%s%s",   errprefix, prog->objfile);
-		fprintf(stderr, "%s%s\n", errprefix, input_files);
+		ERR("The following files were seen as input files and couldn't "
+			"be decided upon: %s%s %s%s",
+			errprefix, prog->objfile, errprefix, input_files);
 	}
 
 	if (errvalue & MUL_INCORRECT_OPT) {
-		fprintf(stderr, "\nThe following options weren't recognised:");
-		fprintf(stderr, "%s%s\n", errprefix, incorrect_opts);
+		ERR("The following options weren't recognised: %s%s", errprefix, 
+			incorrect_opts);
 	} else if (errvalue & INCORRECT_OPT) {
-		fprintf(stderr, "\n%s was not recognised.\n", incorrect_opts);
+		ERR("%s was not recognised.", incorrect_opts);
 	}
 
 	if (errvalue & MUL_NO_ARG_PROVIDED) {
-		fprintf(stderr, "\nThe following options require arguments:");
-		fprintf(stderr, "%s%s\n", errprefix, no_args_provided);
-	} else if (errvalue & NO_ARG_PROVIDED) {
-		fprintf(stderr, "\n%s requires an argument.\n",
+		ERR("The following options require arguments: %s%s", errprefix,
 			no_args_provided);
-	}
-
-	//if (errvalue & MUL_WARN_DEPRECATED) {
-	//} else if (errvalue & WARN_DEPRECATED) {
-	//}
-
-	if (errvalue & MUL_WARN_UNIMPLEMENTED) {
-		fprintf(stderr, "\nThe following options aren't fully "
-				"implemented:");
-		fprintf(stderr, "%s%s\n", errprefix, unimplemented_opts);
-	} else if (errvalue & WARN_UNIMPLEMENTED) {
-		fprintf(stderr, "\n%s is not fully implemented.\n",
-			unimplemented_opts);
+	} else if (errvalue & NO_ARG_PROVIDED) {
+		ERR("%s requires an argument.", no_args_provided);
 	}
 }
 
@@ -117,7 +106,7 @@ static void addFile(char **file, char const *from, char const *flag)
 	if (*file == NULL)
 		strmcpy(file, from);
 	else
-		ERROR(MUL_INPUT_FILES, MUL_INPUT_FILES, &input_files, flag);
+		error(MUL_INPUT_FILES, MUL_INPUT_FILES, &input_files, flag);
 }
 
 /*
@@ -130,7 +119,7 @@ static void addFile(char **file, char const *from, char const *flag)
  *    - A bitmask of the error value if one (or more) was found.
  */
 
-int argparse(int argcount, char **argvals, struct program *prog)
+unsigned long long argparse(int argcount, char **argvals, struct program *prog)
 {
 	prefixsize = strlen(errprefix);
 	int argindex = 1;
@@ -148,11 +137,11 @@ int argparse(int argcount, char **argvals, struct program *prog)
 			exit(EXIT_SUCCESS);
 		} else if (!strcmp(arg, "--assemble") || !strcmp(arg, "-a")) {
 			// TODO: Implement this opt
-			ERROR(WARN_UNIMPLEMENTED, MUL_WARN_UNIMPLEMENTED,
+			error(WARN_UNIMPLEMENTED, MUL_WARN_UNIMPLEMENTED,
 				&unimplemented_opts, arg);
 		} else if (!strcmp(arg, "--objfile") || !strcmp(arg, "-o")) {
 			if (argindex >= argcount || *argvals[argindex] == '-') {
-				ERROR(NO_ARG_PROVIDED, MUL_NO_ARG_PROVIDED,
+				error(NO_ARG_PROVIDED, MUL_NO_ARG_PROVIDED,
 					&no_args_provided, arg);
 			} else {
 				addFile(&prog->objfile, argvals[argindex], arg);
@@ -160,14 +149,14 @@ int argparse(int argcount, char **argvals, struct program *prog)
 			}
 		} else if (!strcmp(arg, "--logfile") || !strcmp(arg, "-l")) {
 			if (argindex >= argcount || *argvals[argindex] == '-') {
-				ERROR(NO_ARG_PROVIDED, MUL_NO_ARG_PROVIDED,
+				error(NO_ARG_PROVIDED, MUL_NO_ARG_PROVIDED,
 					&no_args_provided, arg);
 			} else {
 				addFile(&prog->logfile, argvals[argindex], arg);
 				argindex++;
 			}
 		} else {
-			ERROR(INCORRECT_OPT, MUL_INCORRECT_OPT,
+			error(INCORRECT_OPT, MUL_INCORRECT_OPT,
 				&incorrect_opts, arg);
 		}
 	}
