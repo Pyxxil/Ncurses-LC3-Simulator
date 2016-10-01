@@ -39,6 +39,8 @@ LC3Simulator
 tags
 *.asm
 *.s
+*.sym
+*.bin
 
 # Valgrind files
 vgcore.*

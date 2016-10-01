@@ -1,8 +1,11 @@
 #include <stdlib.h>
+#include <stdio.h>
 
 #include "Argparse.h"
 #include "Machine.h"
 #include "Structs.h"
+#include "Parser.h"
+#include "Error.h"
 
 
 int main(int argc, char **argv)
@@ -18,7 +21,9 @@ int main(int argc, char **argv)
 	if (errval & (0xFFFFll << 32)) {
 		errhandle(&prog);
 	} else {
-		start_machine(&prog);
+		if (errval & ASSEMBLE)
+			parse(prog.objfile);
+		//start_machine(&prog);
 	}
 
 	tidyup(&prog);

@@ -1,5 +1,6 @@
 #include <string.h>
 #include <stdlib.h>
+#include <stdarg.h>
 #include <stdio.h>
 
 #include "Argparse.h"
@@ -19,13 +20,12 @@ static const char _usage[] =
 	"  -o, --objfile        specify the object file to read from.         \n"
 ;
 
-#define ERR(string, args...) 					\
-	do {							\
-		fprintf(stderr, "\n");				\
-		fprintf(stderr, string, ##args);		\
-		fprintf(stderr, "\n");				\
+#define ERR(string, args...)				\
+	do {						\
+		fprintf(stderr, "\n");			\
+		fprintf(stderr, string, ##args);	\
+		fprintf(stderr, "\n");			\
 	} while (0)
-
 
 /*
  * This should only be printed when the user passes -h or --help as a flag.
@@ -86,7 +86,7 @@ void errhandle(struct program const *prog)
 	}
 
 	if (errvalue & MUL_INCORRECT_OPT) {
-		ERR("The following options weren't recognised: %s%s", errprefix, 
+		ERR("The following options weren't recognised: %s%s", errprefix,
 			incorrect_opts);
 	} else if (errvalue & INCORRECT_OPT) {
 		ERR("%s was not recognised.", incorrect_opts);
@@ -136,9 +136,14 @@ unsigned long long argparse(int argcount, char **argvals, struct program *prog)
 			usage(prog->name);
 			exit(EXIT_SUCCESS);
 		} else if (!strcmp(arg, "--assemble") || !strcmp(arg, "-a")) {
-			// TODO: Implement this opt
-			error(WARN_UNIMPLEMENTED, MUL_WARN_UNIMPLEMENTED,
-				&unimplemented_opts, arg);
+			if (argindex >= argcount || *argvals[argindex] == '-') {
+				error(NO_ARG_PROVIDED, MUL_NO_ARG_PROVIDED,
+					&no_args_provided, arg);
+			} else {
+				errvalue |= ASSEMBLE;
+				addFile(&prog->objfile, argvals[argindex], arg);
+				argindex++;
+			}
 		} else if (!strcmp(arg, "--objfile") || !strcmp(arg, "-o")) {
 			if (argindex >= argcount || *argvals[argindex] == '-') {
 				error(NO_ARG_PROVIDED, MUL_NO_ARG_PROVIDED,

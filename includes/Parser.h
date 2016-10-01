@@ -1,16 +1,9 @@
 #ifndef PARSER_H
 #define PARSER_H
 
+#include <stdbool.h>
 #include <stdio.h>
 
-#include "Token.h"
-
-struct Parser {
-	FILE *file;
-	size_t length;
-};
-
-void getNext(struct Parser *);
-void initParser(struct Parser *);
+bool parse(char const *);
 
 #endif // PARSER_H
