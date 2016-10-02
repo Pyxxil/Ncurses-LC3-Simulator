@@ -21,9 +21,13 @@ int main(int argc, char **argv)
 	if (errval & (0xFFFFll << 32)) {
 		errhandle(&prog);
 	} else {
-		if (errval & ASSEMBLE)
-			parse(prog.objfile);
-		//start_machine(&prog);
+		if (errval & ASSEMBLE) {
+			if (!parse(prog.objfile)) {
+				return 1;
+			}
+		} else {
+			start_machine(&prog);
+		}
 	}
 
 	tidyup(&prog);

@@ -23,7 +23,7 @@ CURSES   = ncurses
 LIBS     = -l$(CURSES)
 
 # Flags to use when compiling
-CFLAGS = $(INCLUDES) $(LIBS) -std=c11 -O2 -g
+CFLAGS = $(INCLUDES) $(LIBS) -std=c11 -g
 # Flags to add when compiling the debug version
 DFLAGS = -Wall -Werror -Wpedantic -Wextra
 
