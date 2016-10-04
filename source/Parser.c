@@ -175,6 +175,8 @@ static void process(FILE *file, FILE *symFile)
 				currentLine++;
 			}
 			continue;;
+		} else if (c == ':') {
+			continue;
 		} else if (c == '.') {
 			ungetc(c, file);
 			fscanf(file, "%99s", line);
@@ -307,7 +309,6 @@ static void process(FILE *file, FILE *symFile)
 				memset(line, 0, 100);
 				for (size_t i = 0; (c = fgetc(file)) != '"' && i < 100; i++) {
 					if (c == '\\') {
-						printf("FOUND IT");
 						switch (c = fgetc(file)) {
 						case 'n':
 							line[i] = '\n';
@@ -377,6 +378,18 @@ static void process(FILE *file, FILE *symFile)
 				if (origSeen)
 					pc++;
 			} else {
+				end = strchr(line, ':');
+				printf("  Line %d: Found label '%s'\n", currentLine, line);
+				if (NULL != end) {
+					char *colon = end + strlen(end) - 1;
+					for (; colon != end; colon--) {
+						ungetc(*colon, file);
+						*colon = '\0';
+					}
+					ungetc(*colon, file);
+					*colon = '\0';
+					printf("    Label changed to '%s'\n", line);
+				}
 				if (addSymbol(line, pc)) {
 					fprintf(stderr, "  Line %d: "
 						"Multiple definitions of label "
@@ -474,6 +487,8 @@ bool parse(char const *fileName)
 		} else if (c == ';') {
 			while ((c = fgetc(file)) != '\n' && c != -1);
 			currentLine++;
+		} else if (c == ':') {
+			continue;
 		} else if (c == '.') {
 			ungetc(c, file);
 			fscanf(file, "%99s", line);
@@ -1050,7 +1065,10 @@ bool parse(char const *fileName)
 					fprintf(stderr, "  Line %d: Too many "
 						"operands given for AND.\n",
 						currentLine);
+					errors++;
+					continue;
 				}
+				ungetc(c, file);
 
 				instruction = 0x5000;
 				instruction |= (operand1[1] - 0x30) << 9;
