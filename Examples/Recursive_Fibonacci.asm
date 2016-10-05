@@ -1,37 +1,32 @@
 ;
-; A program that iteratively calculates the first 3 to 23 fibonacci numbers,
-; inclusively, based on the users input. It will keep asking for input until
-; an acceptable value is input.
-;
+; A program that recursively calaculates an inputted amount of fibonacci numbers
+; (3 to 23 inclusively), all the while displaying each to the screen.
 
 ; --------------------------------------------------------------
-; What each Register is used for in the two parts of the program
+; What each Register is used for in the three parts of the program
 ;	-- Getting input
 ;	-- Converting the current fibonacci number to ASCII
-;	-- Iteratively finding the Nth Fibonacci Number
+;	-- Recursively finding the Nth Fibonacci Number
 ; --------------------------------------------------------------
 
-; NOTE: As R1 is used as the input and the counter, we don't want to overwrite at all by anything other than
-;	the Iteration part of the program.
-
-;       Getting input			| Converting to ASCII		| Iteration
-; R0 -- Input and output		| R0 --	Output			| R0 -- Unused
-; R1 -- The current input		| R1 --	Unused			| R1 -- Loop counter
-; R2 -- Unused				| R2 --	The digit position	| R2 -- Unused
-; R3 -- Used to compare values		| R3 --	Number of digits output	| R3 -- The lower fibonacci number
-; R4 -- Used to multiply by ten		| R4 --	The current place	| R4 -- The higher fibonacci number
-; R5 -- Used as the character count	| R5 --	The number to convert	| R5 -- Current Fibonacci Number
-; R6 -- Used to multiply by ten		| R6 --	The current digit	| R6 -- Temporary Value
+;       Getting input			| Converting to ASCII		| Recursion
+; R0 -- Input and output		| R0 --	Output			| R0 -- Result stack pointer
+; R1 -- The current input		| R1 --	Unused			| R1 -- Unused
+; R2 -- Unused				| R2 --	The digit position	| R2 -- Stack pointer
+; R3 -- Used to compare values		| R3 --	Number of digits output | R3 -- The current N
+; R4 -- Used to multiply by ten		| R4 --	The current place	| R4 -- Temporary Value stack pointer
+; R5 -- Used as the character count	| R5 --	The number to convert	| R5 -- The fibonacci number
+; R6 -- Used to multiply by ten		| R6 --	The current digit	| R6 -- Temporary Values
 ; R7 -- Return address			| R7 --	Return address		| R7 -- Return address
 
 .ORIG x3000
 
-; Prompt for input, also the entry for the program
+; Start by adding the prompt to the screen.
 OUT_PROMPT:
 	LEA R0, PROMPT		; Load the prompt into R0
 	PUTS			; Put it to the display
 
-	; Initialise Registers for the beginning of the program
+	; Initialise Registers for the first part of the program
 	AND R5, R5, #0		; Reset R5
 	ADD R5, R5, #10		; Set R5 to ten, its our character counter
 	LD R1, NUMBER		; Load the number into R1
@@ -59,15 +54,16 @@ GET_INPUT:
 	BRn FLAG_THAT		; If the character's ascii value is less than 0's, flag it
 
 	; So, the character is a digit. Update the number.
-	ADD R6, R5, #-10
-	BRn CHECK_ZERO
-	BRz SET_TO
-	BRnzp MULTIPLY_BY_TEN
+	ADD R6, R5, #-10	; Check the amount of characters input
+	BRn CHECK_ZERO		; Make sure that if the first character was a 0, pass it
+	BRz SET_TO		; If this is the first character, then set the count to this number
+	BRnzp MULTIPLY_BY_TEN	; Always multiply the current number by ten if it doesn't get updated by
+				; the above.
 
 
 ; Decrement the input counter by one
 DECREMENT_INPUT_COUNTER:
-	ADD R5, R5, #-1		; Subtract 1 from the character counter stored in R5
+	ADD R5, R5, #-1		; Subtract 1 from the loop counter stored in R5
 	BRz OUT_PROMPT		; We've reached the max character count, so start again.
 	BRnzp GET_INPUT
 
@@ -83,8 +79,8 @@ MULTIPLY_BY_TEN:
 	JSR CHECK_FLAG		; Jump to check if we have flagged something, this will only return here if
 				; we have not flagged something.
 	ADD R4, R1, R1		; Store  2x R1 in R4
-	ADD R6, R4, R4		; Store  4x R1 in R6
-	ADD R6, R6, R6		; Store  8x R1 in R6
+	ADD R6, R4, R4		; Store  4x R1 in R1
+	ADD R6, R6, R6		; Store  8x R1 in R1
 	ADD R1, R6, R4		; Store 10x R1 in R1
 	ADD R1, R1, R3		; Add the current number
 	ADD R4, R1, #-16	; We don't want numbers greater than 23.
@@ -134,19 +130,15 @@ CHECK_INPUT:
 	BRzp OUT_PROMPT		; so start again.
 	ADD R4, R1, #-3		; We also don't want numbers less than 3
 	BRn OUT_PROMPT		; so start again.
+	; Note, we don't have to check if the number is greater than 23 because we already did
+	; that in MULTIPLY_BY_TEN
+	ST R1, NUMBER		; Store the value of R1 into the address
+	BRnzp INIT_LOOP		; Get ready to find the Nth Fibonacci number
 
-	; Initialise the registers to be used for the loop
-	AND R3, R3, #0		; Reset R3 to be used as the lower number
-	AND R4, R4, #0		; Reset R4 to be used as the higher number
-	ADD R4, R4, #1		; Start at 1
-	BRnzp ITERATIVE_FIBONACCI	; Iteratively retrieve each fibonacci number
 
-	
 ; Take a number in R5 and convert each digit to ASCII to print to the display
 CONVERT_TO_ASCII:
 	ST R7, SAVER7		; Store the return address
-	ST R4, SAVER4
-	ST R3, SAVER3
 	LEA R2, NUMBERS		; Load the numbers to use into R2
 	AND R6, R6, #0		; The digit in the current place
 	AND R3, R3, #0		; The number of digits displayed
@@ -189,42 +181,25 @@ END:
 	OUT
 	LEA R0, SPACE		; Print a space character between each fibonacci number
 	PUTS
-	LD R3, SAVER3		; Reinitalise the values in R3 and R4
-	LD R4, SAVER4		; Because we need them for the next iteration
 	LD R7, SAVER7		; Reload the return address
 	RET			; and return
 
-; --------------------------------------------
-; Iteratively calaculate each fibonacci number
-; --------------------------------------------
-ITERATIVE_FIBONACCI:
-	ADD R5, R4, #0		; Set R5 to equal the higher number
-	JSR CONVERT_TO_ASCII	; Convert that fibonacci number to ASCII and print it
-	; Put all registers to their correct values
-	ADD R6, R4, #0		; Set R6 to equal the value in R4 (higher fibonacci number)
-	ADD R4, R3, R6		; Set R4 to equal the lower + higher values
-	ADD R3, R6, #0		; Set R3 to equal the previous higher number
-	ADD R1, R1, #-1		; Subtract 1 from the loop counter
-	BRz FINISH		; We've reached the last number we want, so finish
-	BRnzp ITERATIVE_FIBONACCI	; Othwerwise, loop again.
 
-
-; Finish the program
-FINISH:
-	HALT
-	
+; These have to go here, otherwise their offset will be too great for the 9bit offset.
+; For saving the value of R7 while converting to ASCII
+SAVER7	.FILL	0
 
 ; Strings that will be used throughout the program
 PROMPT	.STRINGZ	"\nEnter a number from 3 to 23: "
-SPACE	.STRINGZ	" "
+SPACE	.STRINGZ	" "	; A space character has the ascii value of 0x20, too large to add to a register.
 
-NUMBER	.FILL	#0		; The number that we will use as the number of fibonacci numbers we want
-FLAG	.FILL	#0		; A way to tell the program we've received input we don't want
+NUMBER		.FILL	0		; The number that we will use as the number of fibonacci numbers we want
+FLAG		.FILL	0		; A way to tell the program we've received input we don't want
 
 ; ASCII values that will be used to check input, as well as convert to ASCII
-ASCII_ZERO	.FILL	x30
-ASCII_THREE	.FILL	x33
-ASCII_NINE	.FILL	x39
+ASCII_ZERO	.FILL	#48
+ASCII_THREE	.FILL	#51
+ASCII_NINE	.FILL	#58
 
 ; Values that we will use to output the current fibonacci number to the screen
 NUMBERS	.FILL #10000
@@ -233,9 +208,79 @@ NUMBERS	.FILL #10000
 	.FILL #10
 	.FILL #0	; So we can tell when we've reached the last digit
 
-; Save the value of some registers
-SAVER7	.FILL	#0
-SAVER4	.FILL	#0
-SAVER3	.FILL	#0
+
+; ---------------------------------------------------
+; Recursive function to find the Nth fibonacci number
+;----------------------------------------------------
+RECURSIVE_FIBONACCI:
+	STR R7, R2, #0 		; Store return address
+	ADD R2, R2, #1 		; Increment stack pointer
+	ADD R6, R3, #-3 	; If the current number is 0
+	BRn BASE_CASE		; then we've reached one of the base cases
+
+	ADD R3, R3, #-1 	; N - 1
+	STR R3, R4, #0 		; Save R3 to temp
+	ADD R4, R4, #1 		; Increment the Temporary stack pointer
+	JSR RECURSIVE_FIBONACCI	; Recurse with N - 1
+
+	ADD R4, R4, #-1 	; Decrement the Temporary stack pointer
+	LDR R3, R4, #0		; Retrieve N from the stack
+	ADD R3, R3, #-1 	; N = N - 2
+	JSR RECURSIVE_FIBONACCI	; Recurse with N - 2
+
+	ADD R0, R0, #-1 	; Decrement stack pointer
+	LDR R3, R0, #0 		; Load result of Fib(N - 1)
+	ADD R0, R0, #-1 	; Decrement stack pointer
+	LDR R5, R0, #0 		; Load result of Fib(N - 2)
+	ADD R5, R5, R3		; Add the recursive results together
+	BR RETURN		; and return
+
+BASE_CASE: 			; We hit a base case, so return 1
+	AND R5, R5, #0		; We hit a base case,
+	ADD R5, R5, #1		; so we want to return 1
+
+; We've found this fibonacci number, so return to the last return address stored in the stack.
+RETURN:
+	ADD R2, R2, #-1 	; Decrement the stack pointer
+	LDR R7, R2, #0 		; Load return address from stack
+	STR R5, R0, #0		; Save the result to the Result stack
+	ADD R0, R0, #1 		; Increment result stack
+	RET 			; Result is in Result stack, so return
+
+
+; Initialise some registers
+INIT_LOOP:
+	LD R3, COUNT		; The fibonacci sequence number we want to compute
+; Start looping upwards towards the number input by the user.
+LOOP:
+	LEA R2, STACK    	; R2 is now the stack pointer
+	LEA R0, RESULT_STACK   	; R0 is now the pointer to the result stack
+	LEA R4, TEMP_VAL_STACK 	; R4 is now the pointer to the temporary value stack
+	JSR RECURSIVE_FIBONACCI ; Find the fibonacci number
+
+	ADD R0, R0,#-1 		; Decrement the stack pointer, as the result is at its top
+	LDR R5, R0,#0 		; Load R5 from stack
+	JSR CONVERT_TO_ASCII	; Display the fibonacci number
+	LD R3, COUNT		; Load the current count into R3
+	LD R6, NUMBER		; Load the original input into R6
+	NOT R6, R6		; Set R6 for twos compliment
+	ADD R6, R6, #1
+	ADD R6, R6, R3		; Check if R3 is now equal to the input
+	BRz FINISH		; If so, then finish the program
+	ADD R3, R3, #1		; Otherwise, add 1 to the count
+	ST R3, COUNT		; store the new count into NUMBEr
+	BRnzp LOOP		; and loop again.
+
+; We've finished finding the fibonacci numbers, so end the program.
+FINISH:
+	HALT
+
+; The loop count (will also be used to find the fibonacci number we want)
+COUNT:		.FILL 1
+
+; Our stack pointers
+STACK:	 	.BLKW #100	; Return address and frame stack pointer.
+RESULT_STACK:	.BLKW #100	; Result stack pointer, holds all results during the recursion.
+TEMP_VAL_STACK:	.BLKW #100	; To store all temporary values we use.
 
 .END

@@ -68,7 +68,9 @@ PROCESS_R1:
 	ADD R0, R3, #-10		; Check to see if top of stack is reached
 	BRz GET_R2			; Branch to get R2 if top of stack was reached
 	AND R0, R0, #0			; Clear R0
-	ADD R0, R3, #0			; Check to see if a minus sign has been read, due to conversion a minus sign will be -3, which is an illegal value
+	ADD R0, R3, #0			; Check to see if a minus sign has been read,
+					; due to conversion a minus sign will be -3,
+					; which is an illegal value
 	BRn MAKE_R1_NEGATIVE		; If minus sign has been reached, then go and Make R1 negative
 	ADD R1, R1, R3			; Add the value from the top of the stack to R1
 
@@ -79,7 +81,9 @@ PROCESS_R1:
 	BRz GET_R2			; Branch to get R2 if top of stack was reached
 	AND R0, R0, #0			; Clear R0
 	ADD R0, R3, #0			; Store Value in R0
-	ADD R0, R3, #0			; Check to see if a minus sign has been read, due to conversion a minus sign will be -3, which is an illegal value
+	ADD R0, R3, #0			; Check to see if a minus sign has been read,
+					; due to conversion a minus sign will be -3,
+					; which is an illegal value
 	BRn MAKE_R1_NEGATIVE		; If minus sign has been reached, then go and Make R1 negative
 	LEA R6, LookUp10		; Make R6 point to the lookup10 table
 	ADD R6, R6, R3			; Point at correct factor in LookUp10
@@ -94,7 +98,9 @@ PROCESS_R1:
 	BRz GET_R2			; Branch to get R2 if top of stack was reached
 	AND R0, R0, #0			; Clear R0
 	ADD R0, R3, #0			; Store Value in R0
-	ADD R0, R3, #0			; Check to see if a minus sign has been read, due to conversion a minus sign will be -3, which is an illegal value
+	ADD R0, R3, #0			; Check to see if a minus sign has been read,
+					; due to conversion a minus sign will be -3,
+					; which is an illegal value
 	BRn MAKE_R1_NEGATIVE		; If minus sign has been reached, then go and Make R1 negative
 	LEA R6, LookUp100		; Make R6 point to the lookup100 table
 	ADD R6, R6, R3			; Point at correct factor in LookUp100
@@ -107,7 +113,9 @@ PROCESS_R1:
 	AND R0, R0, #0			; Clear R0
 	AND R0, R0, #0			; Clear R0
 	ADD R0, R3, #0			; Store Value in R0
-	ADD R0, R3, #0			; Check to see if a minus sign has been read, due to conversion a minus sign will be -3, which is an illegal value
+	ADD R0, R3, #0			; Check to see if a minus sign has been read,
+					; due to conversion a minus sign will be -3,
+					; which is an illegal value
 	BRn MAKE_R1_NEGATIVE		; If minus sign has been reached, then go and Make R1 negative
 	BR GET_R2			; Computation of R1 complete, go and get R2
 	ADD R5, R5, #1			; Increment stack counter
@@ -120,7 +128,8 @@ MAKE_R1_NEGATIVE:
 
 
 GET_R2:
-	ADD R5, R5, #1			; Increment stack counter, as it is currently pointing at the end of stack character
+	ADD R5, R5, #1			; Increment stack counter, as it is currently
+					; pointing at the end of stack character
 
 
 GET_R2_LOOP:
@@ -146,7 +155,9 @@ PROCESS_R2:
 	BRz CHECKING_LOOP		; Branch to check both numbers if top of stack was reached
 	AND R0, R0, #0			; Clear R0
 	ADD R0, R3, #0			; Store Value in R0
-	ADD R0, R3, #0			; Check to see if a minus sign has been read, due to conversion a minus sign will be -3, which is an illegal value
+	ADD R0, R3, #0			; Check to see if a minus sign has been read,
+					; due to conversion a minus sign will be -3,
+					; which is an illegal value
 	BRn MAKE_R2_NEGATIVE		; If minus sign has been reached, then go and Make R1 negative
 	ADD R2, R2, R3			; Add the value from the top of the stack to R2
 
@@ -157,7 +168,9 @@ PROCESS_R2:
 	BRz CHECKING_LOOP		; Branch to check both numbers if top of stack was reached
 	AND R0, R0, #0			; Clear R0
 	ADD R0, R3, #0			; Store Value in R0
-	ADD R0, R3, #0			; Check to see if a minus sign has been read, due to conversion a minus sign will be -3, which is an illegal value
+	ADD R0, R3, #0			; Check to see if a minus sign has been read,
+					; due to conversion a minus sign will be -3,
+					; which is an illegal value
 	BRn MAKE_R2_NEGATIVE		; If minus sign has been reached, then go and Make R1 negative
 	LEA R6, LookUp10		; Make R6 point to the lookup10 table
 	ADD R6, R6, R3			; Point at correct factor in LookUp10
@@ -165,13 +178,15 @@ PROCESS_R2:
 	LDR R0, R6, #0			; Load factor into R0
 	ADD R2, R2, R0			; Add factor to total in R2
 
-	ADD R5, R5, #-1			; Deincrement stack counter
+	ADD R5, R5, #-1			; Decrement stack counter
 	LDR R3, R5, #0			; Load the value
 	AND R0, R0, #0			; Clear R0
 	ADD R0, R3, #-10		; Check to see if top of stack is reached
 	BRz CHECKING_LOOP		; Branch to check both numbers if top of stack was reached
 	AND R0, R0, #0			; Clear R0
-	ADD R0, R3, #0			; Check to see if a minus sign has been read, due to conversion a minus sign will be -3, which is an illegal value
+	ADD R0, R3, #0			; Check to see if a minus sign has been read,
+					; due to conversion a minus sign will be -3,
+					; which is an illegal value
 	BRn MAKE_R2_NEGATIVE		; If minus sign has been reached, then go and Make R1 negative
 	LEA R6, LookUp100		; Make R6 point to the lookup100 table
 	ADD R6, R6, R3			; Point at correct factor in LookUp100
@@ -182,8 +197,11 @@ PROCESS_R2:
 	ADD R5, R5, #-1			; Deincrement stack counter
 	LDR R3, R5, #0			; Load the value
 	AND R0, R0, #0			; Clear R0
-	ADD R0, R3, #0			; Check to see if a minus sign has been read, due to conversion a minus sign will be -3, which is an illegal value
-	BRn MAKE_R2_NEGATIVE		; If minus sign has been reached, then go and Make R2 negative
+	ADD R0, R3, #0			; Check to see if a minus sign has been read,
+					; due to conversion a minus sign will be -3,
+					; which is an illegal value
+	BRn MAKE_R2_NEGATIVE		; If minus sign has been reached, then go
+					; and Make R2 negative
 	BR CHECKING_LOOP		; Go and compare the two numbers
 
 
@@ -198,9 +216,11 @@ CHECKING_LOOP:
 	BRn R1_NEGATIVE			; If negative, then branch to R1_negative Branch
 	AND R3, R3, #0			; Clear value in R3
 	ADD R3, R2, #0			; Check if R2 is negative or positive
-	BRn R1_POSITIVE_R2_NEGATIVE	; At this point it is known that R1 is positive or 0 and R2 is negative
+	BRn R1_POSITIVE_R2_NEGATIVE	; At this point it is known that R1 is positive
+					; or 0 and R2 is negative
 	AND R3, R3, #0			; Clear value in R3
-	BR R1_R2_SAME_SIGN		; If neither previous branch was triggered, it means that both R1 and R2 are positive
+	BR R1_R2_SAME_SIGN		; If neither previous branch was triggered,
+					; it means that both R1 and R2 are positive
 
 
 R1_NEGATIVE:
@@ -208,7 +228,8 @@ R1_NEGATIVE:
 	ADD R3, R2, #0			; Check if R2 is negative or positive
 	BRn R1_R2_SAME_SIGN		; If R2 Is negative, then both R1 and R2 are negative
 	AND R3, R3, #0			; Clear value in R3
-	BR R1_NEGATIVE_R2_POSITIVE	; If the previous branch was not triggered, then R1 is negative and R2 is positive or 0
+	BR R1_NEGATIVE_R2_POSITIVE	; If the previous branch was not triggered,
+					; then R1 is negative and R2 is positive or 0
 
 
 R1_NEGATIVE_R2_POSITIVE:
@@ -267,11 +288,11 @@ ZERO_LOOP:
 	HALT				; End Program
 
 
-INPUT_STACK:
-	.BLKW #5			; Reserve 5 memory spaces for input number
+; Reserve 5 memory spaces for input number
+INPUT_STACK: .BLKW #5
 
-
-LookUp10:     				; Lookuptable for base 10 values
+; Lookup table for base 10 values
+LookUp10:
 	.FILL  #0
 	.FILL  #10
 	.FILL  #20
@@ -283,8 +304,8 @@ LookUp10:     				; Lookuptable for base 10 values
 	.FILL  #80
 	.FILL  #90
 
-
-LookUp100      				; Lookuptable for base 100 values
+; Lookup table for base 100 values
+LookUp100
 	.FILL  #0
 	.FILL  #100
 	.FILL  #200
@@ -306,6 +327,5 @@ POSITIVE_ONE:
 
 ZERO:
 	.STRINGZ "0"
-
 
 .END

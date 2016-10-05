@@ -20,12 +20,17 @@ static const char _usage[] =
 	"  -o, --objfile        specify the object file to read from.         \n"
 ;
 
-#define ERR(string, args...)				\
-	do {						\
-		fprintf(stderr, "\n");			\
-		fprintf(stderr, string, ##args);	\
-		fprintf(stderr, "\n");			\
-	} while (0)
+static void ERR(char const *const string, ...)
+{
+	va_list args;
+	va_start(args, string);
+
+	fprintf(stderr, "\n");
+	fprintf(stderr, string, args);
+	fprintf(stderr, "\n");
+
+	va_end(args);
+}
 
 /*
  * This should only be printed when the user passes -h or --help as a flag.
@@ -74,7 +79,7 @@ static void error(unsigned long long error, unsigned long long mul,
 void errhandle(struct program const *prog)
 {
 	if (errcount > 1) {
-		ERR("There were some error's while parsing your options.");
+		ERR("There were some error's while parsing your options.", 0);
 	} else {
 		ERR("There was an error while parsing your options.");
 	}

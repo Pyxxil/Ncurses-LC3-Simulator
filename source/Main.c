@@ -22,9 +22,7 @@ int main(int argc, char **argv)
 		errhandle(&prog);
 	} else {
 		if (errval & ASSEMBLE) {
-			if (!parse(prog.objfile)) {
-				return 1;
-			}
+			parse(prog.objfile);
 		} else {
 			start_machine(&prog);
 		}

@@ -199,7 +199,7 @@ static void process(FILE *file, FILE *symFile)
 
 	fprintf(symFile, symTable);
 
-	bool origSeen = false, endSeen = false, doContinue = false;
+	bool origSeen = false, endSeen = false;
 	int c, currentLine = 0, errors = 0;
 	uint16_t pc = 0, instruction = 0;
 
@@ -238,24 +238,28 @@ static void process(FILE *file, FILE *symFile)
 					errors ++;
 					continue;
 				}
-				while (isspace(c = fgetc(file))) {
-					if (c == '\n') {
-						fprintf(stderr, "Line %d: "
-							"No address given for "
-							".ORIG directive.\n",
-							currentLine);
-						doContinue = true;
-						break;
-					}
+
+				skipWhitespace(file);
+				c = fgetc(file);
+
+				if (c == '\n' || c == ';') {
+					fprintf(stderr, "Line %d: No address "
+						"given for .ORIG directive.\n",
+						currentLine);
+					errors++;
+					continue;
 				}
 
-				if (doContinue)
-					continue;
-
+				ungetc(c, file);
 				fscanf(file, "%99s", operand1);
-				instruction = (uint16_t) strtoul(
-						operand1, &end, 16);
-				pc = instruction;
+
+				if (operand1[0] == 'x' || operand1[0] == 'X') {
+					instruction = (uint16_t) strtoul(
+							operand1 + 1, &end, 16);
+				} else {
+					instruction = (uint16_t) strtoul(operand1,
+						&end, 16);
+				}
 
 				if (*end) {
 					fprintf(stderr, "Line %d: "
@@ -264,6 +268,8 @@ static void process(FILE *file, FILE *symFile)
 					errors++;
 					continue;
 				}
+
+				pc = instruction;
 				origSeen = true;
 			} else if (!uppercmp(line, ".BLKW")) {
 				fscanf(file, "%s", line);
@@ -553,9 +559,16 @@ bool parse(char const *fileName)
 					continue;
 				}
 
+				ungetc(c, file);
 				fscanf(file, "%99s", operand1);
-				instruction = (uint16_t) strtoul(
-						operand1, &end, 16);
+
+				if (operand1[0] == 'x' || operand1[0] == 'X') {
+					instruction = (uint16_t) strtoul(
+							operand1 + 1, &end, 16);
+				} else {
+					instruction = (uint16_t) strtoul(operand1,
+						&end, 16);
+				}
 
 				if (*end) {
 					fprintf(stderr, "Line %d: "
@@ -690,9 +703,12 @@ bool parse(char const *fileName)
 				if (c == '#' || isdigit(c) || c == '-') {
 					if (c == '0' && ((c = fgetc(file)) == 'x'
 							|| c == 'X')) {
-						for (size_t i = 1; isxdigit(c = fgetc(file)); i++) {
+						operand1[0] = '0';
+						operand1[1] = 'x';
+						for (size_t i = 2; isxdigit(c = fgetc(file)); i++) {
 							operand1[i] = c;
 						}
+						tmp = 16;
 					} else {
 						tmp = 0;
 						if (c == '#') {
@@ -707,11 +723,15 @@ bool parse(char const *fileName)
 						for (; isdigit(c = fgetc(file)); tmp++) {
 							operand1[tmp] = c;
 						}
+						tmp = 10;
 					}
 				} else if (c == 'x' || c == 'X') {
-					for (size_t i = 1; isxdigit(c = fgetc(file)); i++) {
+					operand1[0] = '0';
+					operand1[1] = 'x';
+					for (size_t i = 2; isxdigit(c = fgetc(file)); i++) {
 						operand1[i] = c;
 					}
+						tmp = 16;
 				} else {
 					fprintf(stderr, "  Line %d: Invalid literal for .FILL.\n",
 						currentLine);
@@ -722,15 +742,6 @@ bool parse(char const *fileName)
 				if (!endOfLine(".FILL", file, &currentLine)) {
 					errors++;
 					continue;
-				}
-
-				if (operand1[0] == 'x' || operand1[0] == 'X' ||
-						(operand1[0] == '0' &&
-						(operand1[1] == 'x' ||
-						operand1[1] == 'X'))) {
-					tmp = 16;
-				} else {
-					tmp = 10;
 				}
 
 				instruction = (int) strtol(operand1, &end, tmp);
@@ -1651,17 +1662,14 @@ bool parse(char const *fileName)
 			} else if (!uppercmp(line, "LD")) {
 				if (origSeen)
 					pc++;
-				while (isspace(c = fgetc(file))) {
-					if (c == '\n') {
-						fprintf(stderr, "  Line %d: "
-							"No operands supplied to"
-							" LD.\n", currentLine);
-						doContinue = true;
-						break;
-					}
-				}
 
-				if (doContinue) {
+				skipWhitespace(file);
+				c = fgetc(file);
+
+				if (c == '\n' || c == ';') {
+					fprintf(stderr, "  Line %d: No operands"
+						" supplied to LD.\n",
+						currentLine);
 					errors++;
 					continue;
 				}
@@ -1754,17 +1762,14 @@ bool parse(char const *fileName)
 			} else if (!uppercmp(line, "LDI")) {
 				if (origSeen)
 					pc++;
-				while (isspace(c = fgetc(file))) {
-					if (c == '\n') {
-						fprintf(stderr, "  Line %d: "
-							"No operands supplied to"
-							" LDI.\n", currentLine);
-						doContinue = true;
-						break;
-					}
-				}
 
-				if (doContinue) {
+				skipWhitespace(file);
+				c = fgetc(file);
+
+				if (c == '\n' || c == ';') {
+					fprintf(stderr, "  Line %d: No operands"
+						" supplied to LDI.\n",
+						currentLine);
 					errors++;
 					continue;
 				}
@@ -1853,21 +1858,19 @@ bool parse(char const *fileName)
 				instruction |= (tmp & 0x1ff);
 
 				objWrite(instruction, objFile);
-				printf("LDI  %s  %s (%d spaces away)\n", operand1, operand2, tmp);
+				printf("LDI  %s  %s (%d spaces away)\n",
+					operand1, operand2, tmp);
 			} else if (!uppercmp(line, "LDR")) {
 				if (origSeen)
 					pc++;
-				while (isspace(c = fgetc(file))) {
-					if (c == '\n') {
-						fprintf(stderr, "  Line %d: "
-							"No operands supplied to"
-							" AND.\n", currentLine);
-						doContinue = true;
-						break;
-					}
-				}
 
-				if (doContinue) {
+				skipWhitespace(file);
+				c = fgetc(file);
+
+				if (c == '\n' || c == ';') {
+					fprintf(stderr, "  Line %d: No operands"
+						" supplied to LDR.\n",
+						currentLine);
 					errors++;
 					continue;
 				}
@@ -2096,20 +2099,18 @@ bool parse(char const *fileName)
 			} else if (!uppercmp(line, "ST")) {
 				if (origSeen)
 					pc++;
-				while (isspace(c = fgetc(file))) {
-					if (c == '\n') {
-						fprintf(stderr, "  Line %d: "
-							"No operands supplied to"
-							" ST.\n", currentLine);
-						doContinue = true;
-						break;
-					}
-				}
 
-				if (doContinue) {
+				skipWhitespace(file);
+				c = fgetc(file);
+
+				if (c == '\n' || c == ';') {
+					fprintf(stderr, "  Line %d: No operands"
+						" supplied to ST.\n",
+						currentLine);
 					errors++;
 					continue;
 				}
+
 
 				if (c != 'R' && c != 'r') {
 					while ((c = fgetc(file)) != '\n');
@@ -2309,7 +2310,8 @@ bool parse(char const *fileName)
 				instruction |= (tmp & 0x1ff);
 
 				objWrite(instruction, objFile);
-				printf("STI %s  %s (%d spaces away)\n", operand1, operand2, tmp);
+				printf("STI %s  %s (%d spaces away)\n",
+					operand1, operand2, tmp);
 			} else if (!uppercmp(line, "STR")) {
 				if (origSeen)
 					pc++;
@@ -2318,8 +2320,8 @@ bool parse(char const *fileName)
 				c = fgetc(file);
 
 				if (c == '\n' || c == ';') {
-					fprintf(stderr, "  Line %d: No operands "
-						"supplied to  STR.\n",
+					fprintf(stderr, "  Line %d: No operands"
+						" supplied to  STR.\n",
 						currentLine);
 					errors++;
 					continue;
@@ -2340,8 +2342,8 @@ bool parse(char const *fileName)
 				if (c < '0' || c > '7') {
 					while ((c = fgetc(file)) != '\n');
 					fprintf(stderr, "Line %d: No such "
-						"register (R%c).\n", currentLine,
-						c);
+						"register (R%c).\n",
+						currentLine, c);
 					currentLine++;
 					errors++;
 					continue;
@@ -2387,8 +2389,8 @@ bool parse(char const *fileName)
 				if (c < '0' || c > '7') {
 					while ((c = fgetc(file)) != '\n');
 					fprintf(stderr, "Line %d: No such "
-						"register (R%c).\n", currentLine,
-						c);
+						"register (R%c).\n",
+						currentLine, c);
 					currentLine++;
 					errors++;
 					continue;
@@ -2485,53 +2487,60 @@ bool parse(char const *fileName)
 				instruction |= (operand2[1] - 0x30) << 6;
 
 				if (operand3[0] == '#') {
-					tmp = (int16_t) strtol(operand3 + 1, &end, 10);
+					tmp = (int16_t) strtol(operand3 + 1,
+							&end, 10);
 					if (*end) {
 						fprintf(stderr, "  Line %d: "
-							"Invalid literal for base 10.\n",
+							"Invalid literal for "
+							"base 10.\n",
 							currentLine);
 						errors++;
 						continue;
 					}
 					if (tmp < -16 || tmp > 15) {
 						fprintf(stderr, "  Line %d: "
-							"Immediate value requires "
-							"more than 5 bits.\n",
-							currentLine);
+							"Immediate value "
+							"requires more than 5 "
+							"bits.\n", currentLine);
 						errors++;
 						continue;
 					}
 				} else if (operand3[0] == '-') {
-					tmp = (int16_t) strtol(operand3, &end, 10);
+					tmp = (int16_t) strtol(operand3,
+							&end, 10);
 					if (*end) {
 						fprintf(stderr, "  Line %d: "
-							"Invalid literal for base 10.\n",
+							"Invalid literal for "
+							"base 10.\n",
 							currentLine);
 						errors++;
 						continue;
 					}
 					if (tmp < -32 || tmp > 31) {
 						fprintf(stderr, "  Line %d: "
-							"Immediate value requires "
-							"more than 5 bits.\n",
-							currentLine);
+							"Immediate value "
+							"requires more than 5 "
+							"bits.\n", currentLine);
 						errors++;
 						continue;
 					}
-				} else if (operand3[0] == 'x' || operand3[0] == 'X') {
-					tmp = (int16_t) strtol(operand3, &end, 16);
+				} else if (operand3[0] == 'x' ||
+						operand3[0] == 'X') {
+					tmp = (int16_t) strtol(operand3,
+							&end, 16);
 					if (*end) {
 						fprintf(stderr, "  Line %d: "
-							"Invalid literal for base 16.\n",
+							"Invalid literal for "
+							"base 16.\n",
 							currentLine);
 						errors++;
 						continue;
 					}
 					if (tmp < -32 || tmp > 31) {
 						fprintf(stderr, "  Line %d: "
-							"Immediate value requires "
-							"more than 5 bits.\n",
-							currentLine);
+							"Immediate value "
+							"requires more than 5 "
+							"bits.\n", currentLine);
 						errors++;
 						continue;
 					}
@@ -2539,7 +2548,8 @@ bool parse(char const *fileName)
 				instruction |= (tmp & 0x3f);
 
 				objWrite(instruction, objFile);
-				printf("STR  %s  %s  %s\n", operand1, operand2, operand3);
+				printf("STR  %s  %s  %s\n", operand1, operand2,
+						operand3);
 			} else if (!uppercmp(line, "RET")) {
 				if (origSeen)
 					pc++;
@@ -2608,7 +2618,8 @@ bool parse(char const *fileName)
 
 				if (!uppercmp(line, "GETC")) {
 					instruction = 0xf020;
-				} else if (!uppercmp(line, "PUTC") || !uppercmp(line, "OUT")) {
+				} else if (!uppercmp(line, "PUTC") ||
+						!uppercmp(line, "OUT")) {
 					instruction = 0xf021;
 				} else if (!uppercmp(line, "PUTS")) {
 					instruction = 0xf022;
