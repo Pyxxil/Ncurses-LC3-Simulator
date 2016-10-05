@@ -52,6 +52,47 @@ static uint16_t nzp(char const *const _nzp)
 	return __nzp;
 }
 
+static void skipWhitespace(FILE *file)
+{
+	int c = 0;
+	while ((c = fgetc(file)) != EOF && isspace(c)) {
+		if (c == '\n')
+			break;
+	}
+	ungetc(c, file);
+}
+
+static void nextLine(FILE *file)
+{
+	int c = 0;
+	while ((c = fgetc(file)) != '\n' && c != EOF);
+	ungetc(c, file);
+}
+
+static void objWrite(uint16_t instruction, FILE *objFile)
+{
+	unsigned char bytes[2];
+	bytes[0] = (instruction & 0xff00) >> 8;
+	bytes[1] = instruction & 0xff;
+	fwrite(bytes, 2, 1, objFile);
+}
+
+static bool endOfLine(char const *const instruction,
+		FILE *file, int const *const line)
+{
+	skipWhitespace(file);
+	int c = fgetc(file);
+	if (c != ';' && c != '\n') {
+		fprintf(stderr, "  Line %d: Incorrect number of arguments "
+			"supplied to %s.\n", *line, instruction);
+		nextLine(file);
+		return false;
+	}
+
+	ungetc(c, file);
+	return true;
+}
+
 /*
  * Copy the contents of one string to another, allocating enough memory to the
  * string we want to copy to.
@@ -87,6 +128,7 @@ static void free_table(struct symbolTable *table)
 	}
 	if (NULL != table->next) {
 		free_table(table->next);
+		free(table->next);
 	}
 }
 
@@ -98,14 +140,16 @@ static struct symbol* findSymbol(char const *const name)
 		return NULL;
 	}
 
-	while (1) {
+	while (NULL != symTable->next) {
 		if (!strcmp(symTable->sym->name, name)) {
 			return symTable->sym;
 		}
-		if (symTable->next == NULL) {
-			return NULL;
-		}
 		symTable = symTable->next;
+	}
+	if (!strcmp(symTable->sym->name, name)) {
+		return symTable->sym;
+	} else {
+		return NULL;
 	}
 }
 
@@ -163,17 +207,18 @@ static void process(FILE *file, FILE *symFile)
 
 	printf("STARTING FIRST PASS...\n");
 
-	while ((c = fgetc(file)) != EOF) {
-		if (isspace(c)) {
-			if (c == '\n') {
-				currentLine++;
-				continue;
-			}
+	while (1) {
+		skipWhitespace(file);
+
+		c = fgetc(file);
+
+		if (c == EOF) {
+			break;
+		} else if (c == '\n') {
+			currentLine++;
+			continue;
 		} else if (c == ';') {
-			while ((c = fgetc(file)) != '\n' && c != EOF);
-			if (c == '\n') {
-				currentLine++;
-			}
+			nextLine(file);
 			continue;;
 		} else if (c == ':') {
 			continue;
@@ -223,12 +268,8 @@ static void process(FILE *file, FILE *symFile)
 			} else if (!uppercmp(line, ".BLKW")) {
 				fscanf(file, "%s", line);
 
-				while (isspace(c = fgetc(file))) {
-					if (c == '\n') {
-						break;
-					}
-				}
-
+				skipWhitespace(file);
+				c = fgetc(file);
 				if (c != ';' && c != '\n') {
 					fprintf(stderr, "  Line %d: Invalid "
 						"number of arguments supplied "
@@ -255,7 +296,7 @@ static void process(FILE *file, FILE *symFile)
 					}
 				} else if (line[0] == 'x' || line[0] == 'X' ||
 						(line[0] == '0' && (line[1] == 'x'
-								    || line[1] == 'X'))) {
+								|| line[1] == 'X'))) {
 					instruction = (int16_t) strtol(line, &end, 16);
 					if (*end) {
 						fprintf(stderr, "  Line %d: "
@@ -292,11 +333,8 @@ static void process(FILE *file, FILE *symFile)
 				while (instruction--)
 					pc++;
 			} else if (!uppercmp(line, ".STRINGZ")) {
-				while (isspace(c = fgetc(file))) {
-					if (c == '\n') {
-						break;
-					}
-				}
+				skipWhitespace(file);
+				c = fgetc(file);
 
 				if (c != '"') {
 					ungetc(c, file);
@@ -332,17 +370,11 @@ static void process(FILE *file, FILE *symFile)
 			} else if (!uppercmp(line, ".FILL")) {
 				if (origSeen)
 					pc++;
-				while ((c = fgetc(file)) != '\n' && c != EOF);
-				if (c == '\n') {
-					currentLine++;
-				}
+				nextLine(file);
 				continue;
 			} else if (!uppercmp(line, ".END")) {
 				endSeen = true;
-				while ((c = fgetc(file)) != '\n' && c != EOF);
-				if (c == '\n') {
-					currentLine++;
-				}
+				nextLine(file);
 				continue;
 			}
 		} else {
@@ -371,15 +403,11 @@ static void process(FILE *file, FILE *symFile)
 					!uppercmp(line, "LEA")    ||
 					!uppercmp(line, "JMP")    ||
 					!uppercmp(line, "IN")) {
-				while ((c = fgetc(file)) != '\n' && c != EOF);
-				if (c == '\n') {
-					currentLine++;
-				}
 				if (origSeen)
 					pc++;
+				nextLine(file);
 			} else {
 				end = strchr(line, ':');
-				printf("  Line %d: Found label '%s'\n", currentLine, line);
 				if (NULL != end) {
 					char *colon = end + strlen(end) - 1;
 					for (; colon != end; colon--) {
@@ -388,8 +416,8 @@ static void process(FILE *file, FILE *symFile)
 					}
 					ungetc(*colon, file);
 					*colon = '\0';
-					printf("    Label changed to '%s'\n", line);
 				}
+				printf("FOUND LABEL ==> %s  AT %#x\n", line, pc);
 				if (addSymbol(line, pc)) {
 					fprintf(stderr, "  Line %d: "
 						"Multiple definitions of label "
@@ -412,53 +440,54 @@ bool parse(char const *fileName)
 {
 	FILE *file = fopen(fileName, "r");
 
-	char *fileBase = strstr(fileName, ".asm");
-	char *symFileName, *hexFileName, *binFileName, *objFileName;
-
 	FILE *symFile, *hexFile, *binFile, *objFile;
 
 	size_t length = strlen(fileName);
 
-	if (!fileBase) {
-		strmcpy(&symFileName, fileName);
-		strmcpy(&hexFileName, fileName);
-		strmcpy(&binFileName, fileName);
-		strmcpy(&objFileName, fileName);
+	char *symFileName = malloc(length + 5);
+	char *hexFileName = malloc(length + 5);
+	char *binFileName = malloc(length + 5);
+	char *objFileName = malloc(length + 5);
 
-		symFileName = (char *) realloc(symFileName, length + 5);
-		hexFileName = (char *) realloc(hexFileName, length + 5);
-		binFileName = (char *) realloc(binFileName, length + 5);
-		objFileName = (char *) realloc(objFileName, length + 5);
+	char *fileBase = strstr(fileName, ".asm");
+	if (NULL != fileBase) {
+		size_t pos = fileBase - fileName;
+
+		strncpy(symFileName, fileName, pos);
+		strcpy(symFileName + pos, ".sym");
+
+		strncpy(hexFileName, fileName, pos);
+		strcpy(hexFileName + pos, ".hex");
+
+		strncpy(binFileName, fileName, pos);
+		strcpy(binFileName + pos, ".bin");
+
+		strncpy(objFileName, fileName, pos);
+		strcpy(objFileName + pos, ".obj");
 	} else {
-		size_t base = fileBase - fileName;
-		symFileName = (char * ) malloc(length + 5);
-		hexFileName = (char * ) malloc(length + 5);
-		binFileName = (char * ) malloc(length + 5);
-		objFileName = (char * ) malloc(length + 5);
+		strcpy(symFileName, fileName);
+		strcat(symFileName, ".sym");
 
-		strncpy(symFileName, fileName, base);
-		strncpy(hexFileName, fileName, base);
-		strncpy(binFileName, fileName, base);
-		strncpy(objFileName, fileName, base);
+		strcpy(symFileName, fileName);
+		strcat(hexFileName, ".hex");
+
+		strcpy(symFileName, fileName);
+		strcat(binFileName, ".bin");
+
+		strcpy(symFileName, fileName);
+		strcat(objFileName, ".obj");
 	}
-
-	strcat(symFileName, ".sym");
-	strcat(hexFileName, ".hex");
-	strcat(binFileName, ".bin");
-	strcat(objFileName, ".obj");
 
 	symFile = fopen(symFileName, "w+");
 	hexFile = fopen(hexFileName, "w+");
 	binFile = fopen(binFileName, "w+");
 	objFile = fopen(objFileName, "wb+");
 
-
 	process(file, symFile);
 
 	printf("STARTING SECOND PASS...\n");
 
 	int c, currentLine = 1, errors = 0, commaCount = 0;
-	unsigned char bytes[2] = { 0 };
 
 	char line[100] = { 0 };
 	char label[100] = { 0 };
@@ -471,7 +500,7 @@ bool parse(char const *fileName)
 	uint16_t instruction = 0, pc = 0;
 	int16_t tmp = 0;
 
-	while ((c = fgetc(file)) != EOF) {
+	while (1) {
 		tmp = 0;
 		commaCount = 0;
 		doContinue = false;
@@ -481,12 +510,18 @@ bool parse(char const *fileName)
 		memset(operand2, 0, sizeof(operand2));
 		memset(operand3, 0, sizeof(operand3));
 
-		if (isspace(c)) {
-			if (c == '\n')
-				currentLine++;
-		} else if (c == ';') {
-			while ((c = fgetc(file)) != '\n' && c != -1);
+		skipWhitespace(file);
+
+		c = fgetc(file);
+
+		if (c == EOF) {
+			break;
+		} else if (c == '\n') {
 			currentLine++;
+			continue;
+		} else if (c == ';') {
+			nextLine(file);
+			continue;;
 		} else if (c == ':') {
 			continue;
 		} else if (c == '.') {
@@ -505,24 +540,22 @@ bool parse(char const *fileName)
 					errors ++;
 					continue;
 				}
-				while (isspace(c = fgetc(file))) {
-					if (c == '\n') {
-						fprintf(stderr, "Line %d: "
-							"No address given for "
-							".ORIG directive.\n",
-							currentLine);
-						doContinue = true;
-						break;
-					}
-				}
 
-				if (doContinue)
+				skipWhitespace(file);
+				c = fgetc(file);
+
+				if (c == '\n') {
+					fprintf(stderr, "Line %d: "
+						"No address given for "
+						".ORIG directive.\n",
+						currentLine);
+					errors++;
 					continue;
+				}
 
 				fscanf(file, "%99s", operand1);
 				instruction = (uint16_t) strtoul(
 						operand1, &end, 16);
-				pc = instruction;
 
 				if (*end) {
 					fprintf(stderr, "Line %d: "
@@ -531,41 +564,42 @@ bool parse(char const *fileName)
 					errors++;
 					continue;
 				}
-				bytes[0] = (instruction & 0xff00) >> 8;
-				bytes[1] = instruction & 0xff;
-				fwrite(bytes, 2, 1, objFile);
+
+				pc = instruction;
+				objWrite(instruction, objFile);
 				origSeen = true;
 				printf(".ORIG  %x\n", instruction);
 			} else if (!uppercmp(line, ".STRINGZ")) {
-				while (isspace(c = fgetc(file))) {
-					if (c == '\n') {
-						break;
-					}
-				}
+				skipWhitespace(file);
+				c = fgetc(file);
 
 				if (c != '"') {
-					ungetc(c, file);
 					fprintf(stderr, "  Line %d: No string "
 						"supplied to .STRINGZ.\n",
 						currentLine);
 					errors++;
 					continue;
 				}
+
 				memset(line, 0, 100);
 				for (size_t i = 0; (c = fgetc(file)) != '"' && i < 100; i++) {
 					if (c == '\\') {
 						switch (c = fgetc(file)) {
 						case 'n':
-							bytes[0] = 0;
-							bytes[1] = '\n';
+							line[i] = '\n';
+							instruction = 0x000a;
 							break;
 						case 't':
-							bytes[0] = 0;
-							bytes[1] = '\t';
+							line[i] = '\t';
+							instruction = 0x0009;
 							break;
 						case '"':
-							bytes[0] = 0;
-							bytes[1] = '"';
+							line[i] = '"';
+							instruction = 0x0022;
+							break;
+						case '\\':
+							line[i] = '\\';
+							instruction = 0x005c;
 							break;
 						default:
 							ungetc(c, file);
@@ -573,26 +607,20 @@ bool parse(char const *fileName)
 						}
 					} else {
 						line[i] = c;
-						bytes[0] = 0;
-						bytes[1] = c & 0xff;
+						instruction = c & 0xff;
 					}
 					pc++;
-					fwrite(bytes, 2, 1, objFile);
+					objWrite(instruction, objFile);
 				}
-					bytes[0] = 0;
-					bytes[1] = 0;
-					fwrite(bytes, 2, 1, objFile);
-				pc++; // Implicit null terminator
+				pc++;
+				objWrite(0, objFile); // Implicit null terminator
 
 				printf(".STRINGZ \"%s\"\n", line);
 			} else if (!uppercmp(line, ".BLKW")) {
 				fscanf(file, "%s", line);
 
-				while (isspace(c = fgetc(file))) {
-					if (c == '\n') {
-						break;
-					}
-				}
+				skipWhitespace(file);
+				c = fgetc(file);
 
 				if (c != ';' && c != '\n') {
 					fprintf(stderr, "  Line %d: Invalid "
@@ -602,6 +630,7 @@ bool parse(char const *fileName)
 				}
 
 				ungetc(c, file);
+
 				if (line[0] != '#' && line[0] != 'x' &&
 						line[0] != 'X' && !isdigit(line[0])) {
 					fprintf(stderr, "  Line %d: Invalid "
@@ -616,7 +645,7 @@ bool parse(char const *fileName)
 					}
 				} else if (line[0] == 'x' || line[0] == 'X' ||
 						(line[0] == '0' && (line[1] == 'x'
-								    || line[1] == 'X'))) {
+								|| line[1] == 'X'))) {
 					instruction = (int16_t) strtol(line, &end, 16);
 					if (*end) {
 						fprintf(stderr, "  Line %d: "
@@ -644,147 +673,77 @@ bool parse(char const *fileName)
 						currentLine);
 					continue;
 				}
-				bytes[0] = 0;
-				bytes[1] = 0;
+
+				pc += instruction;
 				while (instruction--) {
-					pc++;
-					fwrite(bytes, 2, 1, objFile);
-				}
-				printf(".BLKW  %s\n", line);
-			} else if (!uppercmp(line, ".FILL")) {
-				while (isspace(c = fgetc(file))) {
-					if (c == '\n') {
-						fprintf(stderr, "  Line %d: "
-							"No argument supplied for"
-							".FILL.\n", currentLine);
-						doContinue = true;
-						break;
-					}
+					objWrite(0, objFile);
 				}
 
-				if (doContinue) {
-					errors++;
-					continue;
-				}
-				operand1[0] = c;
+				printf(".BLKW  %s\n", line);
+			} else if (!uppercmp(line, ".FILL")) {
+				skipWhitespace(file);
+				c = fgetc(file);
+
+				if (origSeen)
+					pc++;
+
 				if (c == '#' || isdigit(c) || c == '-') {
 					if (c == '0' && ((c = fgetc(file)) == 'x'
 							|| c == 'X')) {
 						for (size_t i = 1; isxdigit(c = fgetc(file)); i++) {
 							operand1[i] = c;
 						}
-						if (!isspace(c) && c != ';') {
-							continue;
-						}
-						ungetc(c, file);
 					} else {
-						if (operand1[0] == '0') {
-							ungetc(c, file);
-						} else if (operand1[0] == '#') {
+						tmp = 0;
+						if (c == '#') {
 							if ((c = fgetc(file)) == '-') {
-								operand1[1] = c;
+								operand1[0] = c;
+								tmp = 1;
 								c = fgetc(file);
 							}
 						}
-
-						for (size_t i = 1; isdigit(c); i++) {
-							if (operand1[i])
-								i++;
-							operand1[i] = c;
-							c = fgetc(file);
-						}
-						if (!isspace(c) && c != ';') {
-							continue;
-						}
 						ungetc(c, file);
+
+						for (; isdigit(c = fgetc(file)); tmp++) {
+							operand1[tmp] = c;
+						}
 					}
 				} else if (c == 'x' || c == 'X') {
 					for (size_t i = 1; isxdigit(c = fgetc(file)); i++) {
 						operand1[i] = c;
 					}
-					if (!isspace(c) && c != ';') {
-						fprintf(stderr, "  Line %d: Too "
-							"many operands given for"
-							" .FILL.\n",
-							currentLine);
-						errors++;
-						continue;
-					}
-					ungetc(c, file);
-				}
-
-				while (isspace(c = fgetc(file))) {
-					if (c == '\n')
-						break;
-				}
-
-				if (c != ';' && c != '\n') {
-					fprintf(stderr, "  Line %d: Too many "
-						"operands given for .FILL.\n",
+				} else {
+					fprintf(stderr, "  Line %d: Invalid literal for .FILL.\n",
 						currentLine);
 					errors++;
 					continue;
 				}
 
-				if (operand1[0] == '#') {
-					tmp = (int16_t) strtol(operand1 + 1, &end, 10);
-					if (*end) {
-						fprintf(stderr, "  Line %d: "
-							"Invalid literal for base 10.\n",
-							currentLine);
-						errors++;
-						continue;
-					}
-					if (tmp < -32768 || tmp > 32767) {
-						fprintf(stderr, "  Line %d: "
-							"Immediate value requires "
-							"more than 16 bits.\n",
-							currentLine);
-						errors++;
-						continue;
-					}
-					instruction = tmp;
-				} else if (operand1[0] == '-') {
-					tmp = (int16_t) strtol(operand1, &end, 10);
-					if (*end) {
-						fprintf(stderr, "  Line %d: "
-							"Invalid literal for base 10.\n",
-							currentLine);
-						errors++;
-						continue;
-					}
-					if (tmp < -32768 || tmp > 32767) {
-						fprintf(stderr, "  Line %d: "
-							"Immediate value requires "
-							"more than 16 bits.\n",
-							currentLine);
-						errors++;
-						continue;
-					}
-					instruction = tmp;
-				} else if (operand1[0] == 'x' || operand1[0] == 'X') {
-					tmp = (int16_t) strtol(operand1, &end, 16);
-					if (*end) {
-						fprintf(stderr, "  Line %d: "
-							"Invalid literal for base 16.\n",
-							currentLine);
-						errors++;
-						continue;
-					}
-					if (tmp < -32768 || tmp > 32767) {
-						fprintf(stderr, "  Line %d: "
-							"Immediate value requires "
-							"more than 16 bits.\n",
-							currentLine);
-						errors++;
-						continue;
-					}
-					instruction = tmp;
+				if (!endOfLine(".FILL", file, &currentLine)) {
+					errors++;
+					continue;
 				}
 
-				bytes[0] = (instruction & 0xff00) >> 8;
-				bytes[1] = instruction & 0xff;
-				fwrite(bytes, 2, 1, objFile);
+				if (operand1[0] == 'x' || operand1[0] == 'X' ||
+						(operand1[0] == '0' &&
+						(operand1[1] == 'x' ||
+						operand1[1] == 'X'))) {
+					tmp = 16;
+				} else {
+					tmp = 10;
+				}
+
+				instruction = (int) strtol(operand1, &end, tmp);
+
+				if (*end) {
+					fprintf(stderr, "  Line %d: Invalid "
+						"literal for base %d.\n",
+						currentLine, tmp);
+					errors++;
+					continue;
+				}
+
+				objWrite(instruction, objFile);
 				printf(".FILL  #%d\n", instruction);
 			} else if (!uppercmp(line, ".END")) {
 				printf(".END\n");
@@ -824,7 +783,11 @@ bool parse(char const *fileName)
 					continue;
 				}
 
-				instruction = nzp(line + 2);
+				if (strlen(line) == 2) {
+					instruction = 0x7 << 9;
+				} else {
+					instruction = nzp(line + 2);
+				}
 
 				if (instruction & 7) {
 					fprintf(stderr, "  Line %d: "
@@ -833,21 +796,13 @@ bool parse(char const *fileName)
 					errors ++;
 					continue;
 				}
+
 				instruction &= 0x0e00;
 
-				while (isspace(c = fgetc(file)) && c != EOF);
-
-				ungetc(c, file);
-
+				skipWhitespace(file);
 				fscanf(file, "%99s", operand1);
 
-				c = fgetc(file);
-				ungetc(c, file);
-
-				if (!isspace(c) || c == ';') {
-					fprintf(stderr, "  Line %d: "
-						"Label too long.\n",
-						currentLine);
+				if (!endOfLine(line, file, &currentLine)) {
 					errors++;
 					continue;
 				}
@@ -871,24 +826,19 @@ bool parse(char const *fileName)
 				}
 
 				instruction |= (tmp & 0x1ff);
-				bytes[0] = (instruction & 0xff00) >> 8;
-				bytes[1] = instruction & 0xff;
-				fwrite(bytes, 2, 1, objFile);
+				objWrite(instruction, objFile);
 				printf("%s  %s (%d spaces away)\n", line, operand1, tmp);
 			} else if (!uppercmp(line, "AND")) {
 				if (origSeen)
 					pc++;
-				while (isspace(c = fgetc(file))) {
-					if (c == '\n') {
-						fprintf(stderr, "  Line %d: "
-							"No operands supplied to"
-							" AND.\n", currentLine);
-						doContinue = true;
-						break;
-					}
-				}
 
-				if (doContinue) {
+				skipWhitespace(file);
+				c = fgetc(file);
+
+				if (c == '\n' || c == ';') {
+					fprintf(stderr, "  Line %d: No operands "
+						"supplied to  AND.\n",
+						currentLine);
 					errors++;
 					continue;
 				}
@@ -1056,10 +1006,8 @@ bool parse(char const *fileName)
 					ungetc(c, file);
 				}
 
-				while (isspace(c = fgetc(file))) {
-					if (c == '\n')
-						break;
-				}
+				skipWhitespace(file);
+				c = fgetc(file);
 
 				if (c != ';' && c != '\n') {
 					fprintf(stderr, "  Line %d: Too many "
@@ -1135,24 +1083,18 @@ bool parse(char const *fileName)
 					instruction |= tmp & 0x1f;
 				}
 
-				bytes[0] = (instruction & 0xff00) >> 8;
-				bytes[1] = instruction & 0xff;
-				fwrite(bytes, 2, 1, objFile);
+				objWrite(instruction, objFile);
 				printf("AND  %s  %s  %s\n", operand1, operand2, operand3);
 			} else if (!uppercmp(line, "ADD")) {
 				if (origSeen)
 					pc++;
-				while (isspace(c = fgetc(file))) {
-					if (c == '\n') {
-						fprintf(stderr, "  Line %d: "
-							"No operands supplied to"
-							" ADD.\n", currentLine);
-						doContinue = true;
-						break;
-					}
-				}
 
-				if (doContinue) {
+				skipWhitespace(file);
+				c = fgetc(file);
+				if (c == '\n' || c == ';') {
+					fprintf(stderr, "  Line %d: No operands "
+						"supplied to ADD.\n",
+						currentLine);
 					errors++;
 					continue;
 				}
@@ -1320,7 +1262,6 @@ bool parse(char const *fileName)
 					ungetc(c, file);
 				}
 
-				printf("ADD  %s  %s  %s\n", operand1, operand2, operand3);
 				instruction = 0x1000;
 
 				instruction |= (operand1[1] - 0x30) << 9;
@@ -1387,23 +1328,19 @@ bool parse(char const *fileName)
 					instruction |= tmp & 0x1f;
 				}
 
-				bytes[0] = (instruction & 0xff00) >> 8;
-				bytes[1] = instruction & 0xff;
-				fwrite(bytes, 2, 1, objFile);
+				objWrite(instruction, objFile);
+				printf("ADD  %s  %s  %s\n", operand1, operand2, operand3);
 			} else if (!uppercmp(line, "NOT")) {
 				if (origSeen)
 					pc++;
-				while (isspace(c = fgetc(file))) {
-					if (c == '\n') {
-						fprintf(stderr, "  Line %d: "
-							"No operands supplied to"
-							" NOT.\n", currentLine);
-						doContinue = true;
-						break;
-					}
-				}
 
-				if (doContinue) {
+				skipWhitespace(file);
+				c = fgetc(file);
+
+				if (c == '\n' || c == ';') {
+					fprintf(stderr, "  Line %d: No operands "
+						"supplied to NOT.\n",
+						currentLine);
 					errors++;
 					continue;
 				}
@@ -1499,10 +1436,7 @@ bool parse(char const *fileName)
 				instruction |= (operand1[1] - 0x30) << 9;
 				instruction |= (operand2[1] - 0x30) << 6;
 
-				bytes[0] = (instruction & 0xff00) >> 8;
-				bytes[1] = instruction & 0xff;
-				fwrite(bytes, 2, 1, objFile);
-
+				objWrite(instruction, objFile);
 				printf("NOT  %s  %s\n", operand1, operand2);
 			} else if (!uppercmp(line, "JMP")) {
 				while (isspace(c = fgetc(file))) {
@@ -1564,19 +1498,14 @@ bool parse(char const *fileName)
 				instruction = 0xc000;
 				instruction |= (operand1[1] - 0x30) << 6;
 
-				bytes[0] = (instruction & 0xff00) >> 8;
-				bytes[1] = instruction & 0xff;
-				fwrite(bytes, 2, 1, objFile);
-
+				objWrite(instruction, objFile);
 				printf("JMP  %s\n", operand1);
 			} else if (!uppercmp(line, "JSR")) {
 				if (origSeen)
 					pc++;
-				instruction - 0x4800;
+				instruction = 0x4800;
 
-				while (isspace(c = fgetc(file)) && c != EOF);
-
-				ungetc(c, file);
+				skipWhitespace(file);
 
 				fscanf(file, "%99s", operand1);
 
@@ -1609,10 +1538,8 @@ bool parse(char const *fileName)
 					continue;
 				}
 
-				instruction |= (tmp & 0x7fff);
-				bytes[0] = (instruction & 0xff00) >> 8;
-				bytes[1] = instruction & 0xff;
-				fwrite(bytes, 2, 1, objFile);
+				instruction |= (tmp & 0x7ff);
+				objWrite(instruction, objFile);
 				printf("JSR  %s (%d spaces away)\n", operand1, tmp);
 			} else if (!uppercmp(line, "JSRR")) {
 				if (origSeen)
@@ -1701,7 +1628,7 @@ bool parse(char const *fileName)
 				if (NULL == sym) {
 					fprintf(stderr, "  Line %d: Invalid "
 						"label '%s'.\n", currentLine,
-						operand1);
+						operand2);
 					errors++;
 					continue;
 				}
@@ -1719,10 +1646,7 @@ bool parse(char const *fileName)
 				instruction |= (operand1[1] - 0x30) << 9;
 				instruction |= (tmp & 0x1ff);
 
-				bytes[0] = (instruction & 0xff00) >> 8;
-				bytes[1] = instruction & 0xff;
-				fwrite(bytes, 2, 1, objFile);
-
+				objWrite(instruction, objFile);
 				printf("LEA  %s  %s  (%d spaces away)\n", operand1, operand2, tmp);
 			} else if (!uppercmp(line, "LD")) {
 				if (origSeen)
@@ -1825,10 +1749,7 @@ bool parse(char const *fileName)
 				instruction |= (operand1[1] - 0x30) << 9;
 				instruction |= (tmp & 0x1ff);
 
-				bytes[0] = (instruction & 0xff00) >> 8;
-				bytes[1] = instruction & 0xff;
-				fwrite(bytes, 2, 1, objFile);
-
+				objWrite(instruction, objFile);
 				printf("LD  %s  %s(%d spaces away)\n", operand1, operand2, tmp);
 			} else if (!uppercmp(line, "LDI")) {
 				if (origSeen)
@@ -1931,10 +1852,7 @@ bool parse(char const *fileName)
 				instruction |= (operand1[1] - 0x30) << 9;
 				instruction |= (tmp & 0x1ff);
 
-				bytes[0] = (instruction & 0xff00) >> 8;
-				bytes[1] = instruction & 0xff;
-				fwrite(bytes, 2, 1, objFile);
-
+				objWrite(instruction, objFile);
 				printf("LDI  %s  %s (%d spaces away)\n", operand1, operand2, tmp);
 			} else if (!uppercmp(line, "LDR")) {
 				if (origSeen)
@@ -2115,12 +2033,11 @@ bool parse(char const *fileName)
 						currentLine);
 				}
 
-				instruction = 0x7000;
+				instruction = 0x6000;
 				instruction |= (operand1[1] - 0x30) << 9;
 				instruction |= (operand2[1] - 0x30) << 6;
 
 				if (operand3[0] == '#') {
-					instruction |= 0x20;
 					tmp = (int16_t) strtol(operand3 + 1, &end, 10);
 					if (*end) {
 						fprintf(stderr, "  Line %d: "
@@ -2137,7 +2054,6 @@ bool parse(char const *fileName)
 						errors++;
 						continue;
 					}
-					instruction |= tmp & 0x1f;
 				} else if (operand3[0] == '-') {
 					tmp = (int16_t) strtol(operand3, &end, 10);
 					if (*end) {
@@ -2155,7 +2071,6 @@ bool parse(char const *fileName)
 						errors++;
 						continue;
 					}
-					instruction |= tmp & 0x3f;
 				} else if (operand3[0] == 'x' || operand3[0] == 'X') {
 					tmp = (int16_t) strtol(operand3, &end, 16);
 					if (*end) {
@@ -2173,12 +2088,10 @@ bool parse(char const *fileName)
 						errors++;
 						continue;
 					}
-					instruction |= tmp & 0x3f;
 				}
+				instruction |= tmp & 0x3f;
 
-				bytes[0] = (instruction & 0xff00) >> 8;
-				bytes[1] = instruction & 0xff;
-				fwrite(bytes, 2, 1, objFile);
+				objWrite(instruction, objFile);
 				printf("LDR  %s  %s  %s\n", operand1, operand2, operand3);
 			} else if (!uppercmp(line, "ST")) {
 				if (origSeen)
@@ -2187,7 +2100,7 @@ bool parse(char const *fileName)
 					if (c == '\n') {
 						fprintf(stderr, "  Line %d: "
 							"No operands supplied to"
-							" LDI.\n", currentLine);
+							" ST.\n", currentLine);
 						doContinue = true;
 						break;
 					}
@@ -2213,7 +2126,7 @@ bool parse(char const *fileName)
 				if (c < '0' || c > '7') {
 					while ((c = fgetc(file)) != '\n');
 					fprintf(stderr, "Line %d: No such "
-						"register (%c).\n", currentLine,
+						"register (R%c).\n", currentLine,
 						c);
 					currentLine++;
 					errors++;
@@ -2258,6 +2171,12 @@ bool parse(char const *fileName)
 					errors++;
 					continue;
 				}
+
+				if (!endOfLine("STR", file, &currentLine)) {
+					errors++;
+					continue;
+				}
+
 
 				struct symbol *sym = findSymbol(operand2);
 				if (NULL == sym) {
@@ -2281,21 +2200,19 @@ bool parse(char const *fileName)
 				instruction |= (operand1[1] - 0x30) << 9;
 				instruction |= (tmp & 0x1ff);
 
-				bytes[0] = (instruction & 0xff00) >> 8;
-				bytes[1] = instruction & 0xff;
-				fwrite(bytes, 2, 1, objFile);
+				objWrite(instruction, objFile);
 				printf("ST %s  %s (%d spaces away)\n", operand1, operand2, tmp);
 			} else if (!uppercmp(line, "STI")) {
 				if (origSeen)
 					pc++;
-				while (isspace(c = fgetc(file))) {
-					if (c == '\n') {
-						fprintf(stderr, "  Line %d: "
-							"No operands supplied to"
-							" STI.\n", currentLine);
-						doContinue = true;
-						break;
-					}
+
+				skipWhitespace(file);
+				c = fgetc(file);
+
+				if (c == '\n' || c == ';') {
+					fprintf(stderr, "  Line %d: No operands "
+						"supplied to  STI.\n",
+						currentLine);
 				}
 
 				if (doContinue) {
@@ -2318,7 +2235,7 @@ bool parse(char const *fileName)
 				if (c < '0' || c > '7') {
 					while ((c = fgetc(file)) != '\n');
 					fprintf(stderr, "Line %d: No such "
-						"register (%c).\n", currentLine,
+						"register (R%c).\n", currentLine,
 						c);
 					currentLine++;
 					errors++;
@@ -2360,6 +2277,11 @@ bool parse(char const *fileName)
 					fprintf(stderr, "  Line %d: "
 						"Label too long.\n",
 						currentLine);
+					errors++;
+					continue;
+				}
+
+				if (!endOfLine("STI", file, &currentLine)) {
 					errors++;
 					continue;
 				}
@@ -2386,24 +2308,19 @@ bool parse(char const *fileName)
 				instruction |= (operand1[1] - 0x30) << 9;
 				instruction |= (tmp & 0x1ff);
 
-				bytes[0] = (instruction & 0xff00) >> 8;
-				bytes[1] = instruction & 0xff;
-				fwrite(bytes, 2, 1, objFile);
+				objWrite(instruction, objFile);
 				printf("STI %s  %s (%d spaces away)\n", operand1, operand2, tmp);
 			} else if (!uppercmp(line, "STR")) {
 				if (origSeen)
 					pc++;
-				while (isspace(c = fgetc(file))) {
-					if (c == '\n') {
-						fprintf(stderr, "  Line %d: "
-							"No operands supplied to"
-							" STR.\n", currentLine);
-						doContinue = true;
-						break;
-					}
-				}
 
-				if (doContinue) {
+				skipWhitespace(file);
+				c = fgetc(file);
+
+				if (c == '\n' || c == ';') {
+					fprintf(stderr, "  Line %d: No operands "
+						"supplied to  STR.\n",
+						currentLine);
 					errors++;
 					continue;
 				}
@@ -2423,7 +2340,7 @@ bool parse(char const *fileName)
 				if (c < '0' || c > '7') {
 					while ((c = fgetc(file)) != '\n');
 					fprintf(stderr, "Line %d: No such "
-						"register (%c).\n", currentLine,
+						"register (R%c).\n", currentLine,
 						c);
 					currentLine++;
 					errors++;
@@ -2470,7 +2387,7 @@ bool parse(char const *fileName)
 				if (c < '0' || c > '7') {
 					while ((c = fgetc(file)) != '\n');
 					fprintf(stderr, "Line %d: No such "
-						"register (%c).\n", currentLine,
+						"register (R%c).\n", currentLine,
 						c);
 					currentLine++;
 					errors++;
@@ -2505,7 +2422,7 @@ bool parse(char const *fileName)
 						c != 'X' && c != '-') {
 					while ((c = fgetc(file)) != '\n');
 					fprintf(stderr, "  Line %d: "
-						"Invalid operand for AND.\n",
+						"Invalid operand for STR.\n",
 						currentLine);
 					errors++;
 					continue;
@@ -2550,7 +2467,7 @@ bool parse(char const *fileName)
 					if (!isspace(c) && c != ';') {
 						fprintf(stderr, "  Line %d: Too "
 							"many operands given for"
-							" ADD.\n",
+							" STR.\n",
 							currentLine);
 						errors++;
 						continue;
@@ -2558,16 +2475,9 @@ bool parse(char const *fileName)
 					ungetc(c, file);
 				}
 
-				while (isspace(c = fgetc(file))) {
-					if (c == '\n')
-						break;
-				}
-				ungetc(c, file);
-
-				if (c != ';' && c != '\n') {
-					fprintf(stderr, "  Line %d: Too many "
-						"operands given for AND.\n",
-						currentLine);
+				if (!endOfLine("STR", file, &currentLine)) {
+					errors++;
+					continue;
 				}
 
 				instruction = 0x7000;
@@ -2628,15 +2538,19 @@ bool parse(char const *fileName)
 				}
 				instruction |= (tmp & 0x3f);
 
-
-				bytes[0] = (instruction & 0xff00) >> 8;
-				bytes[1] = instruction & 0xff;
-				fwrite(bytes, 2, 1, objFile);
+				objWrite(instruction, objFile);
 				printf("STR  %s  %s  %s\n", operand1, operand2, operand3);
 			} else if (!uppercmp(line, "RET")) {
 				if (origSeen)
 					pc++;
-				printf("RET ");
+
+				if (!endOfLine("RET", file, &currentLine)) {
+					errors++;
+					continue;
+				}
+
+				objWrite(0xc1c0, objFile);
+				printf("RET\n");
 			} else if (!uppercmp(line, "TRAP")) {
 				if (origSeen)
 					pc++;
@@ -2645,7 +2559,7 @@ bool parse(char const *fileName)
 					c = fgetc(file);
 				}
 
-				if (!fscanf(file, "%x", &tmp)) {
+				if (!fscanf(file, "%hx", &instruction)) {
 					fprintf(stderr, "  Line %d: Invalid "
 						"literal for base 16.\n",
 						currentLine);
@@ -2653,7 +2567,8 @@ bool parse(char const *fileName)
 					continue;
 				}
 
-				while (isspace(c) || isxdigit(c) || c == 'x' || c == 'X') {
+				while (isspace(c) || isxdigit(c) || c == 'x' ||
+						c == 'X') {
 					if (c == '\n') {
 						break;
 					}
@@ -2661,10 +2576,7 @@ bool parse(char const *fileName)
 				}
 				ungetc(c, file);
 
-				if (c != '\n' && c != ';') {
-					fprintf(stderr, "  Line %d: Too many "
-						"arguments provided for TRAP.\n",
-						currentLine);
+				if (!endOfLine("TRAP", file, &currentLine)) {
 					errors++;
 					continue;
 				}
@@ -2677,170 +2589,39 @@ bool parse(char const *fileName)
 				}
 				instruction = 0xf000 | tmp;
 
-				bytes[0] = (instruction & 0xff00) >> 8;
-				bytes[1] = instruction & 0xff;
-				fwrite(bytes, 2, 1, objFile);
-
+				objWrite(instruction, objFile);
 				printf("TRAP x%x\n", tmp);
-			} else if (!uppercmp(line, "HALT")) {
+			} else if (!uppercmp(line, "HALT")       ||
+					!uppercmp(line, "PUTS")  ||
+					!uppercmp(line, "PUTC")  ||
+					!uppercmp(line, "GETC")  ||
+					!uppercmp(line, "OUT")   ||
+					!uppercmp(line, "PUTSP") ||
+					!uppercmp(line, "IN")) {
 				if (origSeen)
 					pc++;
-				while (isspace(c = fgetc(file))) {
-					if (c == '\n') {
-						break;
-					}
-				}
-				ungetc(c, file);
-				if (c != ';' && c != '\n') {
-					fprintf(stderr, "  Line %d: Too many "
-						"operands supplied for GETC.\n",
-						currentLine);
+
+				if (!endOfLine(line, file, &currentLine)) {
 					errors++;
 					continue;
 				}
 
-				instruction = 0xf025;
-				bytes[0] = (instruction & 0xff00) >> 8;
-				bytes[1] = instruction & 0xff;
-				fwrite(bytes, 2, 1, objFile);
-
-				printf("HALT\n");
-			} else if (!uppercmp(line, "GETC")) {
-				if (origSeen)
-					pc++;
-				while (isspace(c = fgetc(file))) {
-					if (c == '\n') {
-						break;
-					}
-				}
-				ungetc(c, file);
-				if (c != ';' && c != '\n') {
-					fprintf(stderr, "  Line %d: Too many "
-						"operands supplied for GETC.\n",
-						currentLine);
-					errors++;
-					continue;
+				if (!uppercmp(line, "GETC")) {
+					instruction = 0xf020;
+				} else if (!uppercmp(line, "PUTC") || !uppercmp(line, "OUT")) {
+					instruction = 0xf021;
+				} else if (!uppercmp(line, "PUTS")) {
+					instruction = 0xf022;
+				} else if (!uppercmp(line, "IN")) {
+					instruction = 0xf023;
+				} else if (!uppercmp(line, "PUTSP")) {
+					instruction = 0xf024;
+				} else {
+					instruction = 0xf025;
 				}
 
-				instruction = 0xf020;
-				bytes[0] = (instruction & 0xff00) >> 8;
-				bytes[1] = instruction & 0xff;
-				fwrite(bytes, 2, 1, objFile);
-
-				printf("GETC\n");
-			} else if (!uppercmp(line, "PUTS")) {
-				if (origSeen)
-					pc++;
-				while (isspace(c = fgetc(file))) {
-					if (c == '\n') {
-						break;
-					}
-				}
-				ungetc(c, file);
-				if (c != ';' && c != '\n') {
-					fprintf(stderr, "  Line %d: Too many "
-						"operands supplied for PUTS.\n",
-						currentLine);
-					errors++;
-					continue;
-				}
-
-				instruction = 0xf022;
-				bytes[0] = (instruction & 0xff00) >> 8;
-				bytes[1] = instruction & 0xff;
-				fwrite(bytes, 2, 1, objFile);
-
-				printf("PUTS\n");
-			} else if (!uppercmp(line, "PUTC")) {
-				if (origSeen)
-					pc++;
-				while (isspace(c = fgetc(file))) {
-					if (c == '\n') {
-						break;
-					}
-				}
-				if (c != ';' && c != '\n') {
-					fprintf(stderr, "  Line %d: Too many "
-						"operands supplied for PUTC.\n",
-						currentLine);
-					errors++;
-					continue;
-				}
-
-				instruction = 0xf021;
-				bytes[0] = (instruction & 0xff00) >> 8;
-				bytes[1] = instruction & 0xff;
-				fwrite(bytes, 2, 1, objFile);
-
-				printf("PUTC\n");
-			} else if (!uppercmp(line, "OUT")) {
-				if (origSeen)
-					pc++;
-				while (isspace(c = fgetc(file))) {
-					if (c == '\n') {
-						break;
-					}
-				}
-				if (c != ';' && c != '\n') {
-					fprintf(stderr, "  Line %d: Too many "
-						"operands supplied for OUT.\n",
-						currentLine);
-					errors++;
-					continue;
-				}
-
-				instruction = 0xf021;
-				bytes[0] = (instruction & 0xff00) >> 8;
-				bytes[1] = instruction & 0xff;
-				fwrite(bytes, 2, 1, objFile);
-
-				printf("OUT\n");
-			} else if (!uppercmp(line, "PUTSP")) {
-				if (origSeen)
-					pc++;
-				while (isspace(c = fgetc(file))) {
-					if (c == '\n') {
-						break;
-					}
-				}
-				if (c != ';' && c != '\n') {
-					fprintf(stderr, "  Line %d: Too many "
-						"operands supplied for PUTSP.\n",
-						currentLine);
-					errors++;
-					continue;
-				}
-
-				instruction = 0xf024;
-				bytes[0] = (instruction & 0xff00) >> 8;
-				bytes[1] = instruction & 0xff;
-				fwrite(bytes, 2, 1, objFile);
-
-				printf("PUTSP\n");
-			} else if (!uppercmp(line, "IN")) {
-				if (origSeen)
-					pc++;
-				while (isspace(c = fgetc(file))) {
-					if (c == '\n') {
-						break;
-					}
-				}
-				ungetc(c, file);
-				if (c != ';' && c != '\n') {
-					fprintf(stderr, "  Line %d: Too many "
-						"operands supplied for IN.\n",
-						currentLine);
-					errors++;
-					continue;
-				}
-
-				instruction = 0xf022;
-				bytes[0] = (instruction & 0xff00) >> 8;
-				bytes[1] = instruction & 0xff;
-				fwrite(bytes, 2, 1, objFile);
-
-				printf("IN\n");
-			} else {
+				objWrite(instruction, objFile);
+				printf("%s\n", line);
 			}
 		}
 	}
@@ -2851,12 +2632,14 @@ bool parse(char const *fileName)
 	free(hexFileName);
 	free(binFileName);
 	free(objFileName);
+
 	free_table(&table);
 
 	fclose(file);
 	fclose(symFile);
 	fclose(hexFile);
 	fclose(binFile);
+	fclose(objFile);
 
 	return errors == 0;
 }

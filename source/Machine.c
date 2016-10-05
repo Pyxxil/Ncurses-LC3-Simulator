@@ -286,7 +286,7 @@ void start_machine(struct program *prog)
 
 	scrollok(output, 1);
 
-	if (prog->objfile == NULL) {
+	if (NULL == prog->objfile) {
 		prog->objfile = (char *) malloc(sizeof(char) * MSGWIDTH);
 		prompt((char const *) NULL, "Enter the .obj file: ",
 			prog->objfile);
@@ -296,5 +296,8 @@ void start_machine(struct program *prog)
 	if (!init_machine(prog))
 		run_machine(prog);
 
+	delwin(status);
+	delwin(output);
+	delwin(context);
 	endwin();
 }
