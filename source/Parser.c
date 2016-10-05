@@ -350,6 +350,7 @@ static void process(FILE *file, FILE *symFile)
 					errors++;
 					continue;
 				}
+
 				memset(line, 0, 100);
 				for (size_t i = 0; (c = fgetc(file)) != '"' && i < 100; i++) {
 					if (c == '\\') {
@@ -408,6 +409,7 @@ static void process(FILE *file, FILE *symFile)
 					!uppercmp(line, "LDR")    ||
 					!uppercmp(line, "LEA")    ||
 					!uppercmp(line, "JMP")    ||
+					!uppercmp(line, "RTI")    ||
 					!uppercmp(line, "IN")) {
 				if (origSeen)
 					pc++;
@@ -627,6 +629,7 @@ bool parse(char const *fileName)
 				}
 				pc++;
 				objWrite(0, objFile); // Implicit null terminator
+				line[strlen(line)] = '\0';
 
 				printf(".STRINGZ \"%s\"\n", line);
 			} else if (!uppercmp(line, ".BLKW")) {
@@ -697,43 +700,35 @@ bool parse(char const *fileName)
 				skipWhitespace(file);
 				c = fgetc(file);
 
+				if (c == '\n' || c == ';') {
+					fprintf(stderr, "  Line %d: No argument "
+						"supplied for .FILL.\n",
+						currentLine);
+					errors++;
+					continue;
+				}
+
 				if (origSeen)
 					pc++;
 
-				if (c == '#' || isdigit(c) || c == '-') {
-					if (c == '0' && ((c = fgetc(file)) == 'x'
-							|| c == 'X')) {
-						operand1[0] = '0';
-						operand1[1] = 'x';
-						for (size_t i = 2; isxdigit(c = fgetc(file)); i++) {
-							operand1[i] = c;
-						}
-						tmp = 16;
-					} else {
-						tmp = 0;
-						if (c == '#') {
-							if ((c = fgetc(file)) == '-') {
-								operand1[0] = c;
-								tmp = 1;
-								c = fgetc(file);
-							}
-						}
-						ungetc(c, file);
+				ungetc(c, file);
+				fscanf(file, "%s", operand1);
 
-						for (; isdigit(c = fgetc(file)); tmp++) {
-							operand1[tmp] = c;
-						}
-						tmp = 10;
-					}
-				} else if (c == 'x' || c == 'X') {
-					operand1[0] = '0';
-					operand1[1] = 'x';
-					for (size_t i = 2; isxdigit(c = fgetc(file)); i++) {
-						operand1[i] = c;
-					}
-						tmp = 16;
+				struct symbol *sym = findSymbol(operand1);
+				if (NULL != sym) {
+					instruction = sym->address;
+				} else if (toupper(*operand1) == 'X' ||
+						(*operand1 == '0' &&
+						toupper(operand1[1] == 'X'))) {
+					*operand1 = '0';
+					instruction = (int) strtol(operand1, &end, 16);
+				} else if (isdigit(*operand1) || *operand1 == '-') {
+					instruction = (int) strtol(operand1, &end, 10);
+				} else if (*operand1 == '#') {
+					instruction = (int) strtol(operand1 + 1, &end, 10);
 				} else {
-					fprintf(stderr, "  Line %d: Invalid literal for .FILL.\n",
+					fprintf(stderr, "  Line %d: Invalid "
+						"literal for .FILL.\n",
 						currentLine);
 					errors++;
 					continue;
@@ -744,9 +739,7 @@ bool parse(char const *fileName)
 					continue;
 				}
 
-				instruction = (int) strtol(operand1, &end, tmp);
-
-				if (*end) {
+				if (NULL == sym && *end) {
 					fprintf(stderr, "  Line %d: Invalid "
 						"literal for base %d.\n",
 						currentLine, tmp);
@@ -2025,15 +2018,9 @@ bool parse(char const *fileName)
 					ungetc(c, file);
 				}
 
-				while (isspace(c = fgetc(file))) {
-					if (c == '\n')
-						break;
-				}
-
-				if (c != ';' && c != '\n') {
-					fprintf(stderr, "  Line %d: Too many "
-						"operands given for AND.\n",
-						currentLine);
+				if (!endOfLine("LDR", file, &currentLine)) {
+					errors++;
+					continue;
 				}
 
 				instruction = 0x6000;
@@ -2561,6 +2548,8 @@ bool parse(char const *fileName)
 
 				objWrite(0xc1c0, objFile);
 				printf("RET\n");
+			} else if (!uppercmp(line, "RTI")) {
+
 			} else if (!uppercmp(line, "TRAP")) {
 				if (origSeen)
 					pc++;

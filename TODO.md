@@ -48,3 +48,5 @@
 
 ## Documentation
 * [ ] Create a file that contains all startup key configurations
+* [ ] Work on comments.
+* [ ] Provide some examples (Currently: 3)

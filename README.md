@@ -13,3 +13,4 @@ First run `make`, and then, in the same directory, run the following:
 ```shell
 $ ./LC3Simulator [OPTION] <file>
 ```
+
