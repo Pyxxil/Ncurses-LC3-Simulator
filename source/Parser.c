@@ -4,7 +4,12 @@
 #include <ctype.h>
 
 #include "Parser.h"
+#include "Token.h"
 
+/*
+ * Convert every character in a string to uppercase, and compare it against the
+ * provided string.
+ */
 static int uppercmp(char *from, char const *const to)
 {
 	char copy[100];
@@ -16,6 +21,11 @@ static int uppercmp(char *from, char const *const to)
 
 	return strcmp(copy, to);
 }
+
+/*
+ * Compare n number of characters in a string, each of which is converted to its
+ * upper case equivalent.
+ */
 
 static int uppercmpn(char *from, char const *const to, size_t n)
 {
@@ -31,26 +41,24 @@ static uint16_t nzp(char const *const _nzp)
 	uint16_t __nzp = 0;
 
 	for (size_t i = 0; _nzp[i]; i++) {
-		if (_nzp[i] == 'n' || _nzp[i] == 'N') {
-			if (__nzp & 0x0800) {
-				__nzp |= 0x4;
-			}
+		if (toupper(_nzp[i]) == 'N') {
 			__nzp |= 0x0800;
-		} else if (_nzp[i] == 'z' || _nzp[i] == 'Z') {
-			if (__nzp & 0x0400) {
-				__nzp |= 0x2;
-			}
+		} else if (toupper(_nzp[i]) == 'Z') {
 			__nzp |= 0x0400;
-		} else if (_nzp[i] == 'p' || _nzp[i] == 'P') {
-			if (__nzp & 0x0200) {
-				__nzp |= 0x1;
-			}
+		} else if (toupper(_nzp[i]) == 'P') {
 			__nzp |= 0x0200;
+		} else {
+			return 0x1;
 		}
 	}
 
 	return __nzp;
 }
+
+/*
+ * Skip all whitespace characters in a file. If a new line is reached, return
+ * early so that the caller can handle it.
+ */
 
 static void skipWhitespace(FILE *file)
 {
@@ -62,12 +70,20 @@ static void skipWhitespace(FILE *file)
 	ungetc(c, file);
 }
 
+/*
+ * Go to the next line of the file.
+ */
+
 static void nextLine(FILE *file)
 {
 	int c = 0;
 	while ((c = fgetc(file)) != '\n' && c != EOF);
 	ungetc(c, file);
 }
+
+/*
+ * Write the hexadecimal instruction to the specified object file in binary.
+ */
 
 static void objWrite(uint16_t instruction, FILE *objFile)
 {
@@ -77,12 +93,16 @@ static void objWrite(uint16_t instruction, FILE *objFile)
 	fwrite(bytes, 2, 1, objFile);
 }
 
+/*
+ * Check whether we have reached the end of the line.
+ */
+
 static bool endOfLine(char const *const instruction,
 		FILE *file, int const *const line)
 {
 	skipWhitespace(file);
 	int c = fgetc(file);
-	if (c != ';' && c != '\n') {
+	if (c != ';' && c != '\n' && c != EOF) {
 		fprintf(stderr, "  Line %d: Incorrect number of arguments "
 			"supplied to %s.\n", *line, instruction);
 		nextLine(file);
@@ -153,12 +173,18 @@ static struct symbol* findSymbol(char const *const name)
 	}
 }
 
+/*
+ * Add a Symbol by name and addres into the Symbol Table.
+ */
+
 static int addSymbol(char const *const name, uint16_t address)
 {
 	struct symbol *sym;
 	struct symbolTable *symTable = &table;
 
 	if (NULL == symTable->sym) {
+		// This should probably change...
+		// It's just there to check if the table has no values.
 		sym = malloc(sizeof(struct symbol));
 		strmcpy(&sym->name, name);
 		sym->address = address;
@@ -425,7 +451,7 @@ static void process(FILE *file, FILE *symFile)
 					ungetc(*colon, file);
 					*colon = '\0';
 				}
-				printf("FOUND LABEL ==> %s  AT %#x\n", line, pc);
+				// VERBOSE : printf("FOUND LABEL ==> %s  AT %#x\n", line, pc);
 				if (addSymbol(line, pc)) {
 					fprintf(stderr, "  Line %d: "
 						"Multiple definitions of label "
@@ -442,6 +468,87 @@ static void process(FILE *file, FILE *symFile)
 			errors == 1 ? "" : "'s");
 
 	rewind(file);
+}
+
+enum Token nextToken(FILE *file)
+{
+	char op[100];
+	fscanf(file, "%99s", op);
+
+	if (!uppercmp(op, "ADD")) {
+		return OP_ADD;
+	} else if (!uppercmp(op, "AND"))  {
+		return OP_AND;
+	} else if (!uppercmp(op, "JMP"))  {
+		return OP_JMP;
+	} else if (!uppercmp(op, "JSR"))  {
+		return OP_JSR;
+	} else if (!uppercmp(op, "JSRR")) {
+		return OP_JSRR;
+	} else if (!uppercmp(op, "LD"))   {
+		return OP_LD;
+	} else if (!uppercmp(op, "LDR"))  {
+		return OP_LDR;
+	} else if (!uppercmp(op, "LDI"))  {
+		return OP_LDI;
+	} else if (!uppercmp(op, "LEA"))  {
+		return OP_LEA;
+	} else if (!uppercmp(op, "NOT"))  {
+		return OP_NOT;
+	} else if (!uppercmp(op, "RET"))  {
+		return OP_RET;
+	} else if (!uppercmp(op, "RTI"))  {
+		return OP_RTI;
+	} else if (!uppercmp(op, "ST"))   {
+		return OP_ST;
+	} else if (!uppercmp(op, "STR"))  {
+		return OP_STR;
+	} else if (!uppercmp(op, "STI"))  {
+		return OP_STI;
+	} else if (!uppercmp(op, "TRAP")) {
+		return OP_TRAP;
+	} else if (!uppercmp(op, "GETC")) {
+		return OP_GETC;
+	} else if (!uppercmp(op, "PUTC")) {
+		return OP_PUTC;
+	} else if (!uppercmp(op, "IN"))   {
+		return OP_IN;
+	} else if (!uppercmp(op, "PUTS")) {
+		return OP_PUTS;
+	} else if (!uppercmp(op, "PUTSP")) {
+		return OP_PUTSP;
+	} else if (!uppercmp(op, ".ORIG")) {
+		return DIR_ORIG;
+	} else if (!uppercmp(op, ".STRINGZ")) {
+		return DIR_STRINGZ;
+	} else if (!uppercmp(op, ".FILL")) {
+		return DIR_FILL;
+	} else if (!uppercmp(op, ".END")) {
+		return DIR_END;
+	} else if (!uppercmp(op, ".BLKW")) {
+		return DIR_BLKW;
+	} else if (!uppercmpn(op, "BR", 2)) {
+		switch(nzp(op + 2)) {
+		case 0x0001:
+			return OP_BRUNK;
+		case 0x0200:
+			return OP_BRP;
+		case 0x0400:
+			return OP_BRZ;
+		case 0x0600:
+			return OP_BRZP;
+		case 0x0800:
+			return OP_BRN;
+		case 0x0A00:
+			return OP_BRNP;
+		case 0x0C00:
+			return OP_BRNZ;
+		default:
+			return OP_BR;
+		}
+	} else {
+		return OP_UNK;
+	}
 }
 
 bool parse(char const *fileName)
@@ -530,8 +637,6 @@ bool parse(char const *fileName)
 		} else if (c == ';') {
 			nextLine(file);
 			continue;;
-		} else if (c == ':') {
-			continue;
 		} else if (c == '.') {
 			ungetc(c, file);
 			fscanf(file, "%99s", line);
@@ -583,7 +688,7 @@ bool parse(char const *fileName)
 				pc = instruction;
 				objWrite(instruction, objFile);
 				origSeen = true;
-				printf(".ORIG  %x\n", instruction);
+				// VERBOSE : printf(".ORIG  %x\n", instruction);
 			} else if (!uppercmp(line, ".STRINGZ")) {
 				skipWhitespace(file);
 				c = fgetc(file);
@@ -631,7 +736,7 @@ bool parse(char const *fileName)
 				objWrite(0, objFile); // Implicit null terminator
 				line[strlen(line)] = '\0';
 
-				printf(".STRINGZ \"%s\"\n", line);
+				// VERBOSE : printf(".STRINGZ \"%s\"\n", line);
 			} else if (!uppercmp(line, ".BLKW")) {
 				fscanf(file, "%s", line);
 
@@ -695,7 +800,7 @@ bool parse(char const *fileName)
 					objWrite(0, objFile);
 				}
 
-				printf(".BLKW  %s\n", line);
+				// VERBOSE : printf(".BLKW  %s\n", line);
 			} else if (!uppercmp(line, ".FILL")) {
 				skipWhitespace(file);
 				c = fgetc(file);
@@ -748,9 +853,8 @@ bool parse(char const *fileName)
 				}
 
 				objWrite(instruction, objFile);
-				printf(".FILL  #%d\n", instruction);
+				// VERBOSE : printf(".FILL  #%d\n", instruction);
 			} else if (!uppercmp(line, ".END")) {
-				printf(".END\n");
 				if (!origSeen) {
 					fprintf(stderr, "  Line %d: .END seen "
 						"before .ORIG.\n", currentLine);
@@ -761,6 +865,7 @@ bool parse(char const *fileName)
 					errors ++;
 				}
 				endSeen = true;
+				// VERBOSE : printf(".END\n");
 			} else {
 				fprintf(stderr, "  Line %d: Unknown directive "
 					"'%s'\n", currentLine, line);
@@ -831,7 +936,7 @@ bool parse(char const *fileName)
 
 				instruction |= (tmp & 0x1ff);
 				objWrite(instruction, objFile);
-				printf("%s  %s (%d spaces away)\n", line, operand1, tmp);
+				// VERBOSE : printf("%s  %s (%d spaces away)\n", line, operand1, tmp);
 			} else if (!uppercmp(line, "AND")) {
 				if (origSeen)
 					pc++;
@@ -1088,7 +1193,7 @@ bool parse(char const *fileName)
 				}
 
 				objWrite(instruction, objFile);
-				printf("AND  %s  %s  %s\n", operand1, operand2, operand3);
+				// VERBOSE : printf("AND  %s  %s  %s\n", operand1, operand2, operand3);
 			} else if (!uppercmp(line, "ADD")) {
 				if (origSeen)
 					pc++;
@@ -1333,7 +1438,7 @@ bool parse(char const *fileName)
 				}
 
 				objWrite(instruction, objFile);
-				printf("ADD  %s  %s  %s\n", operand1, operand2, operand3);
+				// VERBOSE : printf("ADD  %s  %s  %s\n", operand1, operand2, operand3);
 			} else if (!uppercmp(line, "NOT")) {
 				if (origSeen)
 					pc++;
@@ -1441,7 +1546,7 @@ bool parse(char const *fileName)
 				instruction |= (operand2[1] - 0x30) << 6;
 
 				objWrite(instruction, objFile);
-				printf("NOT  %s  %s\n", operand1, operand2);
+				// VERBOSE : printf("NOT  %s  %s\n", operand1, operand2);
 			} else if (!uppercmp(line, "JMP")) {
 				while (isspace(c = fgetc(file))) {
 					if (c == '\n') {
@@ -1481,29 +1586,16 @@ bool parse(char const *fileName)
 				}
 				operand1[1] = c;
 
-				while (isspace(c = fgetc(file))) {
-					if (c == '\n') {
-						ungetc(c, file);
-						break;
-					}
-				}
-
-				if (c != ';' && c != '\n') {
-					printf("%c", c);
-					fprintf(stderr, "  Line %d: Too "
-						"many operands given for"
-						" NOT.\n",
-						currentLine);
+				if (!endOfLine("NOT", file, &currentLine)) {
 					errors++;
 					continue;
 				}
-				ungetc(c, file);
 
 				instruction = 0xc000;
 				instruction |= (operand1[1] - 0x30) << 6;
 
 				objWrite(instruction, objFile);
-				printf("JMP  %s\n", operand1);
+				// VERBOSE : printf("JMP  %s\n", operand1);
 			} else if (!uppercmp(line, "JSR")) {
 				if (origSeen)
 					pc++;
@@ -1544,25 +1636,22 @@ bool parse(char const *fileName)
 
 				instruction |= (tmp & 0x7ff);
 				objWrite(instruction, objFile);
-				printf("JSR  %s (%d spaces away)\n", operand1, tmp);
+				// VERBOSE : printf("JSR  %s (%d spaces away)\n", operand1, tmp);
 			} else if (!uppercmp(line, "JSRR")) {
 				if (origSeen)
 					pc++;
-				printf("JSRR ");
+				// VERBOSE : printf("JSRR ");
 			} else if (!uppercmp(line, "LEA")) {
 				if (origSeen)
 					pc++;
-				while (isspace(c = fgetc(file))) {
-					if (c == '\n') {
-						fprintf(stderr, "  Line %d: "
-							"No operands supplied to"
-							" LEA.\n", currentLine);
-						doContinue = true;
-						break;
-					}
-				}
 
-				if (doContinue) {
+				skipWhitespace(file);
+				c = fgetc(file);
+
+				if (c == '\n' || c == ';') {
+					fprintf(stderr, "  Line %d: "
+						"No operands supplied to"
+						" LEA.\n", currentLine);
 					errors++;
 					continue;
 				}
@@ -1651,7 +1740,7 @@ bool parse(char const *fileName)
 				instruction |= (tmp & 0x1ff);
 
 				objWrite(instruction, objFile);
-				printf("LEA  %s  %s  (%d spaces away)\n", operand1, operand2, tmp);
+				// VERBOSE : printf("LEA  %s  %s  (%d spaces away)\n", operand1, operand2, tmp);
 			} else if (!uppercmp(line, "LD")) {
 				if (origSeen)
 					pc++;
@@ -1751,7 +1840,7 @@ bool parse(char const *fileName)
 				instruction |= (tmp & 0x1ff);
 
 				objWrite(instruction, objFile);
-				printf("LD  %s  %s(%d spaces away)\n", operand1, operand2, tmp);
+				// VERBOSE : printf("LD  %s  %s(%d spaces away)\n", operand1, operand2, tmp);
 			} else if (!uppercmp(line, "LDI")) {
 				if (origSeen)
 					pc++;
@@ -1851,8 +1940,8 @@ bool parse(char const *fileName)
 				instruction |= (tmp & 0x1ff);
 
 				objWrite(instruction, objFile);
-				printf("LDI  %s  %s (%d spaces away)\n",
-					operand1, operand2, tmp);
+				// VERBOSE : printf("LDI  %s  %s (%d spaces away)\n",
+				//	operand1, operand2, tmp);
 			} else if (!uppercmp(line, "LDR")) {
 				if (origSeen)
 					pc++;
@@ -2082,7 +2171,7 @@ bool parse(char const *fileName)
 				instruction |= tmp & 0x3f;
 
 				objWrite(instruction, objFile);
-				printf("LDR  %s  %s  %s\n", operand1, operand2, operand3);
+				// VERBOSE : printf("LDR  %s  %s  %s\n", operand1, operand2, operand3);
 			} else if (!uppercmp(line, "ST")) {
 				if (origSeen)
 					pc++;
@@ -2189,7 +2278,7 @@ bool parse(char const *fileName)
 				instruction |= (tmp & 0x1ff);
 
 				objWrite(instruction, objFile);
-				printf("ST %s  %s (%d spaces away)\n", operand1, operand2, tmp);
+				// VERBOSE : printf("ST %s  %s (%d spaces away)\n", operand1, operand2, tmp);
 			} else if (!uppercmp(line, "STI")) {
 				if (origSeen)
 					pc++;
@@ -2297,8 +2386,8 @@ bool parse(char const *fileName)
 				instruction |= (tmp & 0x1ff);
 
 				objWrite(instruction, objFile);
-				printf("STI %s  %s (%d spaces away)\n",
-					operand1, operand2, tmp);
+				// VERBOSE : printf("STI %s  %s (%d spaces away)\n",
+				//	operand1, operand2, tmp);
 			} else if (!uppercmp(line, "STR")) {
 				if (origSeen)
 					pc++;
@@ -2535,8 +2624,8 @@ bool parse(char const *fileName)
 				instruction |= (tmp & 0x3f);
 
 				objWrite(instruction, objFile);
-				printf("STR  %s  %s  %s\n", operand1, operand2,
-						operand3);
+				// VERBOSE : printf("STR  %s  %s  %s\n", operand1, operand2,
+				//		operand3);
 			} else if (!uppercmp(line, "RET")) {
 				if (origSeen)
 					pc++;
@@ -2547,9 +2636,9 @@ bool parse(char const *fileName)
 				}
 
 				objWrite(0xc1c0, objFile);
-				printf("RET\n");
+				// VERBOSE : printf("RET\n");
 			} else if (!uppercmp(line, "RTI")) {
-
+				// VERBOSE : printf("RTI\n");
 			} else if (!uppercmp(line, "TRAP")) {
 				if (origSeen)
 					pc++;
@@ -2589,7 +2678,7 @@ bool parse(char const *fileName)
 				instruction = 0xf000 | tmp;
 
 				objWrite(instruction, objFile);
-				printf("TRAP x%x\n", tmp);
+				// VERBOSE : printf("TRAP x%x\n", tmp);
 			} else if (!uppercmp(line, "HALT")       ||
 					!uppercmp(line, "PUTS")  ||
 					!uppercmp(line, "PUTC")  ||
@@ -2621,12 +2710,13 @@ bool parse(char const *fileName)
 				}
 
 				objWrite(instruction, objFile);
-				printf("%s\n", line);
+				//VERBOSE : printf("%s\n", line);
 			}
 		}
 	}
 
-	printf("%d error%s\n", errors, errors != 1 ? "'s" : "");
+	printf("%d error%s found in second pass.\n",
+		errors, errors != 1 ? "'s" : "");
 
 	free(symFileName);
 	free(hexFileName);
