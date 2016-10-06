@@ -215,6 +215,90 @@ static int addSymbol(char const *const name, uint16_t address)
 	return 1;
 }
 
+enum Token nextToken(FILE *file, char *buffer)
+{
+	fscanf(file, "%99s", buffer);
+
+	if (!uppercmp(buffer, "ADD")) {
+		return OP_ADD;
+	} else if (!uppercmp(buffer, "AND"))  {
+		return OP_AND;
+	} else if (!uppercmp(buffer, "JMP"))  {
+		return OP_JMP;
+	} else if (!uppercmp(buffer, "JSR"))  {
+		return OP_JSR;
+	} else if (!uppercmp(buffer, "JSRR")) {
+		return OP_JSRR;
+	} else if (!uppercmp(buffer, "LD"))   {
+		return OP_LD;
+	} else if (!uppercmp(buffer, "LDR"))  {
+		return OP_LDR;
+	} else if (!uppercmp(buffer, "LDI"))  {
+		return OP_LDI;
+	} else if (!uppercmp(buffer, "LEA"))  {
+		return OP_LEA;
+	} else if (!uppercmp(buffer, "NOT"))  {
+		return OP_NOT;
+	} else if (!uppercmp(buffer, "RET"))  {
+		return OP_RET;
+	} else if (!uppercmp(buffer, "RTI"))  {
+		return OP_RTI;
+	} else if (!uppercmp(buffer, "ST"))   {
+		return OP_ST;
+	} else if (!uppercmp(buffer, "STR"))  {
+		return OP_STR;
+	} else if (!uppercmp(buffer, "STI"))  {
+		return OP_STI;
+	} else if (!uppercmp(buffer, "TRAP")) {
+		return OP_TRAP;
+	} else if (!uppercmp(buffer, "GETC")) {
+		return OP_GETC;
+	} else if (!uppercmp(buffer, "PUTC")) {
+		return OP_PUTC;
+	} else if (!uppercmp(buffer, "OUT")) {
+		return OP_OUT;
+	} else if (!uppercmp(buffer, "HALT")) {
+		return OP_HALT;
+	} else if (!uppercmp(buffer, "IN"))   {
+		return OP_IN;
+	} else if (!uppercmp(buffer, "PUTS")) {
+		return OP_PUTS;
+	} else if (!uppercmp(buffer, "PUTSP")) {
+		return OP_PUTSP;
+	} else if (!uppercmp(buffer, ".ORIG")) {
+		return DIR_ORIG;
+	} else if (!uppercmp(buffer, ".STRINGZ")) {
+		return DIR_STRINGZ;
+	} else if (!uppercmp(buffer, ".FILL")) {
+		return DIR_FILL;
+	} else if (!uppercmp(buffer, ".END")) {
+		return DIR_END;
+	} else if (!uppercmp(buffer, ".BLKW")) {
+		return DIR_BLKW;
+	} else if (!uppercmpn(buffer, "BR", 2)) {
+		switch(nzp(buffer + 2)) {
+		case 0x0001:
+			return OP_BRUNK;
+		case 0x0200:
+			return OP_BRP;
+		case 0x0400:
+			return OP_BRZ;
+		case 0x0600:
+			return OP_BRZP;
+		case 0x0800:
+			return OP_BRN;
+		case 0x0A00:
+			return OP_BRNP;
+		case 0x0C00:
+			return OP_BRNZ;
+		default:
+			return OP_BR;
+		}
+	} else {
+		return OP_UNK;
+	}
+}
+
 static void process(FILE *file, FILE *symFile)
 {
 	static char const *const symTable =
@@ -230,6 +314,7 @@ static void process(FILE *file, FILE *symFile)
 	uint16_t pc = 0, instruction = 0;
 
 	char line[100] = { 0 }, operand1[100] = { 0 }, *end = NULL;
+	enum Token tok;
 
 	printf("STARTING FIRST PASS...\n");
 
@@ -245,14 +330,15 @@ static void process(FILE *file, FILE *symFile)
 			continue;
 		} else if (c == ';') {
 			nextLine(file);
-			continue;;
+			continue;
 		} else if (c == ':') {
 			continue;
-		} else if (c == '.') {
+		} else {
 			ungetc(c, file);
-			fscanf(file, "%99s", line);
+			tok = nextToken(file, line);
 
-			if (!uppercmp(line, ".ORIG")) {
+			switch (tok) {
+			case DIR_ORIG:
 				if (origSeen) {
 					fprintf(stderr, "  Line %d: Extra .ORIG"
 						" directive.\n", currentLine);
@@ -297,7 +383,9 @@ static void process(FILE *file, FILE *symFile)
 
 				pc = instruction;
 				origSeen = true;
-			} else if (!uppercmp(line, ".BLKW")) {
+				nextLine(file);
+				break;
+			case DIR_BLKW:
 				fscanf(file, "%s", line);
 
 				skipWhitespace(file);
@@ -364,7 +452,9 @@ static void process(FILE *file, FILE *symFile)
 				}
 				while (instruction--)
 					pc++;
-			} else if (!uppercmp(line, ".STRINGZ")) {
+				nextLine(file);
+				break;
+			case DIR_STRINGZ:
 				skipWhitespace(file);
 				c = fgetc(file);
 
@@ -399,59 +489,41 @@ static void process(FILE *file, FILE *symFile)
 					}
 					pc++;
 				}
+				nextLine(file);
 				pc++; // Implicit null terminator
-			} else if (!uppercmp(line, ".FILL")) {
+				break;
+			case DIR_FILL:
 				if (origSeen)
 					pc++;
 				nextLine(file);
-				continue;
-			} else if (!uppercmp(line, ".END")) {
+				break;
+			case DIR_END:
 				endSeen = true;
 				nextLine(file);
-				continue;
-			}
-		} else {
-			ungetc(c, file);
-			fscanf(file, "%99s", line);
-
-			if (!uppercmp(line, "ADD") || !uppercmp(line, "AND") ||
-					!uppercmp(line, "NOT")    ||
-					!uppercmp(line, "RET")    ||
-					!uppercmp(line, "JSR")    ||
-					!uppercmpn(line, "BR", 2) ||
-					!uppercmp(line, "JSRR")   ||
-					!uppercmp(line, "TRAP")   ||
-					!uppercmp(line, "GETC")   ||
-					!uppercmp(line, "PUTC")   ||
-					!uppercmp(line, "OUT")    ||
-					!uppercmp(line, "PUTS")   ||
-					!uppercmp(line, "PUTSP")  ||
-					!uppercmp(line, "HALT")   ||
-					!uppercmp(line, "ST")     ||
-					!uppercmp(line, "STR")    ||
-					!uppercmp(line, "STI")    ||
-					!uppercmp(line, "LD")     ||
-					!uppercmp(line, "LDI")    ||
-					!uppercmp(line, "LDR")    ||
-					!uppercmp(line, "LEA")    ||
-					!uppercmp(line, "JMP")    ||
-					!uppercmp(line, "RTI")    ||
-					!uppercmp(line, "IN")) {
+				break;
+			case OP_AND:  case OP_ADD:  case OP_NOT:  case OP_RET:
+			case OP_JSR:  case OP_BR:   case OP_BRN:  case OP_BRNZ:
+			case OP_BRZP: case OP_BRP:  case OP_BRNP: case OP_JSRR:
+			case OP_TRAP: case OP_GETC: case OP_PUTC: case OP_OUT:
+			case OP_PUTS: case OP_IN:   case OP_JMP:  case OP_RTI:
+			case OP_ST:   case OP_STR:  case OP_STI:  case OP_LD:
+			case OP_LDI:  case OP_LDR:  case OP_LEA:  case OP_HALT:
+			case OP_BRZ:  case OP_PUTSP:
 				if (origSeen)
 					pc++;
 				nextLine(file);
-			} else {
+				break;
+			case OP_UNK: case OP_BRUNK:
 				end = strchr(line, ':');
 				if (NULL != end) {
 					char *colon = end + strlen(end) - 1;
 					for (; colon != end; colon--) {
-						ungetc(*colon, file);
 						*colon = '\0';
 					}
 					ungetc(*colon, file);
 					*colon = '\0';
 				}
-				// VERBOSE : printf("FOUND LABEL ==> %s  AT %#x\n", line, pc);
+				printf("FOUND LABEL ==> '%s'  AT %#x\n", line, pc);
 				if (addSymbol(line, pc)) {
 					fprintf(stderr, "  Line %d: "
 						"Multiple definitions of label "
@@ -461,6 +533,7 @@ static void process(FILE *file, FILE *symFile)
 					fprintf(symFile, "//\t%-16s %4x\n",
 							line, pc);
 				}
+				break;
 			}
 		}
 	}
@@ -468,87 +541,6 @@ static void process(FILE *file, FILE *symFile)
 			errors == 1 ? "" : "'s");
 
 	rewind(file);
-}
-
-enum Token nextToken(FILE *file)
-{
-	char op[100];
-	fscanf(file, "%99s", op);
-
-	if (!uppercmp(op, "ADD")) {
-		return OP_ADD;
-	} else if (!uppercmp(op, "AND"))  {
-		return OP_AND;
-	} else if (!uppercmp(op, "JMP"))  {
-		return OP_JMP;
-	} else if (!uppercmp(op, "JSR"))  {
-		return OP_JSR;
-	} else if (!uppercmp(op, "JSRR")) {
-		return OP_JSRR;
-	} else if (!uppercmp(op, "LD"))   {
-		return OP_LD;
-	} else if (!uppercmp(op, "LDR"))  {
-		return OP_LDR;
-	} else if (!uppercmp(op, "LDI"))  {
-		return OP_LDI;
-	} else if (!uppercmp(op, "LEA"))  {
-		return OP_LEA;
-	} else if (!uppercmp(op, "NOT"))  {
-		return OP_NOT;
-	} else if (!uppercmp(op, "RET"))  {
-		return OP_RET;
-	} else if (!uppercmp(op, "RTI"))  {
-		return OP_RTI;
-	} else if (!uppercmp(op, "ST"))   {
-		return OP_ST;
-	} else if (!uppercmp(op, "STR"))  {
-		return OP_STR;
-	} else if (!uppercmp(op, "STI"))  {
-		return OP_STI;
-	} else if (!uppercmp(op, "TRAP")) {
-		return OP_TRAP;
-	} else if (!uppercmp(op, "GETC")) {
-		return OP_GETC;
-	} else if (!uppercmp(op, "PUTC")) {
-		return OP_PUTC;
-	} else if (!uppercmp(op, "IN"))   {
-		return OP_IN;
-	} else if (!uppercmp(op, "PUTS")) {
-		return OP_PUTS;
-	} else if (!uppercmp(op, "PUTSP")) {
-		return OP_PUTSP;
-	} else if (!uppercmp(op, ".ORIG")) {
-		return DIR_ORIG;
-	} else if (!uppercmp(op, ".STRINGZ")) {
-		return DIR_STRINGZ;
-	} else if (!uppercmp(op, ".FILL")) {
-		return DIR_FILL;
-	} else if (!uppercmp(op, ".END")) {
-		return DIR_END;
-	} else if (!uppercmp(op, ".BLKW")) {
-		return DIR_BLKW;
-	} else if (!uppercmpn(op, "BR", 2)) {
-		switch(nzp(op + 2)) {
-		case 0x0001:
-			return OP_BRUNK;
-		case 0x0200:
-			return OP_BRP;
-		case 0x0400:
-			return OP_BRZ;
-		case 0x0600:
-			return OP_BRZP;
-		case 0x0800:
-			return OP_BRN;
-		case 0x0A00:
-			return OP_BRNP;
-		case 0x0C00:
-			return OP_BRNZ;
-		default:
-			return OP_BR;
-		}
-	} else {
-		return OP_UNK;
-	}
 }
 
 bool parse(char const *fileName)
@@ -605,7 +597,6 @@ bool parse(char const *fileName)
 	int c, currentLine = 1, errors = 0, commaCount = 0;
 
 	char line[100] = { 0 };
-	char label[100] = { 0 };
 
 	char operand1[100] = { 0 }, operand2[100] = { 0 }, operand3[100] = { 0 };
 	char *end = NULL;
@@ -614,19 +605,19 @@ bool parse(char const *fileName)
 
 	uint16_t instruction = 0, pc = 0;
 	int16_t tmp = 0;
+	enum Token tok;
+	struct symbol *sym;
 
 	while (1) {
 		tmp = 0;
 		commaCount = 0;
 		doContinue = false;
 		memset(line,     0, sizeof(line));
-		memset(label,    0, sizeof(label));
 		memset(operand1, 0, sizeof(operand1));
 		memset(operand2, 0, sizeof(operand2));
 		memset(operand3, 0, sizeof(operand3));
 
 		skipWhitespace(file);
-
 		c = fgetc(file);
 
 		if (c == EOF) {
@@ -636,12 +627,18 @@ bool parse(char const *fileName)
 			continue;
 		} else if (c == ';') {
 			nextLine(file);
-			continue;;
-		} else if (c == '.') {
+			continue;
+		} else {
 			ungetc(c, file);
-			fscanf(file, "%99s", line);
+			tok = nextToken(file, line);
+			skipWhitespace(file);
 
-			if (!uppercmp(line, ".ORIG")) {
+			if (origSeen) {
+				pc++;
+			}
+
+			switch (tok) {
+			case DIR_ORIG:
 				if (origSeen) {
 					fprintf(stderr, "  Line %d: Extra .ORIG "
 						"directive.\n", currentLine);
@@ -654,7 +651,6 @@ bool parse(char const *fileName)
 					continue;
 				}
 
-				skipWhitespace(file);
 				c = fgetc(file);
 
 				if (c == '\n') {
@@ -688,9 +684,9 @@ bool parse(char const *fileName)
 				pc = instruction;
 				objWrite(instruction, objFile);
 				origSeen = true;
-				// VERBOSE : printf(".ORIG  %x\n", instruction);
-			} else if (!uppercmp(line, ".STRINGZ")) {
-				skipWhitespace(file);
+				printf(".ORIG  %#x\n", instruction);
+				break;
+			case DIR_STRINGZ:
 				c = fgetc(file);
 
 				if (c != '"') {
@@ -732,12 +728,12 @@ bool parse(char const *fileName)
 					pc++;
 					objWrite(instruction, objFile);
 				}
-				pc++;
 				objWrite(0, objFile); // Implicit null terminator
 				line[strlen(line)] = '\0';
 
-				// VERBOSE : printf(".STRINGZ \"%s\"\n", line);
-			} else if (!uppercmp(line, ".BLKW")) {
+				printf(".STRINGZ \"%s\"\n", line);
+				break;
+			case DIR_BLKW:
 				fscanf(file, "%s", line);
 
 				skipWhitespace(file);
@@ -795,14 +791,14 @@ bool parse(char const *fileName)
 					continue;
 				}
 
-				pc += instruction;
+				pc += instruction - 1;
 				while (instruction--) {
 					objWrite(0, objFile);
 				}
 
-				// VERBOSE : printf(".BLKW  %s\n", line);
-			} else if (!uppercmp(line, ".FILL")) {
-				skipWhitespace(file);
+				printf(".BLKW  %s\n", line);
+				break;
+			case DIR_FILL:
 				c = fgetc(file);
 
 				if (c == '\n' || c == ';') {
@@ -813,13 +809,10 @@ bool parse(char const *fileName)
 					continue;
 				}
 
-				if (origSeen)
-					pc++;
-
 				ungetc(c, file);
 				fscanf(file, "%s", operand1);
 
-				struct symbol *sym = findSymbol(operand1);
+				sym = findSymbol(operand1);
 				if (NULL != sym) {
 					instruction = sym->address;
 				} else if (toupper(*operand1) == 'X' ||
@@ -853,8 +846,9 @@ bool parse(char const *fileName)
 				}
 
 				objWrite(instruction, objFile);
-				// VERBOSE : printf(".FILL  #%d\n", instruction);
-			} else if (!uppercmp(line, ".END")) {
+				printf(".FILL  #%d\n", instruction);
+				break;
+			case DIR_END:
 				if (!origSeen) {
 					fprintf(stderr, "  Line %d: .END seen "
 						"before .ORIG.\n", currentLine);
@@ -865,19 +859,10 @@ bool parse(char const *fileName)
 					errors ++;
 				}
 				endSeen = true;
-				// VERBOSE : printf(".END\n");
-			} else {
-				fprintf(stderr, "  Line %d: Unknown directive "
-					"'%s'\n", currentLine, line);
-				errors ++;
-			}
-		} else {
-			ungetc(c, file);
-			fscanf(file, "%99s", line);
-
-			if (!uppercmpn(line, "BR", 2)) {
-				if (origSeen)
-					pc++;
+				printf(".END\n");
+				break;
+			case OP_BR: case OP_BRN: case OP_BRZ: case OP_BRP:
+			case OP_BRNZ: case OP_BRNP: case OP_BRZP:
 				if (!origSeen) {
 					fprintf(stderr, "  Line %d: "
 						"BR instruction before .ORIG"
@@ -908,7 +893,6 @@ bool parse(char const *fileName)
 
 				instruction &= 0x0e00;
 
-				skipWhitespace(file);
 				fscanf(file, "%99s", operand1);
 
 				if (!endOfLine(line, file, &currentLine)) {
@@ -916,7 +900,7 @@ bool parse(char const *fileName)
 					continue;
 				}
 
-				struct symbol *sym = findSymbol(operand1);
+				sym = findSymbol(operand1);
 				if (NULL == sym) {
 					fprintf(stderr, "  Line %d: Invalid "
 						"label '%s'.\n", currentLine,
@@ -936,12 +920,9 @@ bool parse(char const *fileName)
 
 				instruction |= (tmp & 0x1ff);
 				objWrite(instruction, objFile);
-				// VERBOSE : printf("%s  %s (%d spaces away)\n", line, operand1, tmp);
-			} else if (!uppercmp(line, "AND")) {
-				if (origSeen)
-					pc++;
-
-				skipWhitespace(file);
+				printf("%s  %s (%d addresses away)\n", line, operand1, tmp - 1);
+				break;
+			case OP_AND:
 				c = fgetc(file);
 
 				if (c == '\n' || c == ';') {
@@ -1193,12 +1174,9 @@ bool parse(char const *fileName)
 				}
 
 				objWrite(instruction, objFile);
-				// VERBOSE : printf("AND  %s  %s  %s\n", operand1, operand2, operand3);
-			} else if (!uppercmp(line, "ADD")) {
-				if (origSeen)
-					pc++;
-
-				skipWhitespace(file);
+				printf("AND  %s  %s  %s\n", operand1, operand2, operand3);
+				break;
+			case OP_ADD:
 				c = fgetc(file);
 				if (c == '\n' || c == ';') {
 					fprintf(stderr, "  Line %d: No operands "
@@ -1438,12 +1416,9 @@ bool parse(char const *fileName)
 				}
 
 				objWrite(instruction, objFile);
-				// VERBOSE : printf("ADD  %s  %s  %s\n", operand1, operand2, operand3);
-			} else if (!uppercmp(line, "NOT")) {
-				if (origSeen)
-					pc++;
-
-				skipWhitespace(file);
+				printf("ADD  %s  %s  %s\n", operand1, operand2, operand3);
+				break;
+			case OP_NOT:
 				c = fgetc(file);
 
 				if (c == '\n' || c == ';') {
@@ -1546,19 +1521,15 @@ bool parse(char const *fileName)
 				instruction |= (operand2[1] - 0x30) << 6;
 
 				objWrite(instruction, objFile);
-				// VERBOSE : printf("NOT  %s  %s\n", operand1, operand2);
-			} else if (!uppercmp(line, "JMP")) {
-				while (isspace(c = fgetc(file))) {
-					if (c == '\n') {
-						fprintf(stderr, "  Line %d: "
-							"No operands supplied to"
-							" NOT.\n", currentLine);
-						doContinue = true;
-						break;
-					}
-				}
+				printf("NOT  %s  %s\n", operand1, operand2);
+				break;
+			case OP_JMP:
+				c = fgetc(file);
 
-				if (doContinue) {
+				if (c == '\n' || c == ';') {
+					fprintf(stderr, "  Line %d: "
+						"No operands supplied to"
+						" NOT.\n", currentLine);
 					errors++;
 					continue;
 				}
@@ -1595,13 +1566,10 @@ bool parse(char const *fileName)
 				instruction |= (operand1[1] - 0x30) << 6;
 
 				objWrite(instruction, objFile);
-				// VERBOSE : printf("JMP  %s\n", operand1);
-			} else if (!uppercmp(line, "JSR")) {
-				if (origSeen)
-					pc++;
+				printf("JMP  %s\n", operand1);
+				break;
+			case OP_JSR:
 				instruction = 0x4800;
-
-				skipWhitespace(file);
 
 				fscanf(file, "%99s", operand1);
 
@@ -1616,7 +1584,7 @@ bool parse(char const *fileName)
 					continue;
 				}
 
-				struct symbol *sym = findSymbol(operand1);
+				sym = findSymbol(operand1);
 				if (NULL == sym) {
 					fprintf(stderr, "  Line %d: Invalid "
 						"label '%s'.\n", currentLine,
@@ -1636,16 +1604,12 @@ bool parse(char const *fileName)
 
 				instruction |= (tmp & 0x7ff);
 				objWrite(instruction, objFile);
-				// VERBOSE : printf("JSR  %s (%d spaces away)\n", operand1, tmp);
-			} else if (!uppercmp(line, "JSRR")) {
-				if (origSeen)
-					pc++;
-				// VERBOSE : printf("JSRR ");
-			} else if (!uppercmp(line, "LEA")) {
-				if (origSeen)
-					pc++;
-
-				skipWhitespace(file);
+				printf("JSR  %s (%d addresses away)\n", operand1, tmp - 1);
+				break;
+			case OP_JSRR:
+				printf("JSRR \n");
+				break;
+			case OP_LEA:
 				c = fgetc(file);
 
 				if (c == '\n' || c == ';') {
@@ -1717,7 +1681,7 @@ bool parse(char const *fileName)
 					continue;
 				}
 
-				struct symbol *sym = findSymbol(operand2);
+				sym = findSymbol(operand2);
 				if (NULL == sym) {
 					fprintf(stderr, "  Line %d: Invalid "
 						"label '%s'.\n", currentLine,
@@ -1740,12 +1704,9 @@ bool parse(char const *fileName)
 				instruction |= (tmp & 0x1ff);
 
 				objWrite(instruction, objFile);
-				// VERBOSE : printf("LEA  %s  %s  (%d spaces away)\n", operand1, operand2, tmp);
-			} else if (!uppercmp(line, "LD")) {
-				if (origSeen)
-					pc++;
-
-				skipWhitespace(file);
+				printf("LEA  %s  %s  (%d addresses away)\n", operand1, operand2, tmp - 1);
+				break;
+			case OP_LD:
 				c = fgetc(file);
 
 				if (c == '\n' || c == ';') {
@@ -1817,7 +1778,7 @@ bool parse(char const *fileName)
 					continue;
 				}
 
-				struct symbol *sym = findSymbol(operand2);
+				sym = findSymbol(operand2);
 				if (NULL == sym) {
 					fprintf(stderr, "  Line %d: Invalid "
 						"label '%s'.\n", currentLine,
@@ -1840,12 +1801,9 @@ bool parse(char const *fileName)
 				instruction |= (tmp & 0x1ff);
 
 				objWrite(instruction, objFile);
-				// VERBOSE : printf("LD  %s  %s(%d spaces away)\n", operand1, operand2, tmp);
-			} else if (!uppercmp(line, "LDI")) {
-				if (origSeen)
-					pc++;
-
-				skipWhitespace(file);
+				printf("LD  %s  %s(%d addresses away)\n", operand1, operand2, tmp - 1);
+				break;
+			case OP_LDI:
 				c = fgetc(file);
 
 				if (c == '\n' || c == ';') {
@@ -1917,7 +1875,7 @@ bool parse(char const *fileName)
 					continue;
 				}
 
-				struct symbol *sym = findSymbol(operand2);
+				sym = findSymbol(operand2);
 				if (NULL == sym) {
 					fprintf(stderr, "  Line %d: Invalid "
 						"label '%s'.\n", currentLine,
@@ -1940,13 +1898,10 @@ bool parse(char const *fileName)
 				instruction |= (tmp & 0x1ff);
 
 				objWrite(instruction, objFile);
-				// VERBOSE : printf("LDI  %s  %s (%d spaces away)\n",
-				//	operand1, operand2, tmp);
-			} else if (!uppercmp(line, "LDR")) {
-				if (origSeen)
-					pc++;
-
-				skipWhitespace(file);
+				printf("LDI  %s  %s (%d addresses away)\n",
+					operand1, operand2, tmp - 1);
+				break;
+			case OP_LDR:
 				c = fgetc(file);
 
 				if (c == '\n' || c == ';') {
@@ -2171,12 +2126,9 @@ bool parse(char const *fileName)
 				instruction |= tmp & 0x3f;
 
 				objWrite(instruction, objFile);
-				// VERBOSE : printf("LDR  %s  %s  %s\n", operand1, operand2, operand3);
-			} else if (!uppercmp(line, "ST")) {
-				if (origSeen)
-					pc++;
-
-				skipWhitespace(file);
+				printf("LDR  %s  %s  %s\n", operand1, operand2, operand3);
+				break;
+			case OP_ST:
 				c = fgetc(file);
 
 				if (c == '\n' || c == ';') {
@@ -2255,7 +2207,7 @@ bool parse(char const *fileName)
 				}
 
 
-				struct symbol *sym = findSymbol(operand2);
+				sym = findSymbol(operand2);
 				if (NULL == sym) {
 					fprintf(stderr, "  Line %d: Invalid "
 						"label '%s'.\n", currentLine,
@@ -2278,23 +2230,16 @@ bool parse(char const *fileName)
 				instruction |= (tmp & 0x1ff);
 
 				objWrite(instruction, objFile);
-				// VERBOSE : printf("ST %s  %s (%d spaces away)\n", operand1, operand2, tmp);
-			} else if (!uppercmp(line, "STI")) {
-				if (origSeen)
-					pc++;
-
-				skipWhitespace(file);
+				printf("ST %s  %s (%d addresses away)\n",
+					operand1, operand2, tmp - 1);
+				break;
+			case OP_STI:
 				c = fgetc(file);
 
 				if (c == '\n' || c == ';') {
 					fprintf(stderr, "  Line %d: No operands "
 						"supplied to  STI.\n",
 						currentLine);
-				}
-
-				if (doContinue) {
-					errors++;
-					continue;
 				}
 
 				if (c != 'R' && c != 'r') {
@@ -2363,7 +2308,7 @@ bool parse(char const *fileName)
 					continue;
 				}
 
-				struct symbol *sym = findSymbol(operand2);
+				sym = findSymbol(operand2);
 				if (NULL == sym) {
 					fprintf(stderr, "  Line %d: Invalid "
 						"label '%s'.\n", currentLine,
@@ -2386,13 +2331,10 @@ bool parse(char const *fileName)
 				instruction |= (tmp & 0x1ff);
 
 				objWrite(instruction, objFile);
-				// VERBOSE : printf("STI %s  %s (%d spaces away)\n",
-				//	operand1, operand2, tmp);
-			} else if (!uppercmp(line, "STR")) {
-				if (origSeen)
-					pc++;
-
-				skipWhitespace(file);
+				printf("STI %s  %s (%d addresses away)\n",
+					operand1, operand2, tmp - 1);
+				break;
+			case OP_STR:
 				c = fgetc(file);
 
 				if (c == '\n' || c == ';') {
@@ -2624,29 +2566,22 @@ bool parse(char const *fileName)
 				instruction |= (tmp & 0x3f);
 
 				objWrite(instruction, objFile);
-				// VERBOSE : printf("STR  %s  %s  %s\n", operand1, operand2,
-				//		operand3);
-			} else if (!uppercmp(line, "RET")) {
-				if (origSeen)
-					pc++;
-
+				printf("STR  %s  %s  %s\n", operand1, operand2,
+						operand3);
+				break;
+			case OP_RET:
 				if (!endOfLine("RET", file, &currentLine)) {
 					errors++;
 					continue;
 				}
 
 				objWrite(0xc1c0, objFile);
-				// VERBOSE : printf("RET\n");
-			} else if (!uppercmp(line, "RTI")) {
-				// VERBOSE : printf("RTI\n");
-			} else if (!uppercmp(line, "TRAP")) {
-				if (origSeen)
-					pc++;
-				if (c == 'T') {
-					c = fgetc(file);
-					c = fgetc(file);
-				}
-
+				printf("RET\n");
+				break;
+			case OP_RTI:
+				printf("RTI\n");
+				break;
+			case OP_TRAP:
 				if (!fscanf(file, "%hx", &instruction)) {
 					fprintf(stderr, "  Line %d: Invalid "
 						"literal for base 16.\n",
@@ -2655,62 +2590,66 @@ bool parse(char const *fileName)
 					continue;
 				}
 
-				while (isspace(c) || isxdigit(c) || c == 'x' ||
-						c == 'X') {
-					if (c == '\n') {
-						break;
-					}
-					c = fgetc(file);
+				skipWhitespace(file);
+				fscanf(file, "%s", line);
+
+				instruction = (uint16_t) strtoul(line, &end, 16);
+
+				if (*end) {
+					fprintf(stderr, "  Line %d: Invalid "
+						"literal for base 16.\n",
+						currentLine);
+					errors++;
+					continue;
 				}
-				ungetc(c, file);
 
 				if (!endOfLine("TRAP", file, &currentLine)) {
 					errors++;
 					continue;
 				}
 
-				if (tmp < 0x20 || tmp > 0x25) {
+				if (instruction < 0x20 || instruction > 0x25) {
 					fprintf(stderr, "  Line %d: Invalid "
 						"TRAP Routine.\n", currentLine);
 					errors++;
 					continue;
 				}
-				instruction = 0xf000 | tmp;
+
+				instruction += 0xf000;
 
 				objWrite(instruction, objFile);
-				// VERBOSE : printf("TRAP x%x\n", tmp);
-			} else if (!uppercmp(line, "HALT")       ||
-					!uppercmp(line, "PUTS")  ||
-					!uppercmp(line, "PUTC")  ||
-					!uppercmp(line, "GETC")  ||
-					!uppercmp(line, "OUT")   ||
-					!uppercmp(line, "PUTSP") ||
-					!uppercmp(line, "IN")) {
-				if (origSeen)
-					pc++;
-
+				printf("TRAP x%x\n", tmp);
+				break;
+			case OP_HALT: case OP_PUTS: case OP_PUTC: case OP_GETC:
+			case OP_OUT: case OP_PUTSP: case OP_IN:
 				if (!endOfLine(line, file, &currentLine)) {
 					errors++;
 					continue;
 				}
+				instruction = 0xf025;
 
-				if (!uppercmp(line, "GETC")) {
-					instruction = 0xf020;
-				} else if (!uppercmp(line, "PUTC") ||
-						!uppercmp(line, "OUT")) {
-					instruction = 0xf021;
-				} else if (!uppercmp(line, "PUTS")) {
-					instruction = 0xf022;
-				} else if (!uppercmp(line, "IN")) {
-					instruction = 0xf023;
-				} else if (!uppercmp(line, "PUTSP")) {
-					instruction = 0xf024;
-				} else {
-					instruction = 0xf025;
+				switch (tok) {
+				case OP_GETC:			// 0xF020
+					instruction--;
+				case OP_PUTC: case OP_OUT:	// 0xF021
+					instruction--;
+				case OP_PUTS:			// 0xF022
+					instruction--;
+				case OP_IN:			// 0xF023
+					instruction--;
+				case OP_PUTSP:			// 0xF024
+					instruction--;
+				case OP_HALT:
+				default:
+					break;
 				}
 
 				objWrite(instruction, objFile);
-				//VERBOSE : printf("%s\n", line);
+				printf("%s\n", line);
+				break;
+			case OP_BRUNK: case OP_UNK:
+				pc--;
+				break;
 			}
 		}
 	}
