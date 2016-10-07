@@ -1,0 +1,45 @@
+#ifndef TOKEN_H
+#define TOKEN_H
+
+enum Token {
+	OP_ADD,
+	OP_AND,
+	OP_BR,
+	OP_BRN,
+	OP_BRZ,
+	OP_BRP,
+	OP_BRNZ,
+	OP_BRZP,
+	OP_BRNP,
+	OP_BRUNK,
+	OP_JMP,
+	OP_JSR,
+	OP_JSRR,
+	OP_LD,
+	OP_LDI,
+	OP_LDR,
+	OP_LEA,
+	OP_NOT,
+	OP_RET,
+	OP_RTI,
+	OP_ST,
+	OP_STI,
+	OP_STR,
+	OP_TRAP,
+	OP_HALT,
+	OP_OUT,
+	OP_GETC,
+	OP_PUTC,
+	OP_IN,
+	OP_PUTS,
+	OP_PUTSP,
+	OP_UNK,
+
+	DIR_ORIG,
+	DIR_STRINGZ,
+	DIR_FILL,
+	DIR_END,
+	DIR_BLKW,
+};
+
+#endif // TOKEN_H

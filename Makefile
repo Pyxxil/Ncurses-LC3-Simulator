@@ -23,7 +23,7 @@ CURSES   = ncurses
 LIBS     = -l$(CURSES)
 
 # Flags to use when compiling
-CFLAGS = $(INCLUDES) $(LIBS) -std=c11 -g -O2
+CFLAGS = $(INCLUDES) -std=c11 -g -O2
 # Flags to add when compiling the debug version
 DFLAGS = -Wall -Werror -Wpedantic -Wextra
 
@@ -48,7 +48,7 @@ tags: $(SRC)
 # Build the executable file
 .PHONY: build
 build: $(OBJS)
-	$(CC) $(CFLAGS) -o $(EXECUTABLE) $(OBJS)
+	$(CC) $(CFLAGS) $(LIBS) -o $(EXECUTABLE) $(OBJS)
 
 .PHONY: asm
 asm: $(ASM)
