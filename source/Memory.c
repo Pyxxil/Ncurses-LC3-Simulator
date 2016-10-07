@@ -15,6 +15,31 @@ static char const *const MEMFORMAT = "0x%04hx\t\t%s\t\t0x%04hx";
 static unsigned int const SELECTATTR = A_REVERSE | A_BOLD;
 
 /*
+ * For now, this is mostly pointless ... It will be more useful when proper
+ * instruction handling is working (i.e. no more of the LC3xxxx functions).
+ */
+
+static void installOS(struct program *prog)
+{
+	FILE *OSFile = fopen("LC3_OS.obj", "r");
+	uint16_t OSOrigin, tmp;
+
+	fread(&OSOrigin, WORD_SIZE, 1, OSFile);
+	OSOrigin = 0xffff & (OSOrigin << 8 | OSOrigin >> 8);
+
+	while (fread(&tmp, WORD_SIZE, 1, OSFile) == 1) {
+		prog->simulator.memory[OSOrigin] = (struct memory_slot) {
+			.value = 0xffff & (tmp << 8 | tmp >> 8),
+			.address = OSOrigin,
+		};
+
+		OSOrigin++;
+	}
+
+	fclose(OSFile);
+}
+
+/*
  * Populate the memory of the supplied simulator with the contents of
  * the provided file.
  *
@@ -24,6 +49,7 @@ static unsigned int const SELECTATTR = A_REVERSE | A_BOLD;
 
 int populate_memory(struct program *prog)
 {
+	installOS(prog);
 	FILE *file = fopen(prog->objfile, "rb");
 	uint16_t tmp_PC, instruction;
 

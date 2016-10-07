@@ -67,8 +67,8 @@ void print_state(struct LC3 *simulator, WINDOW *window)
 	// Print the first four registers.
 	for (; index < 4; ++index) {
 		mvwprintw(window, index + 1, 3, "R%d 0x%04x %hd", index,
-			  simulator->registers[index],
-			  simulator->registers[index]);
+			simulator->registers[index],
+			simulator->registers[index]);
 	}
 
 	// Print the last 4 registers.

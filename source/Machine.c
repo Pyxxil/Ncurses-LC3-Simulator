@@ -62,10 +62,10 @@ static int init_machine(struct program *prog)
 static void sstate(enum STATE *currentState)
 {
 	mvprintw(0, 0, "Currently Viewing: %- 15s",
-		(*currentState == MEM) ? "Memory View" :
+		(*currentState == MEM)  ? "Memory View" :
 		(*currentState == MAIN) ? "Main View" :
 		(*currentState == EDIT) ? "Editor" :
-		(*currentState == SIM) ? "Simulator" :
+		(*currentState == SIM)  ? "Simulator" :
 		"Unknown");
 	refresh();
 
@@ -140,7 +140,16 @@ static bool simview(WINDOW *output, WINDOW *status, struct program *prog,
 			execute_next(&(prog->simulator), output);
 			prog->simulator.isPaused = true;
 			print_state(&(prog->simulator), status);
-		} if (!(prog->simulator.isPaused) &&
+		} else if (input == CONTINUE) {
+			mem_populated = -1;
+			init_machine(prog);
+		} else if (input == CONTINUE_RUN) {
+			mem_populated = -1;
+			init_machine(prog);
+			prog->simulator.isPaused = false;
+		}
+
+		if (!(prog->simulator.isPaused) &&
 				!(prog->simulator.isHalted)) {
 			execute_next(&(prog->simulator), output);
 			timeout = 0;

@@ -29,7 +29,7 @@ OUT_PROMPT:
 	; Initialise Registers for the first part of the program
 	AND R5, R5, #0		; Reset R5
 	ADD R5, R5, #10		; Set R5 to ten, its our character counter
-	LD R1, NUMBER		; Load the number into R1
+	LD R1 NUMBER		; Load the number into R1
 	JSR CLEAR_FLAG		; Clear any flags added
 
 
@@ -41,14 +41,14 @@ GET_INPUT:
 	ADD R3, R0, #-10	; Check if the input was the newline character
 	BRz CHECK_INPUT		; If yes, check what was input
 	; Compare input character against 9
-	LD R3, ASCII_NINE	; Load the value in ASCII_NINE into R3
+	LD R3, NINE		; Load the value in NINE into R3
 	NOT R3, R3		; Start two's compliment
 	ADD R3, R3, #1
 	ADD R3, R0, R3		; Compare ascii values
 	BRp FLAG_THAT		; If the character's ascii value is greater than 9's, flag it
 	; Compare input character against 0
-	LD R3, ASCII_ZERO	; Load the value of ASCII_ZER0 into R3
-	NOT R3, R3		; Start two's compliment
+	LD R3, ZERO		; Load the value of ZER0 into R3
+	NOT R3, R3		; Negate R3
 	ADD R3, R3, #1
 	ADD R3, R3, R0		; Compare the ascii values
 	BRn FLAG_THAT		; If the character's ascii value is less than 0's, flag it
@@ -138,34 +138,39 @@ CHECK_INPUT:
 
 ; Take a number in R5 and convert each digit to ASCII to print to the display
 CONVERT_TO_ASCII:
-	ST R7, SAVER7		; Store the return address
+	ST R7,  SAVER7		; Store the return address
 	LEA R2, NUMBERS		; Load the numbers to use into R2
 	AND R6, R6, #0		; The digit in the current place
 	AND R3, R3, #0		; The number of digits displayed
+
 ; Outer loop to initialise for the inner loop
 OUTER_LOOP:
 	LDR R4, R2, #0		; Load the current place into R4
 	BRz END			; If that number is 0, we're done.
 	NOT R4, R4		; Set R4 for two's compliment
 	ADD R4, R4, #1
+
 ; Inner loop which handles all of the subtracting
 INNER_LOOP:
 	ADD R5, R5, R4		; Subtract the current number from R5
 	BRn CHECK_DIGIT		; and if R5 is now negative, then we've got the digit in R6
 	ADD R6, R6, #1		; Otherwise, add 1 the digit in the current place
 	BRnzp INNER_LOOP	; And loop again
+
 ; We've found what the digit is, so lets check some things
 CHECK_DIGIT:
 	ADD R6, R6, #0		; If R6 is greater than 0, output it
 	BRp OUTPUT
 	ADD R3, R3, #0		; Otherwise, if there are no other digits output then skip
 	BRz INCREMENT
+
 ; Output the digit at the current place
 OUTPUT:
-	LD R0, ASCII_ZERO	; Load the ascii value for 0 into R0
+	LD R0,  ZERO		; Load the ascii value for 0 into R0
 	ADD R0, R0, R6		; Add the digit to it to get the ascii value for it
 	OUT			; Display it
 	ADD R3, R3, #1		; We've output a digit, so increment the amount of digits we've output
+
 ; The end of a loop, so lets increment a few things
 INCREMENT:
 	ADD R2, R2, #1		; Increment the pointer to the numbers
@@ -174,9 +179,10 @@ INCREMENT:
 	ADD R4, R4, #1		; into the negative, so we need to make it positive again
 	ADD R5, R5, R4		; Make R5 positive.
 	BRnzp OUTER_LOOP	; and loop again.
+
 ; We've reached the last digit, so display it and return
 END:
-	LD R0, ASCII_ZERO	; We want to find the digits ascii value, so add it to
+	LD R0, ZERO		; We want to find the digits ascii value, so add it to
 	ADD R0, R0, R5		; the ascii value for 0
 	OUT
 	LEA R0, SPACE		; Print a space character between each fibonacci number
@@ -193,13 +199,13 @@ SAVER7	.FILL	0
 PROMPT	.STRINGZ	"\nEnter a number from 3 to 23: "
 SPACE	.STRINGZ	" "	; A space character has the ascii value of 0x20, too large to add to a register.
 
-NUMBER		.FILL	0		; The number that we will use as the number of fibonacci numbers we want
-FLAG		.FILL	0		; A way to tell the program we've received input we don't want
+NUMBER	.FILL	0	; The number that we will use as the number of fibonacci numbers we want
+FLAG	.FILL	0	; A way to tell the program we've received input we don't want
 
 ; ASCII values that will be used to check input, as well as convert to ASCII
-ASCII_ZERO	.FILL	#48
-ASCII_THREE	.FILL	#51
-ASCII_NINE	.FILL	#58
+ZERO	.FILL	#48
+THREE	.FILL	#51
+NINE	.FILL	#58
 
 ; Values that we will use to output the current fibonacci number to the screen
 NUMBERS	.FILL #10000
@@ -209,9 +215,9 @@ NUMBERS	.FILL #10000
 	.FILL #0	; So we can tell when we've reached the last digit
 
 
-; ---------------------------------------------------
-; Recursive function to find the Nth fibonacci number
-;----------------------------------------------------
+; ---------------------------------------------------;
+; Recursive function to find the Nth fibonacci number;
+;----------------------------------------------------;
 RECURSIVE_FIBONACCI:
 	STR R7, R2, #0 		; Store return address
 	ADD R2, R2, #1 		; Increment stack pointer
@@ -273,10 +279,16 @@ LOOP:
 
 ; We've finished finding the fibonacci numbers, so end the program.
 FINISH:
+	STI R2, SAVER ;
+	LDI R3, SAVER
+	LD R2, LOOPER
+;	JSRR R2
 	HALT
 
 ; The loop count (will also be used to find the fibonacci number we want)
 COUNT:		.FILL 1
+SAVER		.FILL SAVER7
+LOOPER		.FILL INIT_LOOP
 
 ; Our stack pointers
 STACK:	 	.BLKW #100	; Return address and frame stack pointer.
