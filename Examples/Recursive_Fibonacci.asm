@@ -23,13 +23,13 @@
 
 ; Start by adding the prompt to the screen.
 OUT_PROMPT:
-	LEA R0, PROMPT; Load the prompt into R0
+	LEA R0, PROMPT ; Load the prompt into R0
 	PUTS			; Put it to the display
 
 	; Initialise Registers for the first part of the program
 	AND R5, R5, #0		; Reset R5
 	ADD R5, R5, #10		; Set R5 to ten, its our character counter
-	LD R1 NUMBER		; Load the number into R1
+	LD R1, NUMBER		; Load the number into R1
 	JSR CLEAR_FLAG		; Clear any flags added
 
 
@@ -279,10 +279,6 @@ LOOP:
 
 ; We've finished finding the fibonacci numbers, so end the program.
 FINISH:
-	STI R2, SAVER ;
-	LDI R3, SAVER
-	LD R2, LOOPER
-;	JSRR R2
 	HALT
 
 ; The loop count (will also be used to find the fibonacci number we want)

@@ -543,6 +543,10 @@ bool parse(char const *fileName)
 	struct symbol *sym;
 
 	printf("STARTING FIRST PASS...\n");
+	fprintf(symFile, "// Symbol table\n");
+	fprintf(symFile, "// Scope level 0:\n");
+	fprintf(symFile, "//\tSymbol Name        Page Address\n");
+	fprintf(symFile, "//\t-----------------  ------------\n");
 
 	while (1) {
 		memset(line,  0, sizeof(line));
@@ -561,19 +565,18 @@ bool parse(char const *fileName)
 					errors, errors != 1 ? "'s" : "");
 				break;
 			}
-			printf("%d error%s found on first pass.\n",
+			printf("%d error%s found in first pass.\n",
 				errors, errors == 1 ? "" : "'s");
 			printf("STARTING SECOND PASS...\n");
 			pass = 2;
 			pc = actualPC;
 			rewind(file);
-			currentLine = 0;
+			currentLine = 1;
 			errors = 0;
+			endSeen = false;
 			continue;
 		} else if (c == '\n') {
 			currentLine++;
-			continue;
-		} else if (c == ':') {
 			continue;
 		} else if (c == ';' || c == '/') {
 			if (c == '/' && (c = fgetc(file)) != '/') {
@@ -595,6 +598,7 @@ bool parse(char const *fileName)
 		switch (tok) {
 		case DIR_ORIG:
 			if (pass != 1) {
+				instruction = actualPC;
 				nextLine(file);
 				break;
 			}
@@ -618,6 +622,7 @@ bool parse(char const *fileName)
 			}
 
 			pc = actualPC = oper3;
+		//	printf("PC  %x\n", pc);
 			origSeen = true;
 			break;
 		case DIR_STRINGZ:
@@ -699,7 +704,7 @@ bool parse(char const *fileName)
 					objWrite(0, objFile);
 					oper3--;
 				}
-				oper3--;
+				instruction = 0;
 			}
 			break;
 		case DIR_FILL:
@@ -731,6 +736,7 @@ bool parse(char const *fileName)
 		case DIR_END:
 			if (pass != 1) {
 				nextLine(file);
+				endSeen = true;
 				break;
 			}
 
@@ -775,7 +781,7 @@ bool parse(char const *fileName)
 				continue;
 			}
 
-			oper3 = sym->address - pc;
+			oper3 = sym->address - pc + 1;
 			if (oper3 < -256 || oper3 > 255) {
 				fprintf(stderr, "  Line %d: Label is "
 					"too far away.\n", currentLine);
@@ -901,7 +907,7 @@ bool parse(char const *fileName)
 				continue;
 			}
 
-			oper3 = sym->address - pc;
+			oper3 = sym->address - pc + 1;
 			if (oper3 < -1024 || oper3 > 1023) {
 				fprintf(stderr, "  Line %d: Label is "
 					"too far away.\n", currentLine);
@@ -958,16 +964,19 @@ bool parse(char const *fileName)
 				continue;
 			}
 
-			oper3 = sym->address - pc;
+			oper3 = sym->address - pc + 1;
 			if (oper3 < -256 || oper3 > 255) {
 				fprintf(stderr, "  Line %d: Label is "
-					"too far away.\n", currentLine);
+					"too far away ( %s  %d  %d   %s ).\n", currentLine,
+					line, oper1, oper3, sym->name);
 				nextLine(file);
 				errors++;
 				continue;
 			}
 
 			instruction |= oper1 << 9 | (oper3 & 0x1ff);
+		//	printf("%s  R%d  %s  (%d addresses away)\n",
+		//		line, oper1, sym->name, oper3);
 			break;
 		case OP_STR:
 			instruction  = 0x1000;
@@ -1080,31 +1089,27 @@ bool parse(char const *fileName)
 
 			break;
 		case OP_BRUNK: case OP_UNK:
-			if (pass != 1) {
-				pc--;
-				nextLine(file);
-				break;
-			}
-
-			end = strchr(line, ':');
-			if (NULL != end) {
-				char *colon = end + strlen(end) - 1;
-				for (; colon != end; colon--) {
+			pc--;
+			if (pass == 1) {
+				end = strchr(line, ':');
+				if (NULL != end) {
+					char *colon = end + strlen(end) - 1;
+					for (; colon != end; colon--) {
+						*colon = '\0';
+					}
 					*colon = '\0';
 				}
-				ungetc(*colon, file);
-				*colon = '\0';
-			}
 
-			if (addSymbol(line, pc)) {
-				fprintf(stderr, "  Line %d: "
-					"Multiple definitions of label "
-					"'%s'\n", currentLine, line);
-				nextLine(file);
-				errors++;
-			} else {
-				fprintf(symFile, "//\t%-16s %4x\n",
-					line, pc);
+				if (addSymbol(line, pc)) {
+					fprintf(stderr, "  Line %d: "
+						"Multiple definitions of label "
+						"'%s'\n", currentLine, line);
+					nextLine(file);
+					errors++;
+				} else {
+					fprintf(symFile, "//\t%-16s %4X\n",
+						line, pc);
+				}
 			}
 			break;
 		}
