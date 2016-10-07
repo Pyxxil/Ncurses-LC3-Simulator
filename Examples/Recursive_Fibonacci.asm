@@ -23,7 +23,7 @@
 
 ; Start by adding the prompt to the screen.
 OUT_PROMPT:
-	LEA R0, PROMPT		; Load the prompt into R0
+	LEA R0, PROMPT; Load the prompt into R0
 	PUTS			; Put it to the display
 
 	; Initialise Registers for the first part of the program
