@@ -229,7 +229,7 @@ static int addSymbol(char const *const name, uint16_t address)
 	}
 
 	tail = table;
-	printf("ADDED %s\n", tail->sym->name);
+	//printf("ADDED %s\n", tail->sym->name);
 	return 0;
 }
 
@@ -474,52 +474,77 @@ static uint16_t nextRegister(FILE *file, bool allowedComma)
 	return c - 0x30;
 }
 
-bool parse(char const *fileName)
+bool parse(struct program *prog)
 {
-	FILE *file = fopen(fileName, "r");
-
-	FILE *symFile, *hexFile, *binFile, *objFile;
-
-	size_t length = strlen(fileName);
-
-	char *symFileName = malloc(length + 5);
-	char *hexFileName = malloc(length + 5);
-	char *binFileName = malloc(length + 5);
-	char *objFileName = malloc(length + 5);
-
-	char *fileBase = strstr(fileName, ".asm");
-	if (NULL != fileBase) {
-		size_t pos = fileBase - fileName;
-
-		strncpy(symFileName, fileName, pos);
-		strcpy(symFileName + pos, ".sym");
-
-		strncpy(hexFileName, fileName, pos);
-		strcpy(hexFileName + pos, ".hex");
-
-		strncpy(binFileName, fileName, pos);
-		strcpy(binFileName + pos, ".bin");
-
-		strncpy(objFileName, fileName, pos);
-		strcpy(objFileName + pos, ".obj");
+	if (NULL == prog->assemblyfile) {
+		fprintf(stderr, "No assembly file provided.\n");
+		return false;
 	} else {
-		strcpy(symFileName, fileName);
-		strcat(symFileName, ".sym");
+		size_t length = strlen(prog->assemblyfile) + 1;
+		char *ext = strrchr(prog->assemblyfile, '.');
 
-		strcpy(symFileName, fileName);
-		strcat(hexFileName, ".hex");
+		if (NULL == prog->symbolfile) {
+			if (NULL != ext) {
+				prog->symbolfile = calloc(length, sizeof(char));
+				strncpy(prog->symbolfile, prog->assemblyfile,
+					ext - prog->assemblyfile);
+			} else {
+				prog->symbolfile = calloc(length + 5,
+							sizeof(char));
+				strcpy(prog->symbolfile, prog->assemblyfile);
+			}
 
-		strcpy(symFileName, fileName);
-		strcat(binFileName, ".bin");
+			strcat(prog->symbolfile, ".sym");
+		}
 
-		strcpy(symFileName, fileName);
-		strcat(objFileName, ".obj");
+		if (NULL == prog->hexoutfile) {
+			if (NULL != ext) {
+				prog->hexoutfile = calloc(length, sizeof(char));
+				strncpy(prog->hexoutfile, prog->assemblyfile,
+					ext - prog->assemblyfile);
+			} else {
+				prog->hexoutfile = calloc(length + 5,
+							sizeof(char));
+				strcpy(prog->hexoutfile, prog->assemblyfile);
+			}
+
+			strcat(prog->hexoutfile, ".hex");
+		}
+
+		if (NULL == prog->binoutfile) {
+			if (NULL != ext) {
+				prog->binoutfile = calloc(length, sizeof(char));
+				strncpy(prog->binoutfile, prog->assemblyfile,
+					ext - prog->assemblyfile);
+			} else {
+				prog->binoutfile = calloc(length + 5,
+							sizeof(char));
+				strcpy(prog->binoutfile, prog->assemblyfile);
+			}
+
+			strcat(prog->binoutfile, ".bin");
+		}
+
+		if (NULL == prog->objectfile) {
+			if (NULL != ext) {
+				prog->objectfile = calloc(length, sizeof(char));
+				strncpy(prog->objectfile, prog->assemblyfile,
+					ext - prog->assemblyfile);
+			} else {
+				prog->objectfile = calloc(length + 5,
+							sizeof(char));
+				strcpy(prog->objectfile, prog->assemblyfile);
+			}
+
+			strcat(prog->objectfile, ".obj");
+		}
 	}
 
-	symFile = fopen(symFileName, "w+");
-	hexFile = fopen(hexFileName, "w+");
-	binFile = fopen(binFileName, "w+");
-	objFile = fopen(objFileName, "wb+");
+	FILE *asmFile = fopen(prog->assemblyfile, "r");
+	FILE *symFile = fopen(prog->symbolfile, "w+");
+	FILE *hexFile = fopen(prog->hexoutfile, "w+");
+	FILE *binFile = fopen(prog->binoutfile, "w+");
+	FILE *objFile = fopen(prog->objectfile, "wb+");
 
 	uint16_t instruction = 0, pc = 0, oper1, oper2, actualPC;
 	int c, currentLine = 1, errors = 0, oper3, pass = 1;
@@ -543,8 +568,8 @@ bool parse(char const *fileName)
 		oper2 = 0;
 		oper3 = 0;
 
-		skipWhitespace(file);
-		c = fgetc(file);
+		skipWhitespace(asmFile);
+		c = fgetc(asmFile);
 
 		if (c == EOF) {
 			if (pass == 2) {
@@ -557,7 +582,7 @@ bool parse(char const *fileName)
 			printf("STARTING SECOND PASS...\n");
 			pass = 2;
 			pc = actualPC;
-			rewind(file);
+			rewind(asmFile);
 			currentLine = 1;
 			errors = 0;
 			endSeen = false;
@@ -566,46 +591,49 @@ bool parse(char const *fileName)
 			currentLine++;
 			continue;
 		} else if (c == ';' || c == '/') {
-			if (c == '/' && (c = fgetc(file)) != '/') {
-				ungetc(c, file);
+			if (c == '/' && (c = fgetc(asmFile)) != '/') {
+				ungetc(c, asmFile);
 			} else {
-				nextLine(file);
+				nextLine(asmFile);
 				continue;
 			}
 		}
 
-		ungetc(c, file);
-		tok = nextToken(file, line);
-		skipWhitespace(file);
+		ungetc(c, asmFile);
+		tok = nextToken(asmFile, line);
+		skipWhitespace(asmFile);
 
-		if (origSeen) {
-			pc++;
-		}
+		if (origSeen)  pc++;
 
 		switch (tok) {
 		case DIR_ORIG:
 			if (pass != 1) {
 				instruction = actualPC;
-				nextLine(file);
+				nextLine(asmFile);
 				break;
 			}
 
 			if (origSeen) {
 				fprintf(stderr, "  Line %d: Extra .ORIG "
 					"directive.\n", currentLine);
+				nextLine(asmFile);
 				errors ++;
 				continue;
 			} else if (endSeen) {
 				fprintf(stderr, "  Line %d: .END seen "
 					"before .ORIG.\n", currentLine);
+				nextLine(asmFile);
 				errors ++;
 				continue;
 			}
 
-			oper3 = nextImmediate(file, false);
+			oper3 = nextImmediate(asmFile, false);
 			if (oper3 > 0xffff || oper3 < 0) {
-				fprintf(stderr, "  Line %d: Invalid operand for "
-					".ORIG.\n", currentLine);
+				fprintf(stderr, "  Line %d: Invalid operand "
+					"for .ORIG.\n", currentLine);
+				nextLine(asmFile);
+				errors++;
+				continue;
 			}
 
 			pc = actualPC = oper3;
@@ -613,21 +641,22 @@ bool parse(char const *fileName)
 			origSeen = true;
 			break;
 		case DIR_STRINGZ:
-			c = fgetc(file);
+			c = fgetc(asmFile);
 
 			if (c != '"') {
 				fprintf(stderr, "  Line %d: No string "
 					"supplied to .STRINGZ.\n",
 					currentLine);
-				nextLine(file);
+				nextLine(asmFile);
 				errors++;
 				continue;
 			}
 
 			memset(line, 0, 100);
-			for (size_t i = 0; (c = fgetc(file)) != '"' && i < 100; i++) {
+			for (size_t i = 0; (c = fgetc(asmFile)) != '"' &&
+					i < 100; i++) {
 				if (c == '\\') {
-					switch (c = fgetc(file)) {
+					switch (c = fgetc(asmFile)) {
 					case 'n':
 						line[i] = '\n';
 						instruction = 0x000a;
@@ -645,7 +674,7 @@ bool parse(char const *fileName)
 						instruction = 0x005c;
 						break;
 					default:
-						ungetc(c, file);
+						ungetc(c, asmFile);
 						break;
 					}
 				} else {
@@ -662,29 +691,28 @@ bool parse(char const *fileName)
 			line[strlen(line)] = '\0';
 			break;
 		case DIR_BLKW:
-			oper3 = nextImmediate(file, false);
+			oper3 = nextImmediate(asmFile, false);
 
 			if (oper3 == INT_MAX) {
-				fprintf(stderr, "  Line %d: Invalid operand for "
-					".BLKW.\n", currentLine);
+				fprintf(stderr, "  Line %d: Invalid operand "
+					"for .BLKW.\n", currentLine);
 			} else if (oper3 < 1) {
 				fprintf(stderr, "  Line %d: .BLKW "
 					"requires an argument > 0.\n",
 					currentLine);
-				nextLine(file);
+				nextLine(asmFile);
 				errors++;
 				continue;
 			} else if (oper3 > 150) {
 				fprintf(stderr, "  Line %d: .BLKW "
 					"requires an argument < 150.\n",
 					currentLine);
-				nextLine(file);
+				nextLine(asmFile);
 				errors++;
 				continue;
 			}
 
 			pc += oper3 - 1;
-
 			if (pass != 1) {
 				oper1 = oper3;
 				while (oper3 > 1) {
@@ -696,22 +724,22 @@ bool parse(char const *fileName)
 			break;
 		case DIR_FILL:
 			if (pass == 1) {
-				nextLine(file);
+				nextLine(asmFile);
 				break;
 			}
 
-			oper3 = nextImmediate(file, false);
+			oper3 = nextImmediate(asmFile, false);
 
 			if (oper3 == INT_MAX) {
-				fscanf(file, "%79s", label);
-				extractLabel(label, file);
+				fscanf(asmFile, "%79s", label);
+				extractLabel(label, asmFile);
 				sym = findSymbol(label);
 
 				if (NULL == sym) {
 					fprintf(stderr, "  Line %d: Invalid "
 						"literal for base %d.\n",
 						currentLine, oper3);
-					nextLine(file);
+					nextLine(asmFile);
 					errors++;
 					continue;
 				}
@@ -722,7 +750,7 @@ bool parse(char const *fileName)
 			break;
 		case DIR_END:
 			if (pass != 1) {
-				nextLine(file);
+				nextLine(asmFile);
 				endSeen = true;
 				break;
 			}
@@ -738,7 +766,7 @@ bool parse(char const *fileName)
 		case OP_BR: case OP_BRN: case OP_BRZ: case OP_BRP:
 		case OP_BRNZ: case OP_BRNP: case OP_BRZP:
 			if (pass == 1) {
-				nextLine(file);
+				nextLine(asmFile);
 				break;
 			}
 
@@ -756,14 +784,14 @@ bool parse(char const *fileName)
 				continue;
 			}
 
-			fscanf(file, "%79s", label);
-			extractLabel(label, file);
+			fscanf(asmFile, "%79s", label);
+			extractLabel(label, asmFile);
 			sym = findSymbol(label);
 			if (NULL == sym) {
 				fprintf(stderr, "  Line %d: Invalid "
 					"label '%s'.\n", currentLine,
 					label);
-				nextLine(file);
+				nextLine(asmFile);
 				errors++;
 				continue;
 			}
@@ -772,7 +800,7 @@ bool parse(char const *fileName)
 			if (oper3 < -256 || oper3 > 255) {
 				fprintf(stderr, "  Line %d: Label is "
 					"too far away.\n", currentLine);
-				nextLine(file);
+				nextLine(asmFile);
 				errors++;
 				continue;
 			}
@@ -785,37 +813,36 @@ bool parse(char const *fileName)
 			instruction += 0x1000;
 
 			if (pass == 1) {
-				nextLine(file);
+				nextLine(asmFile);
 				break;
 			}
 
-			oper1 = nextRegister(file, false);
+			oper1 = nextRegister(asmFile, false);
 			if (oper1 == 65535) {
 				fprintf(stderr, "  Line %d: Invalid operand "
 					"provided to %s.\n", currentLine, line);
-				nextLine(file);
+				nextLine(asmFile);
 				errors++;
 				continue;
 			}
 
-			oper2 = nextRegister(file, true);
+			oper2 = nextRegister(asmFile, true);
 			if (oper2 == 65535) {
 				fprintf(stderr, "  Line %d: Invalid operand "
 					"provided to %s.\n", currentLine, line);
-				nextLine(file);
-				nextLine(file);
+				nextLine(asmFile);
 				errors++;
 				continue;
 			}
 
-			oper3 = nextRegister(file, true);
+			oper3 = nextRegister(asmFile, true);
 			if (oper3 == 65535) {
-				oper3 = nextImmediate(file, true);
+				oper3 = nextImmediate(asmFile, true);
 				if (oper3 > 15 || oper3 < -16) {
-					fprintf(stderr, "  Line %d: Invalid operand "
-						"provided to %s.\n",
+					fprintf(stderr, "  Line %d: Invalid "
+						"operand provided to %s.\n",
 						currentLine, line);
-					nextLine(file);
+					nextLine(asmFile);
 					errors++;
 					continue;
 				}
@@ -823,30 +850,31 @@ bool parse(char const *fileName)
 				instruction |= 0x20;
 			}
 
-			instruction = instruction | oper1 << 9 | oper2 << 6 | oper3;
+			instruction = instruction | oper1 << 9 |
+				oper2 << 6 | oper3;
 			break;
 		case OP_NOT:
 			instruction += 0x903f;
 
 			if (pass == 1) {
-				nextLine(file);
+				nextLine(asmFile);
 				break;
 			}
 
-			oper1 = nextRegister(file, false);
+			oper1 = nextRegister(asmFile, false);
 			if (oper1 == 65535) {
 				fprintf(stderr, "  Line %d: Invalid operand "
 					"provided to NOT.\n", currentLine);
-				nextLine(file);
+				nextLine(asmFile);
 				errors++;
 				continue;
 			}
 
-			oper2 = nextRegister(file, true);
+			oper2 = nextRegister(asmFile, true);
 			if (oper2 == 65535) {
 				fprintf(stderr, "  Line %d: Invalid operand "
 					"provided to NOT.\n", currentLine);
-				nextLine(file);
+				nextLine(asmFile);
 				errors++;
 				continue;
 			}
@@ -859,15 +887,15 @@ bool parse(char const *fileName)
 			instruction += 0x4000;
 
 			if (pass == 1) {
-				nextLine(file);
+				nextLine(asmFile);
 				break;
 			}
 
-			oper1 = nextRegister(file, false);
+			oper1 = nextRegister(asmFile, false);
 			if (oper1 == 65535) {
 				fprintf(stderr, "  Line %d: Invalid operand "
 					"provided to %s.\n", currentLine, line);
-				nextLine(file);
+				nextLine(asmFile);
 				errors++;
 				continue;
 			}
@@ -878,18 +906,18 @@ bool parse(char const *fileName)
 			instruction = 0x4800;
 
 			if (pass == 1) {
-				nextLine(file);
+				nextLine(asmFile);
 				break;
 			}
 
-			fscanf(file, "%79s", label);
-			extractLabel(label, file);
+			fscanf(asmFile, "%79s", label);
+			extractLabel(label, asmFile);
 			sym = findSymbol(label);
 			if (NULL == sym) {
 				fprintf(stderr, "  Line %d: Invalid "
 					"label '%s'.\n", currentLine,
 					label);
-				nextLine(file);
+				nextLine(asmFile);
 				errors++;
 				continue;
 			}
@@ -898,7 +926,7 @@ bool parse(char const *fileName)
 			if (oper3 < -1024 || oper3 > 1023) {
 				fprintf(stderr, "  Line %d: Label is "
 					"too far away.\n", currentLine);
-				nextLine(file);
+				nextLine(asmFile);
 				errors++;
 				continue;
 			}
@@ -917,36 +945,36 @@ bool parse(char const *fileName)
 			instruction += 0x2000;
 
 			if (pass == 1) {
-				nextLine(file);
+				nextLine(asmFile);
 				break;
 			}
 
-			oper1 = nextRegister(file, false);
+			oper1 = nextRegister(asmFile, false);
 			if (oper1 == 65535) {
-				fprintf(stderr, "  Line %d: Invalid operand for "
-					"%s.\n", currentLine, line);
-				nextLine(file);
+				fprintf(stderr, "  Line %d: Invalid operand "
+					"for %s.\n", currentLine, line);
+				nextLine(asmFile);
 				errors++;
 				continue;
 			}
 
-			skipWhitespace(file);
-			c = fgetc(file);
+			skipWhitespace(asmFile);
+			c = fgetc(asmFile);
 
 			if (c == ',') {
-				skipWhitespace(file);
+				skipWhitespace(asmFile);
 			} else {
-				ungetc(c, file);
+				ungetc(c, asmFile);
 			}
 
-			fscanf(file, "%79s", label);
-			extractLabel(label, file);
+			fscanf(asmFile, "%79s", label);
+			extractLabel(label, asmFile);
 			sym = findSymbol(label);
 			if (NULL == sym) {
 				fprintf(stderr, "  Line %d: Invalid "
 					"label '%s'.\n", currentLine,
 					label);
-				nextLine(file);
+				nextLine(asmFile);
 				errors++;
 				continue;
 			}
@@ -954,9 +982,10 @@ bool parse(char const *fileName)
 			oper3 = sym->address - pc + 1;
 			if (oper3 < -256 || oper3 > 255) {
 				fprintf(stderr, "  Line %d: Label is "
-					"too far away ( %s  %d  %d   %s ).\n", currentLine,
-					line, oper1, oper3, sym->name);
-				nextLine(file);
+					"too far away ( %s  %d  %d   %s ).\n",
+					currentLine, line, oper1, oper3,
+					sym->name);
+				nextLine(asmFile);
 				errors++;
 				continue;
 			}
@@ -971,40 +1000,40 @@ bool parse(char const *fileName)
 			instruction += 0x6000;
 
 			if (pass == 1) {
-				nextLine(file);
+				nextLine(asmFile);
 				break;
 			}
 
-			oper1 = nextRegister(file, false);
+			oper1 = nextRegister(asmFile, false);
 			if (oper1 == 65535) {
 				fprintf(stderr, "  Line %d: Invalid operand "
 					"provided to %s.\n", currentLine, line);
-				nextLine(file);
+				nextLine(asmFile);
 				errors++;
 				continue;
 			}
 
-			oper2 = nextRegister(file, true);
+			oper2 = nextRegister(asmFile, true);
 			if (oper2 == 65535) {
 				fprintf(stderr, "  Line %d: Invalid operand "
 					"provided to %s.\n", currentLine, line);
-				nextLine(file);
+				nextLine(asmFile);
 				errors++;
 				continue;
 			}
 
-			oper3 = nextImmediate(file, true);
+			oper3 = nextImmediate(asmFile, true);
 			if (oper3 == INT_MAX) {
 				fprintf(stderr, "  Line %d: Invalid operand "
 					"provided to %s.\n", currentLine, line);
-				nextLine(file);
+				nextLine(asmFile);
 				errors++;
 				continue;
 			} else if (oper3 < -32 || oper3 > 31) {
 				fprintf(stderr, "  Line %d: 3rd operand for %s "
 					"needs to be >= -32 and <= 31.\n",
 					currentLine, line);
-				nextLine(file);
+				nextLine(asmFile);
 				errors++;
 				continue;
 			}
@@ -1013,7 +1042,7 @@ bool parse(char const *fileName)
 			break;
 		case OP_RET:
 			if (pass == 1) {
-				nextLine(file);
+				nextLine(asmFile);
 				break;
 			}
 
@@ -1021,28 +1050,28 @@ bool parse(char const *fileName)
 			break;
 		case OP_RTI:
 			if (pass == 1) {
-				nextLine(file);
+				nextLine(asmFile);
 				break;
 			}
 
 			break;
 		case OP_TRAP:
 			if (pass == 1) {
-				nextLine(file);
+				nextLine(asmFile);
 				break;
 			}
 
-			oper3 = nextImmediate(file, false);
+			oper3 = nextImmediate(asmFile, false);
 			if (oper3 == INT_MAX) {
-				fprintf(stderr, "  Line %d: Invalid operand for "
-					"TRAP.\n", currentLine);
-				nextLine(file);
+				fprintf(stderr, "  Line %d: Invalid operand "
+					"for TRAP.\n", currentLine);
+				nextLine(asmFile);
 				errors++;
 				continue;
 			} else if (oper3 < 0x20 || oper3 > 0x25) {
 				fprintf(stderr, "  Line %d: Invalid "
 					"TRAP Routine.\n", currentLine);
-				nextLine(file);
+				nextLine(asmFile);
 				errors++;
 				continue;
 			}
@@ -1054,7 +1083,7 @@ bool parse(char const *fileName)
 			instruction = 0xf025;
 
 			if (pass == 1) {
-				nextLine(file);
+				nextLine(asmFile);
 				break;
 			}
 
@@ -1091,7 +1120,7 @@ bool parse(char const *fileName)
 					fprintf(stderr, "  Line %d: "
 						"Multiple definitions of label "
 						"'%s'\n", currentLine, line);
-					nextLine(file);
+					nextLine(asmFile);
 					errors++;
 				} else {
 					fprintf(symFile, "//\t%-16s %4X\n",
@@ -1103,11 +1132,11 @@ bool parse(char const *fileName)
 
 		if (pass != 1) {
 			if (tok != OP_BRUNK && tok != OP_UNK) {
-				if (!endOfLine(file)) {
+				if (!endOfLine(asmFile)) {
 					fprintf(stderr, "  Line %d: Too many "
 						"operands provided for %s.\n",
 						currentLine, line);
-					nextLine(file);
+					nextLine(asmFile);
 					errors++;
 				} else if (errors == 0 && origSeen && !endSeen) {
 					objWrite(instruction, objFile);
@@ -1116,14 +1145,9 @@ bool parse(char const *fileName)
 		}
 	}
 
-	free(symFileName);
-	free(hexFileName);
-	free(binFileName);
-	free(objFileName);
-
 	free_table(&head);
 
-	fclose(file);
+	fclose(asmFile);
 	fclose(symFile);
 	fclose(hexFile);
 	fclose(binFile);

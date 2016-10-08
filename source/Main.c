@@ -10,10 +10,14 @@
 int main(int argc, char **argv)
 {
 	struct program prog = {
-		.name    = NULL,
-		.logfile = NULL,
-		.objectfile = NULL,
+		.name         = NULL,
+		.logfile      = NULL,
+		.objectfile   = NULL,
 		.assemblyfile = NULL,
+		.symbolfile   = NULL,
+		.hexoutfile   = NULL,
+		.binoutfile   = NULL,
+		.objectfile   = NULL,
 	};
 
 	unsigned long long errval = argparse(argc, argv, &prog);
@@ -22,7 +26,7 @@ int main(int argc, char **argv)
 		errhandle(&prog);
 	} else {
 		if (errval & ASSEMBLE) {
-			parse(prog.assemblyfile);
+			parse(&prog);
 		} else {
 			start_machine(&prog);
 		}

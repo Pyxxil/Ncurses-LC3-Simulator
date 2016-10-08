@@ -33,8 +33,6 @@ void tidyup(struct program *prog)
 		free(prog->assemblyfile);
 	if (prog->symbolfile != NULL)
 		free(prog->symbolfile);
-	if (prog->symbolfile != NULL)
-		free(prog->symbolfile);
 	if (prog->hexoutfile != NULL)
 		free(prog->hexoutfile);
 	if (prog->binoutfile != NULL)

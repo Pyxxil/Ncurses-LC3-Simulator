@@ -4,6 +4,8 @@
 #include <stdbool.h>
 #include <stdio.h>
 
-bool parse(char const *);
+#include "Structs.h"
+
+bool parse(struct program *prog);
 
 #endif // PARSER_H
