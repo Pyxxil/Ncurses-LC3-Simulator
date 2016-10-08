@@ -49,7 +49,7 @@ static int init_machine(struct program *prog)
 
 	while ((ret = populate_memory(prog)) == 1) {
 		prompt("Invalid file name.", "Enter the .obj file: ",
-			prog->objfile);
+			prog->objectfile);
 	}
 
 	return ret;
@@ -182,7 +182,7 @@ static bool mainview(WINDOW *status, enum STATE *currentState,
 			return true;
 		} else if (input == FILESEL) {
 			prompt((char const *) NULL, "Enter the .obj file: ",
-				prog->objfile);
+				prog->objectfile);
 			if (init_machine(prog))
 				return false;
 		}
@@ -295,10 +295,10 @@ void start_machine(struct program *prog)
 
 	scrollok(output, 1);
 
-	if (NULL == prog->objfile) {
-		prog->objfile = (char *) malloc(sizeof(char) * MSGWIDTH);
+	if (NULL == prog->objectfile) {
+		prog->objectfile = (char *) malloc(sizeof(char) * MSGWIDTH);
 		prompt((char const *) NULL, "Enter the .obj file: ",
-			prog->objfile);
+			prog->objectfile);
 	}
 
 	prog->simulator = init_state;

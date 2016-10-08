@@ -9,12 +9,11 @@
  * status.
  */
 
-char *input_files       = NULL,
-	*incorrect_opts     = NULL,
-	*unimplemented_opts = NULL,
-	*deprecated_opts    = NULL,
-	*no_args_provided   = NULL;
-
+char *input_files        = NULL;
+char *incorrect_opts     = NULL;
+char *unimplemented_opts = NULL;
+char *deprecated_opts    = NULL;
+char *no_args_provided   = NULL;
 
 inline void read_error()
 {
@@ -28,8 +27,18 @@ void tidyup(struct program *prog)
 		free(prog->name);
 	if (input_files != NULL)
 		free(input_files);
-	if (prog->objfile != NULL)
-		free(prog->objfile);
+	if (prog->objectfile != NULL)
+		free(prog->objectfile);
+	if (prog->assemblyfile != NULL)
+		free(prog->assemblyfile);
+	if (prog->symbolfile != NULL)
+		free(prog->symbolfile);
+	if (prog->symbolfile != NULL)
+		free(prog->symbolfile);
+	if (prog->hexoutfile != NULL)
+		free(prog->hexoutfile);
+	if (prog->binoutfile != NULL)
+		free(prog->binoutfile);
 	if (prog->logfile != NULL)
 		free(prog->logfile);
 	if (incorrect_opts != NULL)

@@ -126,8 +126,7 @@ static bool iscomment(FILE *file)
  * Check whether we have reached the end of the line.
  */
 
-static bool endOfLine(char const *const instruction,
-		FILE *file, int const *const line)
+static bool endOfLine(FILE *file)
 {
 	skipWhitespace(file);
 	int c = fgetc(file);
@@ -135,9 +134,6 @@ static bool endOfLine(char const *const instruction,
 	if (c != '\n' && c != EOF) {
 		ungetc(c, file);
 		if (!iscomment(file)) {
-			fprintf(stderr, "  Line %d: Incorrect number of arguments "
-				"supplied to %s.\n", *line, instruction);
-			nextLine(file);
 			return false;
 		}
 	}
@@ -168,28 +164,30 @@ struct symbolTable {
 	struct symbolTable *next;
 };
 
-static struct symbolTable table = {
+static struct symbolTable *tail;
+static struct symbolTable head = {
 	.sym = NULL,
 	.next = NULL,
 };
 
 static void free_table(struct symbolTable *table)
 {
-	if (NULL != table->sym) {
-		free(table->sym->name);
-		free(table->sym);
-	}
 	if (NULL != table->next) {
 		free_table(table->next);
 		free(table->next);
+	}
+
+	if (NULL != table->sym) {
+		free(table->sym->name);
+		free(table->sym);
 	}
 }
 
 static struct symbol* findSymbol(char const *const name)
 {
-	struct symbolTable *symTable = &table;
+	struct symbolTable *symTable = head.next;
 
-	if (NULL == symTable->sym) {
+	if (NULL == symTable) {
 		return NULL;
 	}
 
@@ -199,6 +197,7 @@ static struct symbol* findSymbol(char const *const name)
 		}
 		symTable = symTable->next;
 	}
+
 	if (!strcmp(symTable->sym->name, name)) {
 		return symTable->sym;
 	} else {
@@ -212,41 +211,26 @@ static struct symbol* findSymbol(char const *const name)
 
 static int addSymbol(char const *const name, uint16_t address)
 {
-	struct symbol *sym;
-	struct symbolTable *symTable = &table;
+	if (NULL != findSymbol(name))
+		return 1;
 
-	if (NULL == symTable->sym) {
-		// This should probably change...
-		// It's just there to check if the table has no values.
-		sym = malloc(sizeof(struct symbol));
-		strmcpy(&sym->name, name);
-		sym->address = address;
-		table.sym = sym;
-		return 0;
+	struct symbol *symbol = malloc(sizeof(struct symbol));
+	strmcpy(&symbol->name, name);
+	symbol->address = address;
+
+	struct symbolTable *table = malloc(sizeof(struct symbolTable));
+	table->sym = symbol;
+	table->next = NULL;
+
+	if (NULL == head.next) {
+		head.next = table;
+	} else {
+		tail->next = table;
 	}
 
-	sym = findSymbol(name);
-
-	if (NULL == sym) {
-		while (1) {
-			if (NULL == symTable->next) {
-				sym = malloc(sizeof(struct symbol));
-				strmcpy(&sym->name, name);
-				sym->address = address;
-
-				struct symbolTable *_table =
-					malloc(sizeof(struct symbolTable));
-				_table->sym = sym;
-				_table->next = NULL;
-				symTable->next = _table;
-
-				return 0;
-			}
-
-			symTable = symTable->next;
-		}
-	}
-	return 1;
+	tail = table;
+	printf("ADDED %s\n", tail->sym->name);
+	return 0;
 }
 
 /*
@@ -343,11 +327,14 @@ enum Token nextToken(FILE *file, char *buffer)
 
 /*
  * Sometimes, we might come across an instruction that looks something like
- * the following:
+ * the following (Note the trailing comment):
  * 	LD R2, LABEL; Hello
  *
  * The way that the file is read to grab that label would mean that we get the
- * extraneous parts (the '; Hello'), so let's remove them.
+ * extraneous parts (the '; Hello'), but we don't want that part, we just want
+ * 'LABEL' as the label.
+ * So, we want to remove any extraneous parts from the label, and return them to
+ * the file.
  */
 
 static void extractLabel(char *label, FILE *file)
@@ -1116,7 +1103,10 @@ bool parse(char const *fileName)
 
 		if (pass != 1) {
 			if (tok != OP_BRUNK && tok != OP_UNK) {
-				if (!endOfLine(line, file, &currentLine)) {
+				if (!endOfLine(file)) {
+					fprintf(stderr, "  Line %d: Too many "
+						"operands provided for %s.\n",
+						currentLine, line);
 					nextLine(file);
 					errors++;
 				} else if (errors == 0 && origSeen && !endSeen) {
@@ -1131,7 +1121,7 @@ bool parse(char const *fileName)
 	free(binFileName);
 	free(objFileName);
 
-	free_table(&table);
+	free_table(&head);
 
 	fclose(file);
 	fclose(symFile);

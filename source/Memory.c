@@ -50,7 +50,7 @@ static void installOS(struct program *prog)
 int populate_memory(struct program *prog)
 {
 	installOS(prog);
-	FILE *file = fopen(prog->objfile, "rb");
+	FILE *file = fopen(prog->objectfile, "rb");
 	uint16_t tmp_PC, instruction;
 
 	if (file == NULL || !file)

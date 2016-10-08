@@ -7,13 +7,13 @@
 #include "Parser.h"
 #include "Error.h"
 
-
 int main(int argc, char **argv)
 {
 	struct program prog = {
 		.name    = NULL,
-		.objfile = NULL,
 		.logfile = NULL,
+		.objectfile = NULL,
+		.assemblyfile = NULL,
 	};
 
 	unsigned long long errval = argparse(argc, argv, &prog);
@@ -22,7 +22,7 @@ int main(int argc, char **argv)
 		errhandle(&prog);
 	} else {
 		if (errval & ASSEMBLE) {
-			parse(prog.objfile);
+			parse(prog.assemblyfile);
 		} else {
 			start_machine(&prog);
 		}
