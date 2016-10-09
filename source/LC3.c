@@ -47,8 +47,8 @@ static void LC3in(struct LC3 *simulator, WINDOW *window)
 
 static void setcc(uint16_t *last_result, unsigned char *CC)
 {
-	if (*last_result == 0) *CC = 'Z';
-	else if ((int16_t) *last_result < 0) *CC = 'N';
+	if (*last_result == 0)  *CC = 'Z';
+	else if (*last_result >= 0x8000)  *CC = 'N';
 	else *CC = 'P';
 }
 
@@ -66,22 +66,22 @@ void print_state(struct LC3 *simulator, WINDOW *window)
 
 	// Print the first four registers.
 	for (; index < 4; ++index) {
-		mvwprintw(window, index + 1, 3, "R%d 0x%04x %hd", index,
+		mvwprintw(window, index + 1, 3, "R%d 0x%04X %hd", index,
 			simulator->registers[index],
 			simulator->registers[index]);
 	}
 
 	// Print the last 4 registers.
 	for (; index < 8; ++index) {
-		mvwprintw(window, index - 3, 20, "R%d 0x%04x %hd", index,
-			  simulator->registers[index],
-			  simulator->registers[index]);
+		mvwprintw(window, index - 3, 20, "R%d 0x%04X %hd", index,
+			simulator->registers[index],
+			simulator->registers[index]);
 	}
 
 	// Print the PC, IR, and CC.
-	mvwprintw(window, 1, 37, "PC 0x%04x %hd", simulator->PC, simulator->PC);
-	mvwprintw(window, 2, 37, "IR 0x%04x %hd", simulator->IR, simulator->IR);
-	mvwprintw(window, 3, 37, "CC %c	       ", simulator->CC);
+	mvwprintw(window, 1, 37, "PC 0x%04X %hd", simulator->PC, simulator->PC);
+	mvwprintw(window, 2, 37, "IR 0x%04X %hd", simulator->IR, simulator->IR);
+	mvwprintw(window, 3, 37, "CC %C        ", simulator->CC);
 	wrefresh(window);
 }
 
@@ -139,6 +139,8 @@ void execute_next(struct LC3 *simulator, WINDOW *output)
 		default:
 			break;
 		}
+		//simulator->registers[7] = simulator->PC;
+		//simulator->PC = simulator->memory[simulator->IR & 0xff].value;
 		break;
 	case LEA:
 		// LEA takes a destination register in bits[11:9].
@@ -175,27 +177,6 @@ void execute_next(struct LC3 *simulator, WINDOW *output)
 		// We then flag for the condition code to be set.
 		setcc(DR, &simulator->CC);
 		break;
-	case AND:
-		// AND Takes a destination register in bits[11:9].
-		DR = &(simulator->registers[(simulator->IR >> 9) & 7]);
-		// It also takes a source register in bits[8:6].
-		SR1 = simulator->registers[(simulator->IR >> 6) & 7];
-		// When AND'ing, we have two choices. Either bit[5] == 1,
-		// in which case the second operand is a 5 bit signed
-		// integer, or bit[5] == 0, in which case the second
-		// operand is a register.
-		if ((simulator->IR & 0x20) == 0x20) {
-			SR2 = (simulator->IR & 0x1f)
-				| ((simulator->IR & 0x10) ? 0xffe0 : 0);
-		} else {
-			SR2 = simulator->registers[simulator->IR & 7];
-		}
-		// We then bitwise AND the two operands together, and store the
-		// result in the destination register.
-		*DR = SR1 & SR2;
-		// We then flag for the condition code to be set.
-		setcc(DR, &simulator->CC);
-		break;
 	case LD:
 		// LD takes a destination register in bits[11:9].
 		DR = &(simulator->registers[(simulator->IR >> 9) & 7]);
@@ -209,23 +190,23 @@ void execute_next(struct LC3 *simulator, WINDOW *output)
 		setcc(DR, &simulator->CC);
 		break;
 	case ADD:
-		// Add takes a destination register in bits[11:9].
+	case AND:
+		// ADD/AND takes a destination register in bits[11:9].
 		DR = &(simulator->registers[(simulator->IR >> 9) & 7]);
 		// It also takes a source register in bits[8:6].
 		SR1 = simulator->registers[(simulator->IR >> 6) & 7];
-		// As with AND, there are two possible second operands. Either
-		// bit[5] == 1, meaning we have a signed 5 bit integer as the
-		// second operand, or we have another source register as the
-		// second operand.
-		if ((simulator->IR & 0x20) == 0x20) {
+		// There are two possible second operands. Either bit[5] == 1,
+		// meaning we have a signed 5 bit integer as the second operand,
+		// or we have another source register as the second operand.
+		if (simulator->IR & 0x0020) {
 			SR2 = (simulator->IR & 0x1f)
 				| ((simulator->IR & 0x10) ? 0xffe0 : 0);
 		} else {
 			SR2 = simulator->registers[simulator->IR & 7];
 		}
-		// We then ADD the two source registers together, and store that
-		// result in the destination register.
-		*DR = SR1 + SR2;
+		// We then ADD/AND the two source registers together, and store
+		// that result in the destination register.
+		*DR = opcode == ADD ? SR1 + SR2 : SR1 & SR2;
 		// We then flag for the condition code to be set.
 		setcc(DR, &simulator->CC);
 		break;
@@ -233,8 +214,8 @@ void execute_next(struct LC3 *simulator, WINDOW *output)
 		// BR takes 3 potential conditions, and checks if that condition
 		// is set.
 		if ((((simulator->IR >> 11) & 1) && simulator->CC == 'N') ||
-		    (((simulator->IR >> 10) & 1) && simulator->CC == 'Z') ||
-		    (((simulator->IR >> 9) & 1) && simulator->CC == 'P')) {
+			(((simulator->IR >> 10) & 1) && simulator->CC == 'Z') ||
+			(((simulator->IR >> 9) & 1) && simulator->CC == 'P')) {
 			// If that condition is set, then we want the signed 9
 			// bit PCoffset provided.
 			PCoffset = ((int16_t) ((simulator->IR & 0x1ff) << 7)) >> 7;
@@ -243,25 +224,25 @@ void execute_next(struct LC3 *simulator, WINDOW *output)
 		}
 		break;
 	case LDR:
-		DR	 = &simulator->registers[(simulator->IR >> 9) & 7];
-		SR1	 = simulator->registers[(simulator->IR >> 6) & 7];
+		DR = &simulator->registers[(simulator->IR >> 9) & 7];
+		SR1 = simulator->registers[(simulator->IR >> 6) & 7];
 		PCoffset = ((int16_t) ((simulator->IR & 0x3f) << 9)) >> 9;
-		*DR	 = simulator->memory[SR1 + PCoffset].value;
+		*DR = simulator->memory[SR1 + PCoffset].value;
 		setcc(DR, &simulator->CC);
 		break;
 	case ST:
-		SR1	 = simulator->registers[(simulator->IR >> 9) & 7];
+		SR1 = simulator->registers[(simulator->IR >> 9) & 7];
 		PCoffset = ((int16_t) (simulator->IR & 0x1ff) << 7) >> 7;
 		simulator->memory[simulator->PC + PCoffset].value = SR1;
 		break;
 	case STR:
-		SR1	 = simulator->registers[(simulator->IR >> 9) & 7];
-		SR2	 = simulator->registers[(simulator->IR >> 6) & 7];
+		SR1 = simulator->registers[(simulator->IR >> 9) & 7];
+		SR2 = simulator->registers[(simulator->IR >> 6) & 7];
 		PCoffset = ((int16_t) ((simulator->IR & 0x003f) << 9)) >> 9;
 		simulator->memory[SR2 + PCoffset].value = SR1;
 		break;
 	case STI:
-		SR1	 = simulator->registers[(simulator->IR >> 9) & 7];
+		SR1 = simulator->registers[(simulator->IR >> 9) & 7];
 		PCoffset = ((int16_t) (simulator->IR & 0x01ff) << 7) >> 7;
 		simulator->memory[
 			simulator->memory[
@@ -274,7 +255,7 @@ void execute_next(struct LC3 *simulator, WINDOW *output)
 	case JSR:
 		simulator->registers[7] = simulator->PC;
 		if ((simulator->IR & 0x800) == 0x800) {
-			PCoffset      = ((int16_t) ((simulator->IR & 0x7ff) << 5)) >> 5;
+			PCoffset = ((int16_t) ((simulator->IR & 0x7ff) << 5)) >> 5;
 			simulator->PC = simulator->PC + (int16_t) PCoffset;
 		} else {
 			SR1 = simulator->registers[(simulator->IR >> 6) & 7];
@@ -284,5 +265,12 @@ void execute_next(struct LC3 *simulator, WINDOW *output)
 	default:
 		break;
 	}
+
+	//simulator->memory[0xFE04].value = 0x8000;
+	//if (simulator->memory[0xFE06].value) {
+	//	waddch(output, simulator->memory[0xFE06].value & 0xff);
+	//	wrefresh(output);
+	//	simulator->memory[0xFE06].value = 0x0;
+	//}
 }
 

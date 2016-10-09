@@ -7,6 +7,56 @@
 #include "Parser.h"
 #include "Token.h"
 
+struct symbol {
+	char *name;
+	uint16_t address;
+};
+
+struct symbolTable {
+	struct symbol *sym;
+	struct symbolTable *next;
+};
+
+static struct symbolTable *tableTail;
+static struct symbolTable tableHead = {
+	.sym = NULL,
+	.next = NULL,
+};
+
+struct list {
+	uint16_t instruction;
+	struct list *next;
+};
+
+struct list *listTail;
+struct list listHead  = {
+	.instruction = 0,
+	.next = NULL,
+};
+
+static void insert(uint16_t instruction)
+{
+	struct list *list = malloc(sizeof(struct list));
+	list->instruction = instruction;
+	list->next = NULL;
+
+	if (NULL == listHead.next) {
+		listHead.next = list;
+	} else {
+		listTail->next = list;
+	}
+
+	listTail = list;
+}
+
+static void freeList(struct list *list)
+{
+	if (NULL != list->next) {
+		freeList(list->next);
+		free(list->next);
+	}
+}
+
 static const unsigned MAX_LABEL_LENGTH = 80;
 
 /*
@@ -89,16 +139,32 @@ static void nextLine(FILE *file)
 	ungetc(c, file);
 }
 
-/*
- * Write the hexadecimal instruction to the specified object file in binary.
- */
-
-static void objWrite(uint16_t instruction, FILE *objFile)
+static void objWrite(uint16_t *instruction, FILE *objFile)
 {
 	unsigned char bytes[2];
-	bytes[0] = (instruction & 0xff00) >> 8;
-	bytes[1] = instruction & 0xff;
+	bytes[0] = (*instruction & 0xff00) >> 8;
+	bytes[1] = *instruction & 0xff;
 	fwrite(bytes, 2, 1, objFile);
+}
+
+static void binWrite(uint16_t *instruction, FILE *binFile)
+{
+	char binary[] = "0000000000000000";
+	for (int i = 15, bit = 1; i >= 0; i--, bit <<= 1) {
+		binary[i] = *instruction & bit ? '1' : '0';
+	}
+
+	fprintf(binFile, "%s\n", binary);
+}
+
+static void hexWrite(uint16_t *instruction, FILE *hexFile)
+{
+	fprintf(hexFile, "%04X\n", *instruction);
+}
+
+static void symWrite(struct symbol *symbol, FILE *symFile)
+{
+	fprintf(symFile, "//\t%-18s %04X\n", symbol->name, symbol->address);
 }
 
 /*
@@ -154,26 +220,10 @@ static inline void strmcpy(char **to, char const *from)
 	strncpy(*to, from, len);
 }
 
-struct symbol {
-	char *name;
-	uint16_t address;
-};
-
-struct symbolTable {
-	struct symbol *sym;
-	struct symbolTable *next;
-};
-
-static struct symbolTable *tail;
-static struct symbolTable head = {
-	.sym = NULL,
-	.next = NULL,
-};
-
-static void free_table(struct symbolTable *table)
+static void freeTable(struct symbolTable *table)
 {
 	if (NULL != table->next) {
-		free_table(table->next);
+		freeTable(table->next);
 		free(table->next);
 	}
 
@@ -185,7 +235,7 @@ static void free_table(struct symbolTable *table)
 
 static struct symbol* findSymbol(char const *const name)
 {
-	struct symbolTable *symTable = head.next;
+	struct symbolTable *symTable = tableHead.next;
 
 	if (NULL == symTable) {
 		return NULL;
@@ -222,14 +272,13 @@ static int addSymbol(char const *const name, uint16_t address)
 	table->sym = symbol;
 	table->next = NULL;
 
-	if (NULL == head.next) {
-		head.next = table;
+	if (NULL == tableHead.next) {
+		tableHead.next = table;
 	} else {
-		tail->next = table;
+		tableTail->next = table;
 	}
 
-	tail = table;
-	//printf("ADDED %s\n", tail->sym->name);
+	tableTail = table;
 	return 0;
 }
 
@@ -358,14 +407,14 @@ static void extractLabel(char *label, FILE *file)
  *
  * An immediate value takes the form:
  * 	allowedComma = True:
- * 	--> ([ \t]*[,])?[ \t]+(([0]?[xX]{1}[\da-fA-F]+)|([#]{1}[-]?[\d]+)|([-]?[\d]+))
- * 	e.g. '  , #2'
+ * 	--> [ \t]*,?[ \t]*((0?[xX][\da-fA-F]+)|(#?-?\d+))
+ * 	e.g. '  , #2'  or ' ,  x2'  or ',-2'
  * 	allowedComma = False:
- * 	--> [ \t]+(([0]?[xX]{1}[\da-fA-F]+)|([#]{1}[-]?[\d]+)|([-]?[\d]+))
- * 	e.g. ' #2'
+ * 	--> [ \t]+((0?[xX][\da-fA-F]+)|(#?-?\d+))
+ * 	e.g. ' #2'  or ' x2'  or '    -2'
  *
- * If the value is too large, or it isn't found, or is in the wrong format,
- * return INT_MAX as an error.
+ * If the value isn't found, or is in the wrong format, return INT_MAX as an
+ * error.
  *
  */
 
@@ -540,12 +589,6 @@ bool parse(struct program *prog)
 		}
 	}
 
-	FILE *asmFile = fopen(prog->assemblyfile, "r");
-	FILE *symFile = fopen(prog->symbolfile, "w+");
-	FILE *hexFile = fopen(prog->hexoutfile, "w+");
-	FILE *binFile = fopen(prog->binoutfile, "w+");
-	FILE *objFile = fopen(prog->objectfile, "wb+");
-
 	uint16_t instruction = 0, pc = 0, oper1, oper2, actualPC;
 	int c, currentLine = 1, errors = 0, oper3, pass = 1;
 	char line[100] = { 0 }, label[MAX_LABEL_LENGTH], *end;
@@ -554,11 +597,8 @@ bool parse(struct program *prog)
 	enum Token tok;
 	struct symbol *sym;
 
+	FILE *asmFile = fopen(prog->assemblyfile, "r");
 	printf("STARTING FIRST PASS...\n");
-	fprintf(symFile, "// Symbol table\n");
-	fprintf(symFile, "// Scope level 0:\n");
-	fprintf(symFile, "//\tSymbol Name        Page Address\n");
-	fprintf(symFile, "//\t-----------------  ------------\n");
 
 	while (1) {
 		memset(line,  0, sizeof(line));
@@ -681,9 +721,10 @@ bool parse(struct program *prog)
 					line[i] = c;
 					instruction = c & 0xff;
 				}
+
 				pc++;
 				if (pass != 1) {
-					objWrite(instruction, objFile);
+					insert(instruction);
 				}
 			}
 
@@ -715,11 +756,10 @@ bool parse(struct program *prog)
 			pc += oper3 - 1;
 			if (pass != 1) {
 				oper1 = oper3;
-				while (oper3 > 1) {
-					objWrite(0, objFile);
-					oper3--;
-				}
 				instruction = 0;
+				while (oper3-- > 1) {
+					insert(instruction);
+				}
 			}
 			break;
 		case DIR_FILL:
@@ -1122,9 +1162,6 @@ bool parse(struct program *prog)
 						"'%s'\n", currentLine, line);
 					nextLine(asmFile);
 					errors++;
-				} else {
-					fprintf(symFile, "//\t%-16s %4X\n",
-						line, pc);
 				}
 			}
 			break;
@@ -1139,19 +1176,51 @@ bool parse(struct program *prog)
 					nextLine(asmFile);
 					errors++;
 				} else if (errors == 0 && origSeen && !endSeen) {
-					objWrite(instruction, objFile);
+					insert(instruction);
 				}
 			}
 		}
 	}
 
-	free_table(&head);
-
 	fclose(asmFile);
-	fclose(symFile);
-	fclose(hexFile);
-	fclose(binFile);
-	fclose(objFile);
+
+	if (errors == 0) {
+		FILE *symFile = fopen(prog->symbolfile, "w+");
+		FILE *hexFile = fopen(prog->hexoutfile, "w+");
+		FILE *binFile = fopen(prog->binoutfile, "w+");
+		FILE *objFile = fopen(prog->objectfile, "wb+");
+
+		fprintf(symFile, "// Symbol table\n");
+		fprintf(symFile, "// Scope level 0:\n");
+		fprintf(symFile, "//\tSymbol Name        Page Address\n");
+		fprintf(symFile, "//\t-----------------  ------------\n");
+
+		struct symbolTable *table = tableHead.next;
+		for (; table->next != NULL;) {
+			symWrite(table->sym, symFile);
+			table = table->next;
+		}
+		symWrite(table->sym, symFile);
+
+		struct list *list = listHead.next;
+		for (; list->next != NULL;) {
+			hexWrite(&(list->instruction), hexFile);
+			binWrite(&(list->instruction), binFile);
+			objWrite(&(list->instruction), objFile);
+			list = list->next;
+		}
+		hexWrite(&(list->instruction), hexFile);
+		binWrite(&(list->instruction), binFile);
+		objWrite(&(list->instruction), objFile);
+
+		fclose(symFile);
+		fclose(hexFile);
+		fclose(binFile);
+		fclose(objFile);
+	}
+
+	freeTable(&tableHead);
+	freeList(&listHead);
 
 	return errors == 0;
 }

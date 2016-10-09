@@ -3,21 +3,22 @@
 
 #include "Error.h"
 
-/*
- * Failed to read to the end of the file for some reason,
- * so we want to complain and exit the program with a failed
- * status.
- */
-
 char *input_files        = NULL;
 char *incorrect_opts     = NULL;
 char *unimplemented_opts = NULL;
 char *deprecated_opts    = NULL;
 char *no_args_provided   = NULL;
 
+/*
+ * Failed to read to the end of the file for some reason,
+ * so we want to complain and exit the program with a failed
+ * status.
+ */
+
 inline void read_error()
 {
 	fprintf(stderr, "Error: Failed to read to end of file\n");
+	exit(EXIT_FAILURE);
 }
 
 

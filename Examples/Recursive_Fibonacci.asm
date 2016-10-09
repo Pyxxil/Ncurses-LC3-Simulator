@@ -33,8 +33,8 @@ OUT_PROMPT:
 	JSR CLEAR_FLAG		; Clear any flags added
 
 
-; Repeatedly retrieve a character as input until a newline is pressed, or 10 characters
-; have been input
+; Repeatedly retrieve a character as input until a newline is pressed, or 10
+; characters have been input.
 GET_INPUT:
 	GETC			; Get a character
 	OUT			; Put the character to the output
@@ -45,7 +45,8 @@ GET_INPUT:
 	NOT R3, R3		; Start two's compliment
 	ADD R3, R3, #1
 	ADD R3, R0, R3		; Compare ascii values
-	BRp FLAG_THAT		; If the character's ascii value is greater than 9's, flag it
+	BRp FLAG_THAT		; If the character's ascii value is greater
+				; than 9's, flag it
 	; Compare input character against 0
 	LD R3, ZERO		; Load the value of ZER0 into R3
 	NOT R3, R3		; Negate R3

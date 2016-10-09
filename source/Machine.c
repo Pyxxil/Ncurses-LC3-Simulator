@@ -93,14 +93,12 @@ static int popup_window(char const *message, int original_value)
 
 	mvwaddstr(popup, 2, 1, message);
 	wgetstr(popup, string);
-
 	string[6] = '\0';
 
 	char *end = NULL;
-
 	int ret = (int) strtol(string, &end, 16);
 
-	if (*end)
+	if (*end || strlen(string) == 0)
 		ret = original_value;
 
 	noecho();
@@ -149,11 +147,11 @@ static bool simview(WINDOW *output, WINDOW *status, struct program *prog,
 			prog->simulator.isPaused = false;
 		}
 
-		if (!(prog->simulator.isPaused) &&
-				!(prog->simulator.isHalted)) {
+		if (!(prog->simulator.isPaused) && !(prog->simulator.isHalted)) {
 			execute_next(&(prog->simulator), output);
 			timeout = 0;
 		} else {
+			sstate(currentState);
 			print_state(&(prog->simulator), status);
 			timeout = -1;
 		}
@@ -165,9 +163,8 @@ static bool mainview(WINDOW *status, enum STATE *currentState,
 {
 	int input;
 
-	sstate(currentState);
-
 	while (1) {
+		sstate(currentState);
 		input = wgetch(status);
 		if (input == QUIT) {
 			return false;
@@ -194,9 +191,8 @@ static bool memview(WINDOW *window, struct program *prog,
 {
 	int input, jump_addr, new_value;
 
-	sstate(currentState);
-
 	while (1) {
+		sstate(currentState);
 		input = wgetch(window);
 		if (input == QUIT) {
 			return false;
@@ -205,8 +201,8 @@ static bool memview(WINDOW *window, struct program *prog,
 			return true;
 		} else if (input == JUMP) {
 			jump_addr = popup_window(
-					"Enter a hex address to jump to: ",
-					selected_address);
+				"Enter a hex address to jump to: ",
+				selected_address);
 
 			if (jump_addr == selected_address)
 				continue;
@@ -219,13 +215,11 @@ static bool memview(WINDOW *window, struct program *prog,
 			move_context(window, &(prog->simulator), DOWN);
 		} else if (input == EDITFILE) {
 			new_value = popup_window(
-					"Enter the new instruction (in hex): ",
-					prog->simulator.memory[
-						selected_address].value);
+				"Enter the new instruction (in hex): ",
+				prog->simulator.memory[selected_address].value);
 			prog->simulator.memory[selected_address].value =
 				new_value;
 			update(window, &(prog->simulator));
-			sstate(currentState);
 		} else if (input == SETPC) {
 			prog->simulator.PC = selected_address;
 		}
