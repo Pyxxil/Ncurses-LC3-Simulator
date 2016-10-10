@@ -3,6 +3,13 @@
 #include "Enums.h"
 #include "LC3.h"
 
+static const uint16_t KBSR = 0xFE00;
+static const uint16_t KBDR = 0xFE02;
+static const uint16_t DSR  = 0xFE04;
+static const uint16_t DDR  = 0xFE06;
+static const uint16_t MCR  = 0xFFFE;
+
+/*
 static void LC3out(struct LC3 *simulator, WINDOW *window)
 {
 	wechochar(window, (unsigned char) simulator->registers[0]);
@@ -38,7 +45,7 @@ static void LC3in(struct LC3 *simulator, WINDOW *window)
 	wrefresh(window);
 	LC3getc(simulator, window);
 }
-
+*/
 /*
  * Change the Condition Code based on the value last put into
  * a register.
@@ -48,7 +55,7 @@ static void LC3in(struct LC3 *simulator, WINDOW *window)
 static void setcc(uint16_t *last_result, unsigned char *CC)
 {
 	if (*last_result == 0)  *CC = 'Z';
-	else if (*last_result >= 0x8000)  *CC = 'N';
+	else if (((int16_t) *last_result) < 0)  *CC = 'N';
 	else *CC = 'P';
 }
 
@@ -104,7 +111,7 @@ void execute_next(struct LC3 *simulator, WINDOW *output)
 	// We only want the first 4 bits of the instruction for the opcode.
 	switch (opcode) {
 	case TRAP:
-		switch (simulator->IR & 0x00ff) {
+		/*switch (simulator->IR & 0x00ff) {
 		case GETC:
 			// Get a character from the keyboard without
 			// echoing it to the display, storing it in
@@ -139,8 +146,9 @@ void execute_next(struct LC3 *simulator, WINDOW *output)
 		default:
 			break;
 		}
-		//simulator->registers[7] = simulator->PC;
-		//simulator->PC = simulator->memory[simulator->IR & 0xff].value;
+		*/
+		simulator->registers[7] = simulator->PC;
+		simulator->PC = simulator->memory[simulator->IR & 0xff].value;
 		break;
 	case LEA:
 		// LEA takes a destination register in bits[11:9].
@@ -160,9 +168,15 @@ void execute_next(struct LC3 *simulator, WINDOW *output)
 		// Then we want to find what is stored at that address in
 		// memory, and then load the value stored at that address into
 		// the destination register.
-		*DR = simulator->memory[
-				simulator->memory[
+		if (simulator->memory[simulator->PC + PCoffset].value == KBDR) {
+			wtimeout(output, -1);
+			*DR = wgetch(output);
+			wtimeout(output, 0);
+		} else {
+			*DR = simulator->memory[
+					simulator->memory[
 					simulator->PC + PCoffset].value].value;
+		}
 		// We then flag for the condition code to be set.
 		setcc(DR, &simulator->CC);
 		break;
@@ -232,7 +246,7 @@ void execute_next(struct LC3 *simulator, WINDOW *output)
 		break;
 	case ST:
 		SR1 = simulator->registers[(simulator->IR >> 9) & 7];
-		PCoffset = ((int16_t) (simulator->IR & 0x1ff) << 7) >> 7;
+		PCoffset = ((int16_t) ((simulator->IR & 0x1ff) << 7)) >> 7;
 		simulator->memory[simulator->PC + PCoffset].value = SR1;
 		break;
 	case STR:
@@ -243,10 +257,13 @@ void execute_next(struct LC3 *simulator, WINDOW *output)
 		break;
 	case STI:
 		SR1 = simulator->registers[(simulator->IR >> 9) & 7];
-		PCoffset = ((int16_t) (simulator->IR & 0x01ff) << 7) >> 7;
+		PCoffset = ((int16_t) ((simulator->IR & 0x01ff) << 7)) >> 7;
 		simulator->memory[
 			simulator->memory[
 				simulator->PC + PCoffset].value].value = SR1;
+		if (simulator->memory[simulator->PC + PCoffset].value == MCR) {
+			simulator->isHalted = true;
+		}
 		break;
 	case JMP:
 		SR1 = simulator->registers[(simulator->IR >> 6) & 7];
@@ -266,11 +283,12 @@ void execute_next(struct LC3 *simulator, WINDOW *output)
 		break;
 	}
 
-	//simulator->memory[0xFE04].value = 0x8000;
-	//if (simulator->memory[0xFE06].value) {
-	//	waddch(output, simulator->memory[0xFE06].value & 0xff);
-	//	wrefresh(output);
-	//	simulator->memory[0xFE06].value = 0x0;
-	//}
+	if (simulator->memory[DDR].value != 0) {
+		wechochar(output, simulator->memory[0xFE06].value & 0xff);
+		simulator->memory[DDR].value = 0x0;
+	}
+
+	simulator->memory[KBSR].value = 0x8000;
+	simulator->memory[DSR].value  = 0x8000;
 }
 

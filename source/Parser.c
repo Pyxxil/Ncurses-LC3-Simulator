@@ -7,6 +7,20 @@
 #include "Parser.h"
 #include "Token.h"
 
+static const unsigned MAX_LABEL_LENGTH = 80;
+
+/*
+ * Copy the contents of one string to another, allocating enough memory to the
+ * string we want to copy to.
+ */
+
+static inline void strmcpy(char **to, char const *from)
+{
+	size_t len = strlen(from) + 1;
+	*to = (char *) malloc(sizeof(char) * len);
+	strncpy(*to, from, len);
+}
+
 struct symbol {
 	char *name;
 	uint16_t address;
@@ -57,7 +71,84 @@ static void freeList(struct list *list)
 	}
 }
 
-static const unsigned MAX_LABEL_LENGTH = 80;
+static void freeTable(struct symbolTable *table)
+{
+	if (NULL != table->next) {
+		freeTable(table->next);
+		free(table->next);
+	}
+
+	if (NULL != table->sym) {
+		free(table->sym->name);
+		free(table->sym);
+	}
+}
+
+/*
+ * Add a symbol by name. This isn't exactly optimal, but without hashing/maps
+ * this is probably the easier way to do it. It also allows us to easily look up
+ * an address in order.
+ */
+static struct symbol *findSymbol(char const *const name)
+{
+	struct symbolTable *symTable = &tableHead;
+
+	while (NULL != (symTable = symTable->next)) {
+		if (!strcmp(symTable->sym->name, name)) {
+			return symTable->sym;
+		}
+	}
+
+	return NULL;
+}
+
+/*
+ * Find out whether there exists a symbol at a specific address.
+ *
+ * As each symbol is added to the table in order, we can quit early if the
+ * address of the current symbol is greater than the address we're looking for.
+ */
+/*static struct symbol *findSymbolByAddress(uint16_t address)
+{
+	struct symbolTable *symTable = &tableHead;
+
+	while (NULL != (symTable = symTable->next)) {
+		if (symTable->sym->address == address) {
+			return symTable->sym;
+		} else if (symTable->sym->address > address) {
+			return NULL;
+		}
+	}
+
+	return NULL;
+}*/
+
+/*
+ * Add a Symbol by name and address into the Symbol Table.
+ */
+
+static int addSymbol(char const *const name, uint16_t address)
+{
+	if (NULL != findSymbol(name))
+		return 1;
+
+	struct symbol *symbol = malloc(sizeof(struct symbol));
+	strmcpy(&symbol->name, name);
+	symbol->address = address;
+
+	struct symbolTable *table = malloc(sizeof(struct symbolTable));
+	table->sym = symbol;
+	table->next = NULL;
+
+	if (NULL == tableHead.next) {
+		tableHead.next = table;
+	} else {
+		tableTail->next = table;
+	}
+
+	tableTail = table;
+	return 0;
+}
 
 /*
  * Convert every character in a string to uppercase, and compare it against the
@@ -206,80 +297,6 @@ static bool endOfLine(FILE *file)
 
 	ungetc(c, file);
 	return true;
-}
-
-/*
- * Copy the contents of one string to another, allocating enough memory to the
- * string we want to copy to.
- */
-
-static inline void strmcpy(char **to, char const *from)
-{
-	size_t len = strlen(from) + 1;
-	*to = (char *) malloc(sizeof(char) * len);
-	strncpy(*to, from, len);
-}
-
-static void freeTable(struct symbolTable *table)
-{
-	if (NULL != table->next) {
-		freeTable(table->next);
-		free(table->next);
-	}
-
-	if (NULL != table->sym) {
-		free(table->sym->name);
-		free(table->sym);
-	}
-}
-
-static struct symbol* findSymbol(char const *const name)
-{
-	struct symbolTable *symTable = tableHead.next;
-
-	if (NULL == symTable) {
-		return NULL;
-	}
-
-	while (NULL != symTable->next) {
-		if (!strcmp(symTable->sym->name, name)) {
-			return symTable->sym;
-		}
-		symTable = symTable->next;
-	}
-
-	if (!strcmp(symTable->sym->name, name)) {
-		return symTable->sym;
-	} else {
-		return NULL;
-	}
-}
-
-/*
- * Add a Symbol by name and addres into the Symbol Table.
- */
-
-static int addSymbol(char const *const name, uint16_t address)
-{
-	if (NULL != findSymbol(name))
-		return 1;
-
-	struct symbol *symbol = malloc(sizeof(struct symbol));
-	strmcpy(&symbol->name, name);
-	symbol->address = address;
-
-	struct symbolTable *table = malloc(sizeof(struct symbolTable));
-	table->sym = symbol;
-	table->next = NULL;
-
-	if (NULL == tableHead.next) {
-		tableHead.next = table;
-	} else {
-		tableTail->next = table;
-	}
-
-	tableTail = table;
-	return 0;
 }
 
 /*
@@ -1034,7 +1051,7 @@ bool parse(struct program *prog)
 		//	printf("%s  R%d  %s  (%d addresses away)\n",
 		//		line, oper1, sym->name, oper3);
 			break;
-		case OP_STR:
+		case OP_STR:	// FALLTHROUGH
 			instruction  = 0x1000;
 		case OP_LDR:
 			instruction += 0x6000;
@@ -1093,7 +1110,6 @@ bool parse(struct program *prog)
 				nextLine(asmFile);
 				break;
 			}
-
 			break;
 		case OP_TRAP:
 			if (pass == 1) {
@@ -1196,22 +1212,16 @@ bool parse(struct program *prog)
 		fprintf(symFile, "//\t-----------------  ------------\n");
 
 		struct symbolTable *table = tableHead.next;
-		for (; table->next != NULL;) {
+		while (NULL != (table = table->next)) {
 			symWrite(table->sym, symFile);
-			table = table->next;
 		}
-		symWrite(table->sym, symFile);
 
-		struct list *list = listHead.next;
-		for (; list->next != NULL;) {
+		struct list *list = &listHead;
+		while (NULL != (list = list->next)) {
 			hexWrite(&(list->instruction), hexFile);
 			binWrite(&(list->instruction), binFile);
 			objWrite(&(list->instruction), objFile);
-			list = list->next;
 		}
-		hexWrite(&(list->instruction), hexFile);
-		binWrite(&(list->instruction), binFile);
-		objWrite(&(list->instruction), objFile);
 
 		fclose(symFile);
 		fclose(hexFile);
