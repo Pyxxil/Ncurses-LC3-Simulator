@@ -10,43 +10,6 @@ static const uint16_t DDR  = 0xFE06;
 static const uint16_t MCR  = 0xFFFE;
 
 /*
-static void LC3out(struct LC3 *simulator, WINDOW *window)
-{
-	wechochar(window, (unsigned char) simulator->registers[0]);
-}
-
-static void LC3halt(WINDOW *window)
-{
-	waddstr(window, "\n----- Halting the processor -----\n");
-	wrefresh(window);
-}
-
-static void LC3puts(struct LC3 *simulator, WINDOW *window)
-{
-	uint16_t tmp = simulator->registers[0],
-		orig = simulator->registers[0];
-	while (simulator->memory[tmp].value != 0x0) {
-		simulator->registers[0] = simulator->memory[tmp++].value;
-		LC3out(simulator, window);
-	}
-	simulator->registers[0] = orig;
-}
-
-static void LC3getc(struct LC3 *simulator, WINDOW *window)
-{
-	wtimeout(window, -1);
-	simulator->registers[0] = wgetch(window);
-	wtimeout(window, 0);
-}
-
-static void LC3in(struct LC3 *simulator, WINDOW *window)
-{
-	waddstr(window, "\nInput a character> ");
-	wrefresh(window);
-	LC3getc(simulator, window);
-}
-*/
-/*
  * Change the Condition Code based on the value last put into
  * a register.
  *
@@ -111,42 +74,6 @@ void execute_next(struct LC3 *simulator, WINDOW *output)
 	// We only want the first 4 bits of the instruction for the opcode.
 	switch (opcode) {
 	case TRAP:
-		/*switch (simulator->IR & 0x00ff) {
-		case GETC:
-			// Get a character from the keyboard without
-			// echoing it to the display, storing it in
-			// register 0.
-			LC3getc(simulator, output);
-			break;
-		case OUT:
-			// Display a character stored in register 0.
-			LC3out(simulator, output);
-			break;
-		case PUTS:
-			// With the address supplied in register 0,
-			// display a string.
-			LC3puts(simulator, output);
-			break;
-		case IN:
-			// Give a generic prompt, and then retrieve
-			// one character from the display, store it
-			// in register 0, and display it to the screen.
-			LC3in(simulator, output);
-			break;
-		case PUTSP:
-			break;
-		case HALT:
-			// Display a string to the display that tells
-			// the user that the simulator has halted.
-			LC3halt(output);
-			// Because the HALT instruction has been called, we want
-			// to stop the execution of the machine.
-			simulator->isHalted = true;
-			break;
-		default:
-			break;
-		}
-		*/
 		simulator->registers[7] = simulator->PC;
 		simulator->PC = simulator->memory[simulator->IR & 0xff].value;
 		break;
