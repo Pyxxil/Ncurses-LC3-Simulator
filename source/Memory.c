@@ -13,6 +13,7 @@ uint16_t *memory_output	  = NULL;
 
 static char const *const MEMFORMAT = "0x%04X\t\t%s\t\t0x%04X";
 static unsigned int const SELECTATTR = A_REVERSE | A_BOLD;
+static unsigned int const BREAKPOINTATTR = COLOR_PAIR(1) | A_REVERSE;
 
 /*
  * For now, this is mostly pointless ... It will be more useful when proper
@@ -31,6 +32,7 @@ static void installOS(struct program *prog)
 		prog->simulator.memory[OSOrigin] = (struct memory_slot) {
 			.value = 0xffff & (tmp << 8 | tmp >> 8),
 			.address = OSOrigin,
+			.isBreakpoint = false,
 		};
 
 		OSOrigin++;
@@ -110,11 +112,31 @@ static void redraw(WINDOW *window, struct LC3 *simulator)
 {
 	for (int i = 0; i < output_height; ++i) {
 		if (i < selected) {
+			if (simulator->memory[selected_address - selected + i]
+					.isBreakpoint) {
+				wattron(window, BREAKPOINTATTR);
+			}
+
 			wprint(window, simulator,
 				selected_address - selected + i, i + 1, 1);
+
+			if (simulator->memory[selected_address - selected + i]
+					.isBreakpoint) {
+				wattroff(window, BREAKPOINTATTR);
+			}
 		} else {
+			if (simulator->memory[selected_address + i]
+					.isBreakpoint) {
+				wattron(window, BREAKPOINTATTR);
+			}
+
 			wprint(window, simulator, selected_address + i,
 				i + 1, 1);
+
+			if (simulator->memory[selected_address + i]
+					.isBreakpoint) {
+				wattroff(window, BREAKPOINTATTR);
+			}
 		}
 	}
 
@@ -173,7 +195,14 @@ void move_context(WINDOW *window, struct LC3 *simulator,
 	wattron(window, SELECTATTR);
 	wprint(window, simulator, selected_address, selected + 1, 1);
 	wattroff(window, SELECTATTR);
+
+	if (simulator->memory[prev_addr].isBreakpoint) {
+		wattron(window, BREAKPOINTATTR);
+	}
 	wprint(window, simulator, prev_addr, prev + 1, 1);
+	if (simulator->memory[prev_addr].isBreakpoint) {
+		wattroff(window, BREAKPOINTATTR);
+	}
 
 	if (_redraw)
 		generate_context(window, simulator, selected, selected_address);

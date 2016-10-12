@@ -118,6 +118,14 @@ static bool simview(WINDOW *output, WINDOW *status, struct program *prog,
 	while (1) {
 		wtimeout(status, timeout);
 		input = wgetch(status);
+
+		if (prog->simulator.memory[prog->simulator.PC].isBreakpoint) {
+			popup_window("Breakpoint hit!", 0);
+			prog->simulator.isPaused = true;
+			prog->simulator.memory[prog->simulator.PC]
+				.isBreakpoint = false;
+		}
+
 		if (input == QUIT) {
 			return false;
 		} else if (input == GOBACK) {
@@ -203,10 +211,8 @@ static bool memview(WINDOW *window, struct program *prog,
 			jump_addr = popup_window(
 				"Enter a hex address to jump to: ",
 				selected_address);
-
 			if (jump_addr == selected_address)
 				continue;
-
 			generate_context(window, &(prog->simulator), 0,
 					jump_addr);
 		} else if (input == KEYUP) {
@@ -222,13 +228,17 @@ static bool memview(WINDOW *window, struct program *prog,
 			update(window, &(prog->simulator));
 		} else if (input == SETPC) {
 			prog->simulator.PC = selected_address;
+		} else if (input == BREAKPOINTSET) {
+			prog->simulator.memory[selected_address]
+				.isBreakpoint = !prog->simulator.memory[
+					selected_address].isBreakpoint;
 		}
 	}
 }
 
 static void run_machine(struct program *prog)
 {
-	bool simulating		= true;
+	bool simulating = true;
 	enum STATE currentState = MAIN;
 
 	output_height = 2 * (LINES - 6) / 3 - 2;
@@ -274,6 +284,7 @@ void start_machine(struct program *prog)
 	noecho();
 	cbreak();
 	start_color();
+	init_pair(1, COLOR_RED, COLOR_BLACK);
 
 	MSGHEIGHT = 5;
 	MSGWIDTH  = COLS / 2;

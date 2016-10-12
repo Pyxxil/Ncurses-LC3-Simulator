@@ -7,6 +7,7 @@
 struct memory_slot {
 	uint16_t address;
 	uint16_t value;
+	bool isBreakpoint;
 };
 
 struct LC3 {
