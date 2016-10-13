@@ -181,6 +181,12 @@ bool symbolsEmpty()
 	return tableHead.next == NULL;
 }
 
+/*
+ * If started up without assembling before hand, the program won't be aware
+ * of the symbols in the file that will be needed in the output of the program
+ * in memory.
+ */
+
 void populateSymbolsFromFile(struct program *prog)
 {
 	if (NULL == prog->symbolfile) {
@@ -199,17 +205,29 @@ void populateSymbolsFromFile(struct program *prog)
 	}
 
 	FILE *file = fopen(prog->symbolfile, "r");
-	int c;
+	FILE *os = fopen("LC3_OS.sym", "r");
+	int c, d;
 	// First 3 lines of the symbol file are not needed.
 	for (unsigned char i = 4; i > 0; i--) {
 		nextLine(file);
+		nextLine(os);
 		c = fgetc(file);
+		d = fgetc(os);
 	}
 	ungetc(c, file);
+	ungetc(d, file);
 
 	uint16_t address;
 	char label[MAX_LABEL_LENGTH];
 	char beginning[3];
+
+	while (d != EOF) {
+		memset(label, 0, MAX_LABEL_LENGTH);
+		fscanf(os, "%s %s %hx", beginning, label, &address);
+		__addSymbol(label, address);
+		d = fgetc(os);
+		ungetc(d, os);
+	}
 
 	while (c != EOF) {
 		memset(label, 0, MAX_LABEL_LENGTH);
@@ -220,6 +238,7 @@ void populateSymbolsFromFile(struct program *prog)
 	}
 
 	fclose(file);
+	fclose(os);
 }
 
 /*
