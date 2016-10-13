@@ -1,8 +1,10 @@
 #include <stdio.h>
+#include <string.h>
 
 #include "Machine.h"
 #include "Memory.h"
 #include "Error.h"
+#include "Parser.h"
 
 #define WORD_SIZE 2
 
@@ -11,7 +13,7 @@ uint16_t output_height	  = 0;
 uint16_t selected_address = 0;
 uint16_t *memory_output	  = NULL;
 
-static char const *const MEMFORMAT = "0x%04X\t\t%s\t\t0x%04X";
+static char const *const MEMFORMAT = "0x%04X  %s  0x%04X  %-25s %-50s";
 static unsigned int const SELECTATTR = A_REVERSE | A_BOLD;
 static unsigned int const BREAKPOINTATTR = COLOR_PAIR(1) | A_REVERSE;
 
@@ -82,24 +84,200 @@ int populate_memory(struct program *prog)
 	return 0;
 }
 
-static void wprint(WINDOW *window, struct LC3 *simulator, size_t address,
-		int y, int x)
+
+/*
+ * Convert a binary instruction to characters.
+ */
+static char *instruction(uint16_t instr, uint16_t address, char *buff,
+		struct program *prog)
+{
+	unsigned char opcode = (instr & 0xF000) >> 12;
+	int16_t offset;
+
+	struct symbol *symbol;
+	if (symbolsEmpty()) {
+		populateSymbolsFromFile(prog);
+	}
+
+	switch (opcode) {
+	case AND:
+	case ADD:
+		strcpy(buff, opcode == AND ? "AND R" : "ADD R");
+		buff[strlen(buff)] = ((instr >> 9) & 0x7) + 0x30;
+		strcat(buff, ", R");
+		buff[strlen(buff)] = ((instr >> 6) & 0x7) + 0x30;
+		strcat(buff, ", ");
+		if (instr & 0x20) {
+			strcat(buff, "#");
+			if (instr & 0x10) {
+				strcat(buff, "-");
+				instr = ~(instr & 0x1f) + 1;
+			}
+			sprintf(buff, "%s%hhd", buff, instr & 0x1f);
+		} else {
+			strcat(buff, "R");
+			buff[strlen(buff)] = (instr & 0x7) + 0x30;
+		}
+		break;
+	case JMP:
+		if (instr == 0xC1C0) {
+			strcpy(buff, "RET");
+		} else {
+			strcpy(buff, "JMP R");
+			buff[strlen(buff)] = ((instr >> 9) & 0x7) + 0x30;
+		}
+		break;
+	case BR:
+		strcpy(buff, "BR");
+		if (!(instr & 0x0e00)) {
+			strcpy(buff, "NOP");
+			break;
+		}
+
+		if (instr & 0x0800) {
+			strcat(buff, "n");
+		}
+		if (instr & 0x0400) {
+			strcat(buff, "z");
+		}
+		if (instr & 0x0200) {
+			strcat(buff, "p");
+		}
+		strcat(buff, " ");
+		if (instr & 0x0100) {
+			offset = ((int16_t) (instr << 7)) >> 7;
+			symbol = findSymbolByAddress(address + offset);
+		} else {
+			symbol = findSymbolByAddress(address + (instr & 0x00FF));
+		}
+		if (NULL != symbol) {
+			strcat(buff, symbol->name);
+		}
+		break;
+	case JSR:
+		strcpy(buff, "JSR ");
+
+		if (instr & 0x0400) {
+			offset = ((int16_t) (instr << 5)) >> 5;
+			symbol = findSymbolByAddress(address + offset);
+		} else {
+			symbol = findSymbolByAddress(address + (instr & 0x03FF));
+		}
+		if (NULL != symbol) {
+			strcat(buff, symbol->name);
+		}
+		break;
+	case LEA:
+	case LD:
+	case LDI:
+	case ST:
+	case STI:
+		switch (opcode) {
+		case LEA:
+			strcpy(buff, "LEA R");
+			break;
+		case LD:
+			strcpy(buff, "LD R");
+			break;
+		case LDI:
+			strcpy(buff, "LDI R");
+			break;
+		case ST:
+			strcpy(buff, "ST R");
+			break;
+		case STI:
+			strcpy(buff, "STI R");
+			break;
+		}
+		buff[strlen(buff)] = ((instr >> 9) & 0x7) + 0x30;
+		strcat(buff, ", ");
+		if (instr & 0x0100) {
+			offset = ((int16_t) (instr << 7)) >> 7;
+			symbol = findSymbolByAddress(address + offset);
+		} else {
+			symbol = findSymbolByAddress(address + (instr & 0x00FF));
+		}
+		if (NULL != symbol) {
+			strcat(buff, symbol->name);
+		}
+		break;
+	case LDR:
+	case STR:
+		strcpy(buff, opcode == STR ? "STR R" : "LDR R");
+		buff[strlen(buff)] = ((instr >> 9) & 0x7) + 0x30;
+		strcat(buff, ", R");
+		buff[strlen(buff)] = ((instr >> 6) & 0x7) + 0x30;
+		strcat(buff, ", #");
+		if (instr & 0x20) {
+			strcat(buff, "-");
+			instr = ~(instr & 0x1f) + 1;
+		}
+		sprintf(buff, "%s%d", buff, instr & 0x3f);
+		break;
+	case NOT:
+		strcpy(buff, "NOT R");
+		buff[strlen(buff)] = ((instr >> 9) & 0x7) + 0x30;
+		strcat(buff, ", R");
+		buff[strlen(buff)] = ((instr >> 6) & 0x7) + 0x30;
+		break;
+	case TRAP:
+		switch (instr & 0x00FF) {
+		case 0x25:
+			strcpy(buff, "HALT");
+			break;
+		case 0x24:
+			strcpy(buff, "PUTSP");
+			break;
+		case 0x23:
+			strcpy(buff, "IN");
+			break;
+		case 0x22:
+			strcpy(buff, "PUTS");
+			break;
+		case 0x21:
+			strcpy(buff, "OUT");
+			break;
+		case 0x20:
+			strcpy(buff, "GETC");
+			break;
+		default:
+			strcpy(buff, "NOP");
+			break;
+		}
+		break;
+	}
+
+	return buff;
+}
+
+static void wprint(WINDOW *window, struct program *prog, size_t address, int y,
+		int x)
 {
 	char binary[] = "0000000000000000";
 	for (int i = 15, bit = 1; i >= 0; i--, bit <<= 1) {
-		binary[i] = simulator->memory[address].value & bit ? '1' : '0';
+		binary[i] = prog->simulator.memory[address].value & bit ?
+			'1' : '0';
+	}
+
+	char instr[100] = { 0 };
+	instruction(prog->simulator.memory[address].value, address + 1, instr,
+			prog);
+	struct symbol *symbol = findSymbolByAddress(address);
+	char label[100] = { 0 };
+	if (symbol != NULL) {
+		strcpy(label, symbol->name);
 	}
 
 	mvwprintw(window, y, x, MEMFORMAT, address, binary,
-			simulator->memory[address].value);
+			prog->simulator.memory[address].value, label, instr);
 	wrefresh(window);
 }
 
-void update(WINDOW *window, struct LC3 *simulator)
+void update(WINDOW *window, struct program *prog)
 {
-	memory_output[selected] = simulator->memory[selected_address].value;
+	memory_output[selected] = prog->simulator.memory[selected_address].value;
 	wattron(window, SELECTATTR);
-	wprint(window, simulator, selected_address, selected + 1, 1);
+	wprint(window, prog, selected_address, selected + 1, 1);
 	wattroff(window, SELECTATTR);
 }
 
@@ -108,32 +286,34 @@ void update(WINDOW *window, struct LC3 *simulator)
  * the area.
  */
 
-static void redraw(WINDOW *window, struct LC3 *simulator)
+static void redraw(WINDOW *window, struct program *prog)
 {
 	for (int i = 0; i < output_height; ++i) {
 		if (i < selected) {
-			if (simulator->memory[selected_address - selected + i]
+			if (prog->simulator
+					.memory[selected_address - selected + i]
 					.isBreakpoint) {
 				wattron(window, BREAKPOINTATTR);
 			}
 
-			wprint(window, simulator,
+			wprint(window, prog,
 				selected_address - selected + i, i + 1, 1);
 
-			if (simulator->memory[selected_address - selected + i]
+			if (prog->simulator
+					.memory[selected_address - selected + i]
 					.isBreakpoint) {
 				wattroff(window, BREAKPOINTATTR);
 			}
 		} else {
-			if (simulator->memory[selected_address + i]
+			if (prog->simulator.memory[selected_address + i]
 					.isBreakpoint) {
 				wattron(window, BREAKPOINTATTR);
 			}
 
-			wprint(window, simulator, selected_address + i,
+			wprint(window, prog, selected_address + i,
 				i + 1, 1);
 
-			if (simulator->memory[selected_address + i]
+			if (prog->simulator.memory[selected_address + i]
 					.isBreakpoint) {
 				wattroff(window, BREAKPOINTATTR);
 			}
@@ -141,7 +321,7 @@ static void redraw(WINDOW *window, struct LC3 *simulator)
 	}
 
 	wattron(window, SELECTATTR);
-	wprint(window, simulator, selected_address, selected + 1, 1);
+	wprint(window, prog, selected_address, selected + 1, 1);
 	wattroff(window, SELECTATTR);
 }
 
@@ -151,7 +331,7 @@ static void redraw(WINDOW *window, struct LC3 *simulator)
  * array to contain relative values.
  */
 
-void generate_context(WINDOW *window, struct LC3 *simulator, int _selected,
+void generate_context(WINDOW *window, struct program *prog, int _selected,
 		uint16_t _selected_address)
 {
 	selected = _selected;
@@ -165,16 +345,17 @@ void generate_context(WINDOW *window, struct LC3 *simulator, int _selected,
 
 	for (; i < selected; i++)
 		memory_output[i] =
-			simulator->memory[selected_address - selected + i].value;
+			prog->simulator
+				.memory[selected_address - selected + i].value;
 	for (; i < output_height; i++)
-		memory_output[i] = simulator->memory[selected_address + i].value;
+		memory_output[i] = prog->simulator
+			.memory[selected_address + i].value;
 
-	redraw(window, simulator);
+	redraw(window, prog);
 	mem_populated = selected_address;
 }
 
-void move_context(WINDOW *window, struct LC3 *simulator,
-		enum DIRECTION direction)
+void move_context(WINDOW *window, struct program *prog, enum DIRECTION direction)
 {
 	bool _redraw = false;
 	int prev = selected;
@@ -193,18 +374,18 @@ void move_context(WINDOW *window, struct LC3 *simulator,
 	}
 
 	wattron(window, SELECTATTR);
-	wprint(window, simulator, selected_address, selected + 1, 1);
+	wprint(window, prog, selected_address, selected + 1, 1);
 	wattroff(window, SELECTATTR);
 
-	if (simulator->memory[prev_addr].isBreakpoint) {
+	if (prog->simulator.memory[prev_addr].isBreakpoint) {
 		wattron(window, BREAKPOINTATTR);
 	}
-	wprint(window, simulator, prev_addr, prev + 1, 1);
-	if (simulator->memory[prev_addr].isBreakpoint) {
+	wprint(window, prog, prev_addr, prev + 1, 1);
+	if (prog->simulator.memory[prev_addr].isBreakpoint) {
 		wattroff(window, BREAKPOINTATTR);
 	}
 
 	if (_redraw)
-		generate_context(window, simulator, selected, selected_address);
+		generate_context(window, prog, selected, selected_address);
 }
 

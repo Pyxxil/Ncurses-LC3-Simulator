@@ -21,18 +21,34 @@ static inline void strmcpy(char **to, char const *from)
 	strncpy(*to, from, len);
 }
 
-struct symbol {
-	char *name;
-	uint16_t address;
-};
+/*
+ * Skip all whitespace characters in a file. If a new line is reached, return
+ * early so that the caller can handle it.
+ */
 
-struct symbolTable {
-	struct symbol *sym;
-	struct symbolTable *next;
-};
+static void skipWhitespace(FILE *file)
+{
+	int c = 0;
+	while ((c = fgetc(file)) != EOF && isspace(c)) {
+		if (c == '\n')
+			break;
+	}
+	ungetc(c, file);
+}
+
+/*
+ * Go to the next line of the file.
+ */
+
+static void nextLine(FILE *file)
+{
+	int c = 0;
+	while ((c = fgetc(file)) != '\n' && c != EOF);
+	ungetc(c, file);
+}
 
 static struct symbolTable *tableTail;
-static struct symbolTable tableHead = {
+struct symbolTable tableHead = {
 	.sym = NULL,
 	.next = NULL,
 };
@@ -71,7 +87,7 @@ static void freeList(struct list *list)
 	}
 }
 
-static void freeTable(struct symbolTable *table)
+void freeTable(struct symbolTable *table)
 {
 	if (NULL != table->next) {
 		freeTable(table->next);
@@ -91,12 +107,13 @@ static void freeTable(struct symbolTable *table)
  */
 static struct symbol *findSymbol(char const *const name)
 {
-	struct symbolTable *symTable = &tableHead;
+	struct symbolTable *symTable = tableHead.next;
 
-	while (NULL != (symTable = symTable->next)) {
+	while (NULL != symTable) {
 		if (!strcmp(symTable->sym->name, name)) {
 			return symTable->sym;
 		}
+		symTable = symTable->next;
 	}
 
 	return NULL;
@@ -108,30 +125,27 @@ static struct symbol *findSymbol(char const *const name)
  * As each symbol is added to the table in order, we can quit early if the
  * address of the current symbol is greater than the address we're looking for.
  */
-/*static struct symbol *findSymbolByAddress(uint16_t address)
+struct symbol *findSymbolByAddress(uint16_t address)
 {
-	struct symbolTable *symTable = &tableHead;
+	struct symbolTable *symTable = tableHead.next;
 
-	while (NULL != (symTable = symTable->next)) {
+	while (NULL != symTable) {
+		if (NULL == symTable->sym) {
+			return NULL;
+		}
 		if (symTable->sym->address == address) {
 			return symTable->sym;
 		} else if (symTable->sym->address > address) {
 			return NULL;
 		}
+		symTable = symTable->next;
 	}
 
 	return NULL;
-}*/
+}
 
-/*
- * Add a Symbol by name and address into the Symbol Table.
- */
-
-static int addSymbol(char const *const name, uint16_t address)
+static void __addSymbol(char const *const name, uint16_t address)
 {
-	if (NULL != findSymbol(name))
-		return 1;
-
 	struct symbol *symbol = malloc(sizeof(struct symbol));
 	strmcpy(&symbol->name, name);
 	symbol->address = address;
@@ -147,7 +161,65 @@ static int addSymbol(char const *const name, uint16_t address)
 	}
 
 	tableTail = table;
+}
+
+/*
+ * Add a Symbol by name and address into the Symbol Table.
+ */
+
+static int addSymbol(char const *const name, uint16_t address)
+{
+	if (NULL != findSymbol(name))
+		return 1;
+
+	__addSymbol(name, address);
 	return 0;
+}
+
+bool symbolsEmpty()
+{
+	return tableHead.next == NULL;
+}
+
+void populateSymbolsFromFile(struct program *prog)
+{
+	if (NULL == prog->symbolfile) {
+		char *ext = strrchr(prog->objectfile, '.');
+		size_t length = strlen(prog->objectfile);
+		if (NULL != ext) {
+			prog->symbolfile = calloc(length + 1, sizeof(char));
+			strncpy(prog->symbolfile, prog->objectfile,
+				ext - prog->objectfile);
+		} else {
+			prog->symbolfile = calloc(length + 5, sizeof(char));
+			strcpy(prog->symbolfile, prog->objectfile);
+		}
+
+		strcat(prog->symbolfile, ".sym");
+	}
+
+	FILE *file = fopen(prog->symbolfile, "r");
+	int c;
+	// First 3 lines of the symbol file are not needed.
+	for (unsigned char i = 4; i > 0; i--) {
+		nextLine(file);
+		c = fgetc(file);
+	}
+	ungetc(c, file);
+
+	uint16_t address;
+	char label[MAX_LABEL_LENGTH];
+	char beginning[3];
+
+	while (c != EOF) {
+		memset(label, 0, MAX_LABEL_LENGTH);
+		fscanf(file, "%s %s %hx", beginning, label, &address);
+		__addSymbol(label, address);
+		c = fgetc(file);
+		ungetc(c, file);
+	}
+
+	fclose(file);
 }
 
 /*
@@ -202,32 +274,6 @@ static uint16_t nzp(char const *const _nzp)
 	}
 
 	return __nzp;
-}
-
-/*
- * Skip all whitespace characters in a file. If a new line is reached, return
- * early so that the caller can handle it.
- */
-
-static void skipWhitespace(FILE *file)
-{
-	int c = 0;
-	while ((c = fgetc(file)) != EOF && isspace(c)) {
-		if (c == '\n')
-			break;
-	}
-	ungetc(c, file);
-}
-
-/*
- * Go to the next line of the file.
- */
-
-static void nextLine(FILE *file)
-{
-	int c = 0;
-	while ((c = fgetc(file)) != '\n' && c != EOF);
-	ungetc(c, file);
 }
 
 static void objWrite(uint16_t *instruction, FILE *objFile)
@@ -1211,13 +1257,14 @@ bool parse(struct program *prog)
 		fprintf(symFile, "//\tSymbol Name        Page Address\n");
 		fprintf(symFile, "//\t-----------------  ------------\n");
 
-		struct symbolTable *table = tableHead.next;
-		while (NULL != (table = table->next)) {
+		for (struct symbolTable *table= tableHead.next; table != NULL;
+				table = table->next) {
+			printf("WRITING SYMBOL '%s'\n", table->sym->name);
 			symWrite(table->sym, symFile);
 		}
 
-		struct list *list = &listHead;
-		while (NULL != (list = list->next)) {
+		for (struct list *list = listHead.next; list != NULL;
+				list = list->next) {
 			hexWrite(&(list->instruction), hexFile);
 			binWrite(&(list->instruction), binFile);
 			objWrite(&(list->instruction), objFile);
@@ -1229,7 +1276,7 @@ bool parse(struct program *prog)
 		fclose(objFile);
 	}
 
-	freeTable(&tableHead);
+	//freeTable(&tableHead);
 	freeList(&listHead);
 
 	return errors == 0;

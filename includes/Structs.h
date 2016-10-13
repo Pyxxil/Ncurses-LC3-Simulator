@@ -32,4 +32,14 @@ struct program {
 	struct LC3 simulator;
 };
 
+struct symbol {
+	char *name;
+	uint16_t address;
+};
+
+struct symbolTable {
+	struct symbol *sym;
+	struct symbolTable *next;
+};
+
 #endif // STRUCTS_H
