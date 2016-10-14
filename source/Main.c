@@ -32,6 +32,7 @@ int main(int argc, char **argv)
 		}
 	}
 
+	freeTable(&tableHead);
 	tidyup(&prog);
 
 	return errval;

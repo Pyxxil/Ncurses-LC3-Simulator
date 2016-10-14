@@ -118,6 +118,14 @@ static bool simview(WINDOW *output, WINDOW *status, struct program *prog,
 	while (1) {
 		wtimeout(status, timeout);
 		input = wgetch(status);
+
+		if (prog->simulator.memory[prog->simulator.PC].isBreakpoint) {
+			popup_window("Breakpoint hit!", 0);
+			prog->simulator.isPaused = true;
+			prog->simulator.memory[prog->simulator.PC]
+				.isBreakpoint = false;
+		}
+
 		if (input == QUIT) {
 			return false;
 		} else if (input == GOBACK) {
@@ -154,6 +162,7 @@ static bool simview(WINDOW *output, WINDOW *status, struct program *prog,
 			sstate(currentState);
 			print_state(&(prog->simulator), status);
 			timeout = -1;
+			generate_context(context, prog, 0, prog->simulator.PC);
 		}
 	}
 }
@@ -203,36 +212,38 @@ static bool memview(WINDOW *window, struct program *prog,
 			jump_addr = popup_window(
 				"Enter a hex address to jump to: ",
 				selected_address);
-
 			if (jump_addr == selected_address)
 				continue;
-
-			generate_context(window, &(prog->simulator), 0,
-					jump_addr);
+			generate_context(window, prog, 0, jump_addr);
 		} else if (input == KEYUP) {
-			move_context(window, &(prog->simulator), UP);
+			move_context(window, prog, UP);
 		} else if (input == KEYDOWN) {
-			move_context(window, &(prog->simulator), DOWN);
+			move_context(window, prog, DOWN);
 		} else if (input == EDITFILE) {
 			new_value = popup_window(
 				"Enter the new instruction (in hex): ",
 				prog->simulator.memory[selected_address].value);
 			prog->simulator.memory[selected_address].value =
 				new_value;
-			update(window, &(prog->simulator));
+			update(window, prog);
 		} else if (input == SETPC) {
 			prog->simulator.PC = selected_address;
+		} else if (input == BREAKPOINTSET) {
+			prog->simulator.memory[selected_address]
+				.isBreakpoint = !prog->simulator.memory[
+					selected_address].isBreakpoint;
 		}
 	}
 }
 
 static void run_machine(struct program *prog)
 {
-	bool simulating		= true;
+	bool simulating = true;
 	enum STATE currentState = MAIN;
 
 	output_height = 2 * (LINES - 6) / 3 - 2;
-	memory_output = (uint16_t *) malloc(sizeof(uint16_t) * output_height);
+	memory_output = malloc(sizeof(uint16_t) * output_height);
+	generate_context(context, prog, 0, prog->simulator.PC);
 
 	while (simulating) {
 		sstate(&currentState);
@@ -247,11 +258,11 @@ static void run_machine(struct program *prog)
 			break;
 		case MEM:
 			if (mem_populated == -1) {
-				generate_context(context, &(prog->simulator),
-						0, prog->simulator.PC);
+				generate_context(context, prog, 0,
+						prog->simulator.PC);
 			} else {
-				generate_context(context, &(prog->simulator),
-						selected, mem_populated);
+				generate_context(context, prog, selected,
+						mem_populated);
 			}
 			simulating = memview(context, prog, &currentState);
 			break;
@@ -274,6 +285,7 @@ void start_machine(struct program *prog)
 	noecho();
 	cbreak();
 	start_color();
+	init_pair(1, COLOR_RED, COLOR_BLACK);
 
 	MSGHEIGHT = 5;
 	MSGWIDTH  = COLS / 2;
