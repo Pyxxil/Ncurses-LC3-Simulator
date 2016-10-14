@@ -9,21 +9,21 @@
 ;	-- Recursively finding the Nth Fibonacci Number
 ; --------------------------------------------------------------
 
-;       Getting input			| Converting to ASCII		| Recursion
-; R0 -- Input and output		| R0 --	Output			| R0 -- Result stack pointer
-; R1 -- The current input		| R1 --	Unused			| R1 -- Unused
-; R2 -- Unused				| R2 --	The digit position	| R2 -- Stack pointer
-; R3 -- Used to compare values		| R3 --	Number of digits output | R3 -- The current N
-; R4 -- Used to multiply by ten		| R4 --	The current place	| R4 -- Temporary Value stack pointer
-; R5 -- Used as the character count	| R5 --	The number to convert	| R5 -- The fibonacci number
-; R6 -- Used to multiply by ten		| R6 --	The current digit	| R6 -- Temporary Values
-; R7 -- Return address			| R7 --	Return address		| R7 -- Return address
+;       Getting input               | Converting to ASCII           | Recursion
+; R0 -- Input and output            | R0 -- Output                  | R0 -- Result stack pointer
+; R1 -- The current input           | R1 -- Unused                  | R1 -- Unused
+; R2 -- Unused                      | R2 -- The digit position	    | R2 -- Stack pointer
+; R3 -- Used to compare values      | R3 -- Number of digits output | R3 -- The current N
+; R4 -- Used to multiply by ten     | R4 -- The current place	    | R4 -- Temporary Value stack pointer
+; R5 -- Used as the character count | R5 -- The number to convert   | R5 -- The fibonacci number
+; R6 -- Used to multiply by ten     | R6 -- The current digit       | R6 -- Temporary Values
+; R7 -- Return address              | R7 -- Return address          | R7 -- Return address
 
-.ORIG x3000
+.ORIG 0x3000
 
 ; Start by adding the prompt to the screen.
 OUT_PROMPT:
-	LEA R0, PROMPT ; Load the prompt into R0
+	LEA R0, PROMPT		; Load the prompt into R0
 	PUTS			; Put it to the display
 
 	; Initialise Registers for the first part of the program
@@ -33,8 +33,8 @@ OUT_PROMPT:
 	JSR CLEAR_FLAG		; Clear any flags added
 
 
-; Repeatedly retrieve a character as input until a newline is pressed, or 10 characters
-; have been input
+; Repeatedly retrieve a character as input until a newline is pressed, or 10
+; characters have been input.
 GET_INPUT:
 	GETC			; Get a character
 	OUT			; Put the character to the output
@@ -45,7 +45,8 @@ GET_INPUT:
 	NOT R3, R3		; Start two's compliment
 	ADD R3, R3, #1
 	ADD R3, R0, R3		; Compare ascii values
-	BRp FLAG_THAT		; If the character's ascii value is greater than 9's, flag it
+	BRp FLAG_THAT		; If the character's ascii value is greater
+				; than 9's, flag it
 	; Compare input character against 0
 	LD R3, ZERO		; Load the value of ZER0 into R3
 	NOT R3, R3		; Negate R3
@@ -110,8 +111,8 @@ CHECK_ZERO:
 FLAG_THAT:
 	LEA R4, FLAG		; Load the address of FLAG into R4
 	AND R6, R6, #0		; Reset R6
-	ADD R6, R6, #1		; Set R6 to be 1
-	STR R6, R4, #0		; Store R6's value (1) into the address of R4, with offset 0
+	ADD R6, R6, #1
+	STR R6, R4, #0		; Set the flag.
 	BRnzp DECREMENT_INPUT_COUNTER
 
 

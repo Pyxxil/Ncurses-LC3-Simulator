@@ -22,7 +22,12 @@ struct LC3 {
 struct program {
 	char *name;
 	char *logfile;
-	char *objfile;
+	char *objectfile;
+	char *assemblyfile;
+	char *symbolfile;
+	char *hexoutfile;
+	char *binoutfile;
+
 	struct LC3 simulator;
 };
 

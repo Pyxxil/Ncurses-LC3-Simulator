@@ -59,10 +59,13 @@ asm: $(ASM)
 %.s: %.c
 	$(CC) $(CFLAGS) -c $< -S -o $@
 
+.PHONY: mostlyclean
+# Remove most of the files created during compilation.
+mostlyclean:
+	$(RM) $(OBJS) $(ASM)
+
 # Remove all generated files
 .PHONY: clean
-clean:
-	$(RM) $(EXECUTABLE) $(OBJS) $(ASM)
-
--include $(DEPFILES)
+clean: mostlyclean
+	$(RM) $(EXECUTABLE)
 

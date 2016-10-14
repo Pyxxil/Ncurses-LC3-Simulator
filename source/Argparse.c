@@ -17,7 +17,7 @@ static const char _usage[] =
 	"  -a, --assemble File  assemble a file into a .obj file, a .sym file,\n"
 	"                       a .hex file, and a .bin file.                 \n"
 	"  -l. --log-file File  specify which file to use as a log file when. \n"
-	"  -o, --objfile        specify the object file to read from.         \n"
+	"  -o, --objectfile     specify the object file to read from.         \n"
 ;
 
 static void ERR(char const *const string, ...)
@@ -41,7 +41,6 @@ static inline void usage(char const *prog_name)
 	printf(_usage, prog_name);
 }
 
-
 /*
  * Copy the contents of one string to another, allocating enough memory to the
  * string we want to copy to.
@@ -50,7 +49,7 @@ static inline void usage(char const *prog_name)
 static inline void strmcpy(char **to, char const *from)
 {
 	size_t len = strlen(from) + 1;
-	*to = (char *) malloc(sizeof(char) * len);
+	*to = calloc(len, sizeof(char));
 	strncpy(*to, from, len);
 }
 
@@ -87,7 +86,7 @@ void errhandle(struct program const *prog)
 	if (errvalue & MUL_INPUT_FILES) {
 		ERR("The following files were seen as input files and couldn't "
 			"be decided upon: %s%s %s%s",
-			errprefix, prog->objfile, errprefix, input_files);
+			errprefix, prog->objectfile, errprefix, input_files);
 	}
 
 	if (errvalue & MUL_INCORRECT_OPT) {
@@ -104,7 +103,6 @@ void errhandle(struct program const *prog)
 		ERR("%s requires an argument.", no_args_provided);
 	}
 }
-
 
 static void addFile(char **file, char const *from, char const *flag)
 {
@@ -129,7 +127,6 @@ unsigned long long argparse(int argcount, char **argvals, struct program *prog)
 	prefixsize = strlen(errprefix);
 	int argindex = 1;
 
-	// First argument is program name.
 	strmcpy(&prog->name, argvals[0]);
 
 	char const *arg = (char const *) NULL;
@@ -146,15 +143,17 @@ unsigned long long argparse(int argcount, char **argvals, struct program *prog)
 					&no_args_provided, arg);
 			} else {
 				errvalue |= ASSEMBLE;
-				addFile(&prog->objfile, argvals[argindex], arg);
+				addFile(&prog->assemblyfile, argvals[argindex],
+					arg);
 				argindex++;
 			}
-		} else if (!strcmp(arg, "--objfile") || !strcmp(arg, "-o")) {
+		} else if (!strcmp(arg, "--objectfile") || !strcmp(arg, "-o")) {
 			if (argindex >= argcount || *argvals[argindex] == '-') {
 				error(NO_ARG_PROVIDED, MUL_NO_ARG_PROVIDED,
 					&no_args_provided, arg);
 			} else {
-				addFile(&prog->objfile, argvals[argindex], arg);
+				addFile(&prog->objectfile, argvals[argindex],
+					arg);
 				argindex++;
 			}
 		} else if (!strcmp(arg, "--logfile") || !strcmp(arg, "-l")) {

@@ -11,7 +11,7 @@ uint16_t output_height	  = 0;
 uint16_t selected_address = 0;
 uint16_t *memory_output	  = NULL;
 
-static char const *const MEMFORMAT = "0x%04hx\t\t%s\t\t0x%04hx";
+static char const *const MEMFORMAT = "0x%04X\t\t%s\t\t0x%04X";
 static unsigned int const SELECTATTR = A_REVERSE | A_BOLD;
 
 /*
@@ -50,7 +50,7 @@ static void installOS(struct program *prog)
 int populate_memory(struct program *prog)
 {
 	installOS(prog);
-	FILE *file = fopen(prog->objfile, "rb");
+	FILE *file = fopen(prog->objectfile, "rb");
 	uint16_t tmp_PC, instruction;
 
 	if (file == NULL || !file)
@@ -84,10 +84,8 @@ static void wprint(WINDOW *window, struct LC3 *simulator, size_t address,
 		int y, int x)
 {
 	char binary[] = "0000000000000000";
-
-	for (size_t i = 0; i < 16; i++) {
-		if ((simulator->memory[address].value >> i) & 1)
-			binary[15 - i] = '1';
+	for (int i = 15, bit = 1; i >= 0; i--, bit <<= 1) {
+		binary[i] = simulator->memory[address].value & bit ? '1' : '0';
 	}
 
 	mvwprintw(window, y, x, MEMFORMAT, address, binary,
@@ -132,7 +130,7 @@ static void redraw(WINDOW *window, struct LC3 *simulator)
  */
 
 void generate_context(WINDOW *window, struct LC3 *simulator, int _selected,
-		      uint16_t _selected_address)
+		uint16_t _selected_address)
 {
 	selected = _selected;
 	selected_address = _selected_address;
