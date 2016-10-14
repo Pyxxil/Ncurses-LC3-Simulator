@@ -152,6 +152,8 @@ static char *instruction(uint16_t instr, uint16_t address, char *buff,
 		}
 		if (NULL != symbol) {
 			strcat(buff, symbol->name);
+		} else {
+			strcpy(buff, "NOP");
 		}
 		break;
 	case JSR:
@@ -165,6 +167,8 @@ static char *instruction(uint16_t instr, uint16_t address, char *buff,
 		}
 		if (NULL != symbol) {
 			strcat(buff, symbol->name);
+		} else {
+			strcpy(buff, "NOP");
 		}
 		break;
 	case LEA:
@@ -199,6 +203,8 @@ static char *instruction(uint16_t instr, uint16_t address, char *buff,
 		}
 		if (NULL != symbol) {
 			strcat(buff, symbol->name);
+		} else {
+			strcpy(buff, "NOP");
 		}
 		break;
 	case LDR:
