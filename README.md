@@ -14,12 +14,12 @@ First run `make`.
 
 Then, to assemble your LC-3 file:
 ```shell
-$ ./LC3Simulator --assemble /path/to/file.asm
+$ ./LC3Simulator --assemble file [--assemble-only]
 ```
 
 To run your program in the simulator:
 ```shell
-$ ./LC3Simulator --objectfile /path/to/file.obj
+$ ./LC3Simulator --objectfile file
 ```
 
 ## Keymappings
@@ -34,7 +34,7 @@ The following can also be found in [includes/Keyboard.h](includes/Keyboard.h).
 |Simulator Mode     |  s         |
 |Memory Mode        |  m         |
 |Log dump           |  d         |
-|File Select        |  d         |
+|File Select        |  f         |
 |Quit               |  q         |
 
 #### Simulator
@@ -60,3 +60,45 @@ The following can also be found in [includes/Keyboard.h](includes/Keyboard.h).
 |Move down one line |  KEY\_DOWN |
 |Quit               |  q         |
 
+## LC-3 Assembly
+
+Each instruction in the LC-3 is 16 bits long. The bits are split differently
+depending on what instruction it is, however the upper 4 bits are reserved for
+the opcode.
+
+There are 8 registers in the LC-3, labeled r0 to r7. R7 is generally used to
+hold the return address (and is assumed as such for instructions such as RET).
+
+The following are the possible instruction for the LC-3:
+
++ AND
++ ADD
++ BR
++ JMP
++ JSR
++ JSRR
++ LD
++ LDI
++ LDR
++ LEA
++ NOT
++ RET (This is a shortcut for JMP R7)
++ RTI
++ ST
++ STI
++ STR
++ TRAP
+
+A TRAP is a special instruction in the LC-3 -- it calls a built-in subroutine
+for the Operating System running inside the LC-3. A valid TRAP operand is
+one of the following:
+
++ 0x25 (HALT)
++ 0x24 (PUTSP)
++ 0x23 (IN)
++ 0x22 (PUTS)
++ 0x21 (OUT, PUTC)
++ 0x20 (GETC)
+
+Some example LC-3 Assembly Files can be found in the [Examples](Examples)
+Folder.
