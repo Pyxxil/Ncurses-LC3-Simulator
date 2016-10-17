@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <stdio.h>
+#include <ctype.h>
 
 #include "Argparse.h"
 #include "Error.h"
@@ -163,6 +164,22 @@ unsigned long long argparse(int argcount, char **argvals, struct program *prog)
 			} else {
 				addFile(&prog->logfile, argvals[argindex], arg);
 				argindex++;
+			}
+		} else if (!strcmp(arg, "--assemble-only")) {
+			errvalue |= ASSEMBLE_ONLY;
+		} else if (!strcmp(arg, "--verbose")) {
+			if (argindex < argcount && isdigit(*argvals[argindex])) {
+				char *end = NULL;
+				long verboseLevel = strtol(argvals[argindex],
+						&end, 10);
+				if (*end) {
+					error(INVALID_VERBOSE_LEVEL,
+						MUL_INVALID_VERBOSE_LEVEL,
+						&incorrect_opts, arg);
+				}
+			} else if (++prog->verbosity > 3) {
+				printf("Note: A verbosity greater than 3 is "
+					"superfluous, as the maximum is 3.\n");
 			}
 		} else {
 			error(INCORRECT_OPT, MUL_INCORRECT_OPT,

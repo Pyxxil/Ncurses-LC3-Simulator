@@ -18,6 +18,7 @@ int main(int argc, char **argv)
 		.hexoutfile   = NULL,
 		.binoutfile   = NULL,
 		.objectfile   = NULL,
+		.verbosity    = 0,
 	};
 
 	unsigned long long errval = argparse(argc, argv, &prog);
@@ -25,8 +26,9 @@ int main(int argc, char **argv)
 	if (errval & (0xFFFFll << 32)) {
 		errhandle(&prog);
 	} else {
-		if (errval & ASSEMBLE) {
-			parse(&prog);
+		if ((errval & ASSEMBLE) && !parse(&prog) ||
+				(errval & ASSEMBLE_ONLY)) {
+			/* NO OP */;
 		} else {
 			start_machine(&prog);
 		}

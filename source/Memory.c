@@ -8,10 +8,20 @@
 
 #define WORD_SIZE 2
 
-uint16_t selected	  = 0;
-uint16_t output_height	  = 0;
+#ifndef OS_PATH
+#error "No Path has been supplied for the Operating System."
+#endif
+
+#define STR(x) #x
+#define OSPATH(path)  STR(path)
+#define OS_OBJ_FILE OSPATH(OS_PATH) "/LC3_OS.obj"
+
+uint16_t selected 	  = 0;
+uint16_t output_height 	  = 0;
 uint16_t selected_address = 0;
-uint16_t *memory_output	  = NULL;
+uint16_t *memory_output   = NULL;
+
+bool OSInstalled = false;
 
 static char const *const MEMFORMAT = "0x%04X  %s  0x%04X  %-25s %-50s";
 static unsigned int const SELECTATTR = A_REVERSE | A_BOLD;
@@ -24,7 +34,7 @@ static unsigned int const BREAKPOINTATTR = COLOR_PAIR(1) | A_REVERSE;
 
 static void installOS(struct program *prog)
 {
-	FILE *OSFile = fopen("LC3_OS.obj", "r");
+	FILE *OSFile = fopen(OS_OBJ_FILE, "r");
 	uint16_t OSOrigin, tmp;
 
 	fread(&OSOrigin, WORD_SIZE, 1, OSFile);
@@ -41,6 +51,12 @@ static void installOS(struct program *prog)
 	}
 
 	fclose(OSFile);
+	printf("%s", OS_OBJ_FILE);
+
+	if (!OSInstalled) {
+		populateOSSymbols();
+		OSInstalled = true;
+	}
 }
 
 /*

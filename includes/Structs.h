@@ -29,6 +29,8 @@ struct program {
 	char *hexoutfile;
 	char *binoutfile;
 
+	int verbosity;
+
 	struct LC3 simulator;
 };
 
