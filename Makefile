@@ -3,6 +3,7 @@ CC = gcc
 
 # The program name
 EXECUTABLE = LC3Simulator
+OSPATH = $(shell pwd)
 
 # Source directory
 SRCDIR = source
@@ -22,13 +23,16 @@ CURSES   = ncurses
 # Library dependencies
 LIBS     = -l$(CURSES)
 
+DEFINES  = -DOS_PATH="$(OSPATH)"
+
 # Flags to use when compiling
-CFLAGS = $(INCLUDES) -std=c11 -g -O2
+CFLAGS = $(INCLUDES) -std=c11 -g -O2 $(DEFINES)
 # Flags to add when compiling the debug version
 DFLAGS = -Wall -Werror -Wpedantic -Wextra
 
 RM = rm -f
 
+EXTRA = ""
 
 # Default target if none is given.
 .PHONY: default
@@ -37,6 +41,8 @@ default: build
 # Add the debug flags
 .PHONY: debug
 debug: CFLAGS += $(DFLAGS)
+debug: EXTRA = " (DEBUG)"
+debug: mostlyclean
 # Build the system
 debug: build
 
@@ -47,14 +53,20 @@ tags: $(SRC)
 
 # Build the executable file
 .PHONY: build
+build: building
 build: $(OBJS)
-	$(CC) $(CFLAGS) $(LIBS) -o $(EXECUTABLE) $(OBJS)
+	@$(CC) $(CFLAGS) $(LIBS) -o $(EXECUTABLE) $(OBJS)
+
+.PHONY: building
+building:
+	@echo " Creating executable -> $(EXECUTABLE)"
 
 .PHONY: asm
 asm: $(ASM)
 
 %.o: %.c
-	$(CC) $(CFLAGS) -c $< -o $@
+	@$(CC) $(CFLAGS) -c $< -o $@
+	@echo $(EXTRA) "CC $< -> $@"
 
 %.s: %.c
 	$(CC) $(CFLAGS) -c $< -S -o $@
@@ -62,10 +74,11 @@ asm: $(ASM)
 .PHONY: mostlyclean
 # Remove most of the files created during compilation.
 mostlyclean:
-	$(RM) $(OBJS) $(ASM)
+	@$(foreach obj,$(OBJS),if [[ -s $(obj) ]]; then echo " RM $(obj)"; $(RM) $(obj); fi; )
+	@$(foreach asm,$(ASM),if [[ -s $(asm) ]]; then echo " RM $(asm)"; $(RM) $(asm); fi; )
 
 # Remove all generated files
 .PHONY: clean
 clean: mostlyclean
-	$(RM) $(EXECUTABLE)
+	@if [[ -s $(EXECUTABLE) ]]; then echo " RM $(EXECUTABLE)"; $(RM) $(EXECUTABLE); fi;
 

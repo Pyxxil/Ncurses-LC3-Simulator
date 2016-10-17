@@ -7,6 +7,14 @@
 #include "Parser.h"
 #include "Token.h"
 
+#ifndef OS_PATH
+#error "No Path has been supplied for the Operating System."
+#endif
+
+#define STR(x) #x
+#define OSPATH(path) STR(path)
+#define OS_SYM_FILE OSPATH(OS_PATH) "/LC3_OS.sym"
+
 static const unsigned MAX_LABEL_LENGTH = 80;
 
 /*
@@ -181,6 +189,38 @@ bool symbolsEmpty()
 	return tableHead.next == NULL;
 }
 
+
+static void populateSymbols(char *fileName)
+{
+	FILE *file = fopen(fileName, "r");
+
+	int c;
+	for (size_t i = 4; i > 0; i--) {
+		nextLine(file);
+		c = fgetc(file);
+	}
+
+	uint16_t address;
+	char label[MAX_LABEL_LENGTH];
+	char beginning[3];
+	ungetc(c, file);
+
+	while (c != EOF) {
+		memset(label, 0, MAX_LABEL_LENGTH);
+		fscanf(file, "%s %s %hx", beginning, label, &address);
+		__addSymbol(label, address);
+		c = fgetc(file);
+		ungetc(c, file);
+	}
+
+	fclose(file);
+}
+
+void populateOSSymbols()
+{
+	populateSymbols(OS_SYM_FILE);
+}
+
 /*
  * If started up without assembling before hand, the program won't be aware
  * of the symbols in the file that will be needed in the output of the program
@@ -204,41 +244,7 @@ void populateSymbolsFromFile(struct program *prog)
 		strcat(prog->symbolfile, ".sym");
 	}
 
-	FILE *file = fopen(prog->symbolfile, "r");
-	FILE *os = fopen("LC3_OS.sym", "r");
-	int c, d;
-	// First 3 lines of the symbol file are not needed.
-	for (unsigned char i = 4; i > 0; i--) {
-		nextLine(file);
-		nextLine(os);
-		c = fgetc(file);
-		d = fgetc(os);
-	}
-	ungetc(c, file);
-	ungetc(d, file);
-
-	uint16_t address;
-	char label[MAX_LABEL_LENGTH];
-	char beginning[3];
-
-	while (d != EOF) {
-		memset(label, 0, MAX_LABEL_LENGTH);
-		fscanf(os, "%s %s %hx", beginning, label, &address);
-		__addSymbol(label, address);
-		d = fgetc(os);
-		ungetc(d, os);
-	}
-
-	while (c != EOF) {
-		memset(label, 0, MAX_LABEL_LENGTH);
-		fscanf(file, "%s %s %hx", beginning, label, &address);
-		__addSymbol(label, address);
-		c = fgetc(file);
-		ungetc(c, file);
-	}
-
-	fclose(file);
-	fclose(os);
+	populateSymbols(prog->symbolfile);
 }
 
 /*
@@ -678,6 +684,10 @@ bool parse(struct program *prog)
 
 	enum Token tok;
 	struct symbol *sym;
+
+	populateOSSymbols();
+	bool OSInstalled = true;
+	(void) OSInstalled;
 
 	FILE *asmFile = fopen(prog->assemblyfile, "r");
 	printf("STARTING FIRST PASS...\n");
