@@ -4,14 +4,22 @@
 
 An ncurses simulator for the LC-3.
 
-Currently it only supports using .obj files that are created when the actual LC-3 Simulator assembles your program.
+It is able to assemble, and run, programs (currently this takes two calls).
+
+Assembly is still a work in progress, but it works for the most part.
 
 Usage:
 
-First run `make`, and then, in the same directory, run the following:
+First run `make`.
 
+Then, to assemble your LC-3 file:
 ```shell
-$ ./LC3Simulator [OPTION] <file>
+$ ./LC3Simulator --assemble /path/to/file.asm
+```
+
+To run your program in the simulator:
+```shell
+$ ./LC3Simulator --objectfile /path/to/file.obj
 ```
 
 ## Keymappings
