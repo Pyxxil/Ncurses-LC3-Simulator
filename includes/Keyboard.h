@@ -34,7 +34,7 @@ const int SIMVIEW       = 's';
 // Keyboard controls for the Memory View
 const int JUMP          = 'j';
 const int EDITFILE      = 'e';
-const int SETPC         = 's';
+const int SETPC         = 'S';
 const int BREAKPOINTSET = 'B';
 
 

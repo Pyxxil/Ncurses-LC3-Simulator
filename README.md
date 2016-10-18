@@ -16,6 +16,8 @@ Then, to assemble your LC-3 file:
 ```shell
 $ ./LC3Simulator --assemble file [--assemble-only]
 ```
+Without `--assemble-only` the simulator will run right after assembling
+(assuming there were no errors during assembly).
 
 To run your program in the simulator:
 ```shell
@@ -29,36 +31,37 @@ $ ./LC3Simulator --objectfile file
 The following can also be found in [includes/Keyboard.h](includes/Keyboard.h).
 
 #### Main Menu
-|Function           | Key        |
-|:------------------|:----------:|
-|Simulator Mode     |  s         |
-|Memory Mode        |  m         |
-|Log dump           |  d         |
-|File Select        |  f         |
-|Quit               |  q         |
+|Function           | Key   |
+|:------------------|:-----:|
+|Simulator Mode     |   s   |
+|Memory Mode        |   m   |
+|Log dump           |   d   |
+|File Select        |   f   |
+|Quit               |   q   |
 
 #### Simulator
-|Function           | Key        |
-|:------------------|:----------:|
-|Start              |  s         |
-|Go back            |  b         |
-|Step next          |  n         |
-|Toggle Pause       |  p         |
-|Restart            |  R         |
-|Continue           |  c         |
-|Reset & Continue   |  C         |
-|Quit               |  q         |
+|Function           | Key   |
+|:------------------|:-----:|
+|Start              |   s   |
+|Go back            |   b   |
+|Step next          |   n   |
+|Toggle Pause       |   p   |
+|Restart            |   R   |
+|Continue           |   c   |
+|Reset & Continue   |   C   |
+|Quit               |   q   |
 
 ### Memory
-|Function           | Key        |
-|:------------------|:----------:|
-|Edit Line          |  e         |
-|Go back            |  b         |
-|Jump to line       |  j         |
-|Toggle Breakpoint  |  B         |
-|Move up one line   |  KEY\_UP   |
-|Move down one line |  KEY\_DOWN |
-|Quit               |  q         |
+|Function           | Key   |
+|:------------------|:-----:|
+|Edit Line          |   e   |
+|Go back            |   b   |
+|Jump to line       |   j   |
+|Toggle Breakpoint  |   B   |
+|Move up one line   |   UP  |
+|Move down one line |  DOWN |
+|Quit               |   q   |
+|Set PC to address  |   S   |
 
 ## LC-3 Assembly
 
@@ -66,7 +69,7 @@ Each instruction in the LC-3 is 16 bits long. The bits are split differently
 depending on what instruction it is, however the upper 4 bits are reserved for
 the opcode.
 
-There are 8 registers in the LC-3, labeled r0 to r7. R7 is generally used to
+There are 8 registers in the LC-3, labeled R0 to R7. R7 is generally used to
 hold the return address (and is assumed as such for instructions such as RET).
 
 The following are the possible instruction for the LC-3:
@@ -101,4 +104,4 @@ one of the following:
 + 0x20 (GETC)
 
 Some example LC-3 Assembly Files can be found in the [Examples](Examples)
-Folder.
+directory.

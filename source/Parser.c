@@ -157,6 +157,7 @@ static void __addSymbol(char const *const name, uint16_t address)
 	struct symbol *symbol = malloc(sizeof(struct symbol));
 	strmcpy(&symbol->name, name);
 	symbol->address = address;
+	symbol->fromOS = false;
 
 	struct symbolTable *table = malloc(sizeof(struct symbolTable));
 	table->sym = symbol;
@@ -219,6 +220,14 @@ static void populateSymbols(char *fileName)
 void populateOSSymbols()
 {
 	populateSymbols(OS_SYM_FILE);
+	// For now this will serve as a way of being able to tell whether
+	// something is a part of the Operating System, or from the User's
+	// program.
+	for (struct symbolTable *table= tableHead.next; table != NULL;
+			table = table->next) {
+		table->sym->fromOS = true;
+	}
+
 }
 
 /*
@@ -685,6 +694,8 @@ bool parse(struct program *prog)
 	enum Token tok;
 	struct symbol *sym;
 
+	// This isn't the best place for this as it populates the symbol table
+	// with information we don't need to show.
 	populateOSSymbols();
 	bool OSInstalled = true;
 	(void) OSInstalled;
@@ -1288,8 +1299,11 @@ bool parse(struct program *prog)
 
 		for (struct symbolTable *table= tableHead.next; table != NULL;
 				table = table->next) {
-			printf("WRITING SYMBOL '%s'\n", table->sym->name);
-			symWrite(table->sym, symFile);
+			if (!table->sym->fromOS) {
+				printf("WRITING SYMBOL '%s'\n",
+					table->sym->name);
+				symWrite(table->sym, symFile);
+			}
 		}
 
 		for (struct list *list = listHead.next; list != NULL;

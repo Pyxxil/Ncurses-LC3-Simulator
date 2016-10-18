@@ -167,19 +167,27 @@ unsigned long long argparse(int argcount, char **argvals, struct program *prog)
 			}
 		} else if (!strcmp(arg, "--assemble-only")) {
 			errvalue |= ASSEMBLE_ONLY;
-		} else if (!strcmp(arg, "--verbose")) {
-			if (argindex < argcount && isdigit(*argvals[argindex])) {
-				char *end = NULL;
-				long verboseLevel = strtol(argvals[argindex],
+		} else if (!strcmp(arg, "--verbose") || !strcmp(arg, "-v")) {
+			// Should we check for verbosity first before gathering
+			// all information?
+			char *end = NULL;
+			if (argindex < argcount && *argvals[argindex] != '-') {
+				int verboseLevel = strtol(argvals[argindex++],
 						&end, 10);
 				if (*end) {
 					error(INVALID_VERBOSE_LEVEL,
 						MUL_INVALID_VERBOSE_LEVEL,
 						&incorrect_opts, arg);
+					continue;
+				} else {
+					prog->verbosity = verboseLevel;
 				}
-			} else if (++prog->verbosity > 3) {
+			} else {
+				prog->verbosity++;
+			}
+			if (prog->verbosity > 3) {
 				printf("Note: A verbosity greater than 3 is "
-					"superfluous, as the maximum is 3.\n");
+					"superfluous.\n");
 			}
 		} else {
 			error(INCORRECT_OPT, MUL_INCORRECT_OPT,
