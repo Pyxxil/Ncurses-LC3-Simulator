@@ -51,7 +51,6 @@ static void installOS(struct program *prog)
 	}
 
 	fclose(OSFile);
-	printf("%s", OS_OBJ_FILE);
 
 	if (!OSInstalled) {
 		populateOSSymbols();
@@ -107,7 +106,7 @@ int populate_memory(struct program *prog)
 static char *instruction(uint16_t instr, uint16_t address, char *buff,
 		struct program *prog)
 {
-	unsigned char opcode = (instr & 0xF000) >> 12;
+	uint16_t opcode = instr & 0xF000;
 	int16_t offset;
 
 	struct symbol *symbol;
@@ -119,9 +118,9 @@ static char *instruction(uint16_t instr, uint16_t address, char *buff,
 	case AND:
 	case ADD:
 		strcpy(buff, opcode == AND ? "AND R" : "ADD R");
-		buff[strlen(buff)] = ((instr >> 9) & 0x7) + 0x30;
+		buff[5] = ((instr >> 9) & 0x7) + 0x30;
 		strcat(buff, ", R");
-		buff[strlen(buff)] = ((instr >> 6) & 0x7) + 0x30;
+		buff[9] = ((instr >> 6) & 0x7) + 0x30;
 		strcat(buff, ", ");
 		if (instr & 0x20) {
 			strcat(buff, "#");
@@ -129,10 +128,10 @@ static char *instruction(uint16_t instr, uint16_t address, char *buff,
 				strcat(buff, "-");
 				instr = ~(instr & 0x1f) + 1;
 			}
-			sprintf(buff, "%s%hhd", buff, instr & 0x1f);
+			sprintf(buff, "%s%hhd", buff, instr & 0x1F);
 		} else {
 			strcat(buff, "R");
-			buff[strlen(buff)] = (instr & 0x7) + 0x30;
+			buff[13] = (instr & 0x7) + 0x30;
 		}
 		break;
 	case JMP:
@@ -140,12 +139,12 @@ static char *instruction(uint16_t instr, uint16_t address, char *buff,
 			strcpy(buff, "RET");
 		} else {
 			strcpy(buff, "JMP R");
-			buff[strlen(buff)] = ((instr >> 9) & 0x7) + 0x30;
+			buff[5] = ((instr >> 9) & 0x7) + 0x30;
 		}
 		break;
 	case BR:
 		strcpy(buff, "BR");
-		if (!(instr & 0x0e00)) {
+		if (!(instr & 0x0E00)) {
 			strcpy(buff, "NOP");
 			break;
 		}
@@ -169,6 +168,9 @@ static char *instruction(uint16_t instr, uint16_t address, char *buff,
 		if (NULL != symbol) {
 			strcat(buff, symbol->name);
 		} else {
+			// It should be pretty safe to assume that if we can't
+			// find the symbol, it doesn't exist and the
+			// 'instruction' is just a value in memory.
 			strcpy(buff, "NOP");
 		}
 		break;
@@ -226,9 +228,9 @@ static char *instruction(uint16_t instr, uint16_t address, char *buff,
 	case LDR:
 	case STR:
 		strcpy(buff, opcode == STR ? "STR R" : "LDR R");
-		buff[strlen(buff)] = ((instr >> 9) & 0x7) + 0x30;
+		buff[5] = ((instr >> 9) & 0x7) + 0x30;
 		strcat(buff, ", R");
-		buff[strlen(buff)] = ((instr >> 6) & 0x7) + 0x30;
+		buff[9] = ((instr >> 6) & 0x7) + 0x30;
 		strcat(buff, ", #");
 		if (instr & 0x20) {
 			strcat(buff, "-");
@@ -238,9 +240,9 @@ static char *instruction(uint16_t instr, uint16_t address, char *buff,
 		break;
 	case NOT:
 		strcpy(buff, "NOT R");
-		buff[strlen(buff)] = ((instr >> 9) & 0x7) + 0x30;
+		buff[5] = ((instr >> 9) & 0x7) + 0x30;
 		strcat(buff, ", R");
-		buff[strlen(buff)] = ((instr >> 6) & 0x7) + 0x30;
+		buff[9] = ((instr >> 6) & 0x7) + 0x30;
 		break;
 	case TRAP:
 		switch (instr & 0x00FF) {

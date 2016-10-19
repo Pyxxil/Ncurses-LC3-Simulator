@@ -1023,6 +1023,14 @@ bool parse(struct program *prog)
 			}
 
 			instruction |= oper1 << 9 | oper2 << 6;
+			if (prog->verbosity) {
+				printf("%-4s  R%d  R%d",
+					line, oper1, oper2);
+				if (prog->verbosity > 2) {
+					printf(" (line %d)", currentLine);
+				}
+				puts("");
+			}
 			break;
 		case OP_JMP:	// FALLTHORUGH
 			instruction = 0x8000;
@@ -1044,6 +1052,13 @@ bool parse(struct program *prog)
 			}
 
 			instruction |= oper1 << 6;
+			if (prog->verbosity) {
+				printf("%-4s  R%d", line, oper1);
+				if (prog->verbosity > 2) {
+					printf(" (line %d)", currentLine);
+				}
+				puts("");
+			}
 			break;
 		case OP_JSR:
 			instruction = 0x4800;
@@ -1075,6 +1090,14 @@ bool parse(struct program *prog)
 			}
 
 			instruction |= (oper3 & 0x7ff);
+			if (prog->verbosity) {
+				printf("%s   R%d  %s  (%d addresses away)",
+					line, oper1, sym->name, oper3);
+				if (prog->verbosity > 2) {
+					printf(" (line %d)", currentLine);
+				}
+				puts("");
+			}
 			break;
 		case OP_LEA:	// FALLTHORUGH
 			instruction  = 0x3000;
@@ -1134,8 +1157,14 @@ bool parse(struct program *prog)
 			}
 
 			instruction |= oper1 << 9 | (oper3 & 0x1ff);
-		//	printf("%s  R%d  %s  (%d addresses away)\n",
-		//		line, oper1, sym->name, oper3);
+			if (prog->verbosity) {
+				printf("%-4s  R%d  %s  (%d addresses away)",
+					line, oper1, sym->name, oper3);
+				if (prog->verbosity > 2) {
+					printf(" (line %d)", currentLine);
+				}
+				puts("");
+			}
 			break;
 		case OP_STR:	// FALLTHROUGH
 			instruction  = 0x1000;
@@ -1182,6 +1211,14 @@ bool parse(struct program *prog)
 			}
 
 			instruction |= oper1 << 9 | oper2 << 6 | (oper3 & 0x3f);
+			if (prog->verbosity) {
+				printf("%-4s  R%d  R%d #%d",
+					line, oper1, oper2, oper3);
+				if (prog->verbosity > 2) {
+					printf(" (line %d)", currentLine);
+				}
+				puts("");
+			}
 			break;
 		case OP_RET:
 			if (pass == 1) {
@@ -1190,11 +1227,26 @@ bool parse(struct program *prog)
 			}
 
 			instruction = 0xc1c0;
+			if (prog->verbosity) {
+				printf("%s", line);
+				if (prog->verbosity > 2) {
+					printf(" (line %d)", currentLine);
+				}
+				puts("");
+			}
 			break;
 		case OP_RTI:
 			if (pass == 1) {
 				nextLine(asmFile);
 				break;
+			}
+
+			if (prog->verbosity) {
+				printf("%s", line);
+				if (prog->verbosity > 2) {
+					printf(" (line %d)", currentLine);
+				}
+				puts("");
 			}
 			break;
 		case OP_TRAP:
@@ -1219,6 +1271,13 @@ bool parse(struct program *prog)
 			}
 
 			instruction = 0xf000 + oper3;
+			if (prog->verbosity) {
+				printf("%s 0x%x", line, oper3);
+				if (prog->verbosity > 2) {
+					printf(" (line %d)", currentLine);
+				}
+				puts("");
+			}
 			break;
 		case OP_HALT: case OP_PUTS: case OP_PUTC: case OP_GETC:
 		case OP_OUT: case OP_PUTSP: case OP_IN:
@@ -1245,6 +1304,13 @@ bool parse(struct program *prog)
 				break;
 			}
 
+			if (prog->verbosity) {
+				printf("%-4s", line);
+				if (prog->verbosity > 2) {
+					printf(" (line %d)", currentLine);
+				}
+				puts("");
+			}
 			break;
 		case OP_BRUNK: case OP_UNK:
 			pc--;
@@ -1264,6 +1330,17 @@ bool parse(struct program *prog)
 						"'%s'\n", currentLine, line);
 					nextLine(asmFile);
 					errors++;
+				}
+
+				if (prog->verbosity) {
+					printf("Found label '%s'", line);
+					if (prog->verbosity > 2) {
+						printf(" on line %d", currentLine);
+					}
+					if (prog->verbosity > 1) {
+						printf(" with address 0x%4x", pc);
+					}
+					puts("");
 				}
 			}
 			break;
@@ -1300,8 +1377,6 @@ bool parse(struct program *prog)
 		for (struct symbolTable *table= tableHead.next; table != NULL;
 				table = table->next) {
 			if (!table->sym->fromOS) {
-				printf("WRITING SYMBOL '%s'\n",
-					table->sym->name);
 				symWrite(table->sym, symFile);
 			}
 		}
@@ -1319,7 +1394,6 @@ bool parse(struct program *prog)
 		fclose(objFile);
 	}
 
-	//freeTable(&tableHead);
 	freeList(&listHead);
 
 	return errors == 0;
