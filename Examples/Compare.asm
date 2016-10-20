@@ -36,7 +36,7 @@
 CREATE_NULL:
 	ADD R4, R4, #10  		; Newline character has ASCII value of 10 (dec) 0xA (hex)
 	NOT R4, R4  			; 2's compliment negation of newline value for comparison
-	ADD R4, R4, #1  		; ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+	ADD R4, R4, #1			; ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 
 CREATE_STACK:
