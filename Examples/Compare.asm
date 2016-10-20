@@ -32,11 +32,21 @@
 
 .ORIG x3000				; Origin Memory
 
+CLEAR_REGISTERS:			;Clear every register prior to operation of the program.
+	AND R0, R0, #0			;Just to be safe.
+	AND R1, R1, #0
+	AND R2, R2, #0
+	AND R3, R3, #0
+	AND R4, R4, #0
+	AND R5, R5, #0
+	AND R6, R6, #0
+	AND R7, R7, #0
+
 
 CREATE_NULL:
 	ADD R4, R4, #10  		; Newline character has ASCII value of 10 (dec) 0xA (hex)
 	NOT R4, R4  			; 2's compliment negation of newline value for comparison
-	ADD R4, R4, #1  		; ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+	ADD R4, R4, #1			; ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 
 CREATE_STACK:
