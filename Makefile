@@ -65,8 +65,8 @@ building:
 asm: $(ASM)
 
 %.o: %.c
-	@$(CC) $(CFLAGS) -c $< -o $@
 	@echo $(EXTRA) "CC $< -> $@"
+	@$(CC) $(CFLAGS) -c $< -o $@
 
 %.s: %.c
 	$(CC) $(CFLAGS) -c $< -S -o $@

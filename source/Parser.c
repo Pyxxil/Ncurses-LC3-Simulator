@@ -157,6 +157,7 @@ static void __addSymbol(char const *const name, uint16_t address)
 	struct symbol *symbol = malloc(sizeof(struct symbol));
 	strmcpy(&symbol->name, name);
 	symbol->address = address;
+	symbol->fromOS = false;
 
 	struct symbolTable *table = malloc(sizeof(struct symbolTable));
 	table->sym = symbol;
@@ -219,6 +220,14 @@ static void populateSymbols(char *fileName)
 void populateOSSymbols()
 {
 	populateSymbols(OS_SYM_FILE);
+	// For now this will serve as a way of being able to tell whether
+	// something is a part of the Operating System, or from the User's
+	// program.
+	for (struct symbolTable *table= tableHead.next; table != NULL;
+			table = table->next) {
+		table->sym->fromOS = true;
+	}
+
 }
 
 /*
@@ -685,6 +694,8 @@ bool parse(struct program *prog)
 	enum Token tok;
 	struct symbol *sym;
 
+	// This isn't the best place for this as it populates the symbol table
+	// with information we don't need to show.
 	populateOSSymbols();
 	bool OSInstalled = true;
 	(void) OSInstalled;
@@ -938,6 +949,14 @@ bool parse(struct program *prog)
 			}
 
 			instruction |= (oper3 & 0x1ff);
+			if (prog->verbosity) {
+				printf("%-5s  R%d  %-30s  (%4d addresses away)",
+					line, oper1, sym->name, oper3);
+				if (prog->verbosity > 2) {
+					printf("  (line %3d)", currentLine);
+				}
+				puts("");
+			}
 			break;
 		case OP_AND:	// FALLTHORUGH
 			instruction = 0x4000;
@@ -982,8 +1001,14 @@ bool parse(struct program *prog)
 				instruction |= 0x20;
 			}
 
-			instruction = instruction | oper1 << 9 |
-				oper2 << 6 | oper3;
+			instruction = instruction | oper1 << 9 | oper2 << 6 | oper3;
+			if (prog->verbosity) {
+				printf("%-5s  R%d  R%d", line, oper1, oper2);
+				if (prog->verbosity > 2) {
+					printf("  (line %3d)", currentLine);
+				}
+				puts("");
+			}
 			break;
 		case OP_NOT:
 			instruction += 0x903f;
@@ -1012,6 +1037,14 @@ bool parse(struct program *prog)
 			}
 
 			instruction |= oper1 << 9 | oper2 << 6;
+			if (prog->verbosity) {
+				printf("%-5s  R%d  R%d",
+					line, oper1, oper2);
+				if (prog->verbosity > 2) {
+					printf("  (line %3d)", currentLine);
+				}
+				puts("");
+			}
 			break;
 		case OP_JMP:	// FALLTHORUGH
 			instruction = 0x8000;
@@ -1033,6 +1066,13 @@ bool parse(struct program *prog)
 			}
 
 			instruction |= oper1 << 6;
+			if (prog->verbosity) {
+				printf("%-5s  R%d", line, oper1);
+				if (prog->verbosity > 2) {
+					printf("  (line %3d)", currentLine);
+				}
+				puts("");
+			}
 			break;
 		case OP_JSR:
 			instruction = 0x4800;
@@ -1064,6 +1104,14 @@ bool parse(struct program *prog)
 			}
 
 			instruction |= (oper3 & 0x7ff);
+			if (prog->verbosity) {
+				printf("%-5s  R%d  %-30s  (%4d addresses away)",
+					line, oper1, sym->name, oper3);
+				if (prog->verbosity > 2) {
+					printf("  (line %3d)", currentLine);
+				}
+				puts("");
+			}
 			break;
 		case OP_LEA:	// FALLTHORUGH
 			instruction  = 0x3000;
@@ -1123,8 +1171,14 @@ bool parse(struct program *prog)
 			}
 
 			instruction |= oper1 << 9 | (oper3 & 0x1ff);
-		//	printf("%s  R%d  %s  (%d addresses away)\n",
-		//		line, oper1, sym->name, oper3);
+			if (prog->verbosity) {
+				printf("%-5s  R%d  %-30s  (%4d addresses away)",
+					line, oper1, sym->name, oper3);
+				if (prog->verbosity > 2) {
+					printf("  (line %3d)", currentLine);
+				}
+				puts("");
+			}
 			break;
 		case OP_STR:	// FALLTHROUGH
 			instruction  = 0x1000;
@@ -1171,6 +1225,14 @@ bool parse(struct program *prog)
 			}
 
 			instruction |= oper1 << 9 | oper2 << 6 | (oper3 & 0x3f);
+			if (prog->verbosity) {
+				printf("%-5s  R%d  R%d #%d",
+					line, oper1, oper2, oper3);
+				if (prog->verbosity > 2) {
+					printf("  (line %3d)", currentLine);
+				}
+				puts("");
+			}
 			break;
 		case OP_RET:
 			if (pass == 1) {
@@ -1179,11 +1241,26 @@ bool parse(struct program *prog)
 			}
 
 			instruction = 0xc1c0;
+			if (prog->verbosity) {
+				printf("%-4s", line);
+				if (prog->verbosity > 2) {
+					printf("  (line %3d)", currentLine);
+				}
+				puts("");
+			}
 			break;
 		case OP_RTI:
 			if (pass == 1) {
 				nextLine(asmFile);
 				break;
+			}
+
+			if (prog->verbosity) {
+				printf("%-5s", line);
+				if (prog->verbosity > 2) {
+					printf(" (line %3d)", currentLine);
+				}
+				puts("");
 			}
 			break;
 		case OP_TRAP:
@@ -1208,6 +1285,13 @@ bool parse(struct program *prog)
 			}
 
 			instruction = 0xf000 + oper3;
+			if (prog->verbosity) {
+				printf("%-5s 0x%x", line, oper3);
+				if (prog->verbosity > 2) {
+					printf("  (line %3d)", currentLine);
+				}
+				puts("");
+			}
 			break;
 		case OP_HALT: case OP_PUTS: case OP_PUTC: case OP_GETC:
 		case OP_OUT: case OP_PUTSP: case OP_IN:
@@ -1234,6 +1318,13 @@ bool parse(struct program *prog)
 				break;
 			}
 
+			if (prog->verbosity) {
+				printf("%-5s", line);
+				if (prog->verbosity > 2) {
+					printf(" (line %3d)", currentLine);
+				}
+				puts("");
+			}
 			break;
 		case OP_BRUNK: case OP_UNK:
 			pc--;
@@ -1253,6 +1344,17 @@ bool parse(struct program *prog)
 						"'%s'\n", currentLine, line);
 					nextLine(asmFile);
 					errors++;
+				}
+
+				if (prog->verbosity) {
+					printf("Found label '%s'", line);
+					if (prog->verbosity > 2) {
+						printf(" on line %d", currentLine);
+					}
+					if (prog->verbosity > 1) {
+						printf(" with address 0x%4x", pc);
+					}
+					puts("");
 				}
 			}
 			break;
@@ -1288,8 +1390,9 @@ bool parse(struct program *prog)
 
 		for (struct symbolTable *table= tableHead.next; table != NULL;
 				table = table->next) {
-			printf("WRITING SYMBOL '%s'\n", table->sym->name);
-			symWrite(table->sym, symFile);
+			if (!table->sym->fromOS) {
+				symWrite(table->sym, symFile);
+			}
 		}
 
 		for (struct list *list = listHead.next; list != NULL;
@@ -1305,7 +1408,6 @@ bool parse(struct program *prog)
 		fclose(objFile);
 	}
 
-	//freeTable(&tableHead);
 	freeList(&listHead);
 
 	return errors == 0;

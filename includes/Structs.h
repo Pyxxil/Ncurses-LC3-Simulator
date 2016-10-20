@@ -11,12 +11,12 @@ struct memory_slot {
 };
 
 struct LC3 {
-	unsigned char	   CC;
-	uint16_t	   PC;
-	uint16_t	   IR;
-	uint16_t	   registers[8];
-	bool		   isHalted;
-	bool		   isPaused;
+	unsigned char CC;
+	uint16_t PC;
+	uint16_t IR;
+	uint16_t registers[8];
+	bool isHalted;
+	bool isPaused;
 	struct memory_slot memory[0xffff];
 };
 
@@ -37,6 +37,7 @@ struct program {
 struct symbol {
 	char *name;
 	uint16_t address;
+	bool fromOS;
 };
 
 struct symbolTable {

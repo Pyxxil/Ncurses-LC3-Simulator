@@ -62,26 +62,24 @@ void print_state(struct LC3 *simulator, WINDOW *window)
 void execute_next(struct LC3 *simulator, WINDOW *output)
 {
 	int16_t PCoffset;
-	unsigned char opcode;
-	uint16_t *DR, SR1, SR2;
+	uint16_t *DR, SR1, SR2, opcode;
 
-	// Increment the PC when we fetch the next instruction.
+	// The PC is incremented at the beginning of each instruction.
 	simulator->IR = simulator->memory[simulator->PC++].value;
 
 	// The opcode is in the first 4 bits of the instruction.
-	opcode = (simulator->IR & 0xf000) >> 12;
+	opcode = simulator->IR & 0xF000;
 
-	// We only want the first 4 bits of the instruction for the opcode.
 	switch (opcode) {
 	case TRAP:
 		simulator->registers[7] = simulator->PC;
-		simulator->PC = simulator->memory[simulator->IR & 0xff].value;
+		simulator->PC = simulator->memory[simulator->IR & 0xFF].value;
 		break;
 	case LEA:
 		// LEA takes a destination register in bits[11:9].
 		DR = &(simulator->registers[(simulator->IR >> 9) & 7]);
 		// It also gives a signed PC offset in bits[8:0].
-		PCoffset = ((int16_t) ((simulator->IR & 0x1ff) << 7)) >> 7;
+		PCoffset = ((int16_t) ((simulator->IR & 0x1FF) << 7)) >> 7;
 		// Set the register to equal the PC + SEXT(PCoffset).
 		*DR = simulator->PC + PCoffset;
 		// We then flag for the condition code to be set.
@@ -91,7 +89,7 @@ void execute_next(struct LC3 *simulator, WINDOW *output)
 		// LDI takes a destination register in bits[11:9].
 		DR = &(simulator->registers[(simulator->IR >> 9) & 7]);
 		// It also gives a signed PC offset in bits[8:0].
-		PCoffset = ((int16_t) ((simulator->IR & 0x1ff) << 7)) >> 7;
+		PCoffset = ((int16_t) ((simulator->IR & 0x1FF) << 7)) >> 7;
 		// Then we want to find what is stored at that address in
 		// memory, and then load the value stored at that address into
 		// the destination register.
@@ -123,7 +121,7 @@ void execute_next(struct LC3 *simulator, WINDOW *output)
 		DR = &(simulator->registers[(simulator->IR >> 9) & 7]);
 		// It also takes a signed 9 bit PC offset, so erase the top 7.
 		// bits, then sign extend the number.
-		PCoffset = ((int16_t) ((simulator->IR & 0x1ff) << 7)) >> 7;
+		PCoffset = ((int16_t) ((simulator->IR & 0x1FF) << 7)) >> 7;
 		// We then retrieve this value in memory, and store the value
 		// into the destination register.
 		*DR = simulator->memory[simulator->PC + PCoffset].value;
@@ -140,8 +138,8 @@ void execute_next(struct LC3 *simulator, WINDOW *output)
 		// meaning we have a signed 5 bit integer as the second operand,
 		// or we have another source register as the second operand.
 		if (simulator->IR & 0x0020) {
-			SR2 = (simulator->IR & 0x1f)
-				| ((simulator->IR & 0x10) ? 0xffe0 : 0);
+			SR2 = (simulator->IR & 0x1F)
+				| ((simulator->IR & 0x10) ? 0xFFE0 : 0);
 		} else {
 			SR2 = simulator->registers[simulator->IR & 7];
 		}
@@ -159,7 +157,7 @@ void execute_next(struct LC3 *simulator, WINDOW *output)
 			(((simulator->IR >> 9) & 1) && simulator->CC == 'P')) {
 			// If that condition is set, then we want the signed 9
 			// bit PCoffset provided.
-			PCoffset = ((int16_t) ((simulator->IR & 0x1ff) << 7)) >> 7;
+			PCoffset = ((int16_t) ((simulator->IR & 0x1FF) << 7)) >> 7;
 			// Which is then added to the current program counter.
 			simulator->PC = simulator->PC + PCoffset;
 		}
@@ -167,24 +165,24 @@ void execute_next(struct LC3 *simulator, WINDOW *output)
 	case LDR:
 		DR = &simulator->registers[(simulator->IR >> 9) & 7];
 		SR1 = simulator->registers[(simulator->IR >> 6) & 7];
-		PCoffset = ((int16_t) ((simulator->IR & 0x3f) << 9)) >> 9;
+		PCoffset = ((int16_t) ((simulator->IR & 0x3F) << 9)) >> 9;
 		*DR = simulator->memory[SR1 + PCoffset].value;
 		setcc(DR, &simulator->CC);
 		break;
 	case ST:
 		SR1 = simulator->registers[(simulator->IR >> 9) & 7];
-		PCoffset = ((int16_t) ((simulator->IR & 0x1ff) << 7)) >> 7;
+		PCoffset = ((int16_t) ((simulator->IR & 0x1FF) << 7)) >> 7;
 		simulator->memory[simulator->PC + PCoffset].value = SR1;
 		break;
 	case STR:
 		SR1 = simulator->registers[(simulator->IR >> 9) & 7];
 		SR2 = simulator->registers[(simulator->IR >> 6) & 7];
-		PCoffset = ((int16_t) ((simulator->IR & 0x003f) << 9)) >> 9;
+		PCoffset = ((int16_t) ((simulator->IR & 0x3F) << 9)) >> 9;
 		simulator->memory[SR2 + PCoffset].value = SR1;
 		break;
 	case STI:
 		SR1 = simulator->registers[(simulator->IR >> 9) & 7];
-		PCoffset = ((int16_t) ((simulator->IR & 0x01ff) << 7)) >> 7;
+		PCoffset = ((int16_t) ((simulator->IR & 0x1FF) << 7)) >> 7;
 		simulator->memory[
 			simulator->memory[
 				simulator->PC + PCoffset].value].value = SR1;
@@ -198,8 +196,9 @@ void execute_next(struct LC3 *simulator, WINDOW *output)
 		break;
 	case JSR:
 		simulator->registers[7] = simulator->PC;
-		if ((simulator->IR & 0x800) == 0x800) {
-			PCoffset = ((int16_t) ((simulator->IR & 0x7ff) << 5)) >> 5;
+		if (simulator->IR & 0x800) {
+			PCoffset =
+				((int16_t) ((simulator->IR & 0x7FF) << 5)) >> 5;
 			simulator->PC = simulator->PC + (int16_t) PCoffset;
 		} else {
 			SR1 = simulator->registers[(simulator->IR >> 6) & 7];
@@ -210,8 +209,8 @@ void execute_next(struct LC3 *simulator, WINDOW *output)
 		break;
 	}
 
-	if (simulator->memory[DDR].value != 0) {
-		wechochar(output, simulator->memory[0xFE06].value & 0xff);
+	if (simulator->memory[DDR].value) {
+		wechochar(output, simulator->memory[0xFE06].value & 0xFF);
 		simulator->memory[DDR].value = 0x0;
 	}
 
