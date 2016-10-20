@@ -52,20 +52,24 @@ GET_INPUT:
 	NOT R3, R3		; Negate R3
 	ADD R3, R3, #1
 	ADD R3, R3, R0		; Compare the ascii values
-	BRn FLAG_THAT		; If the character's ascii value is less than 0's, flag it
+	BRn FLAG_THAT		; If the character's ascii value is less than 0's,
+				; flag it
 
 	; So, the character is a digit. Update the number.
 	ADD R6, R5, #-10	; Check the amount of characters input
-	BRn CHECK_ZERO		; Make sure that if the first character was a 0, pass it
-	BRz SET_TO		; If this is the first character, then set the count to this number
-	BRnzp MULTIPLY_BY_TEN	; Always multiply the current number by ten if it doesn't get updated by
-				; the above.
+	BRn CHECK_ZERO		; Make sure that if the first character was a 0,
+				; pass it
+	BRz SET_TO		; If this is the first character, then set the
+				; count to this number
+	BRnzp MULTIPLY_BY_TEN	; Always multiply the current number by ten if
+				; it doesn't get updated by the above.
 
 
 ; Decrement the input counter by one
 DECREMENT_INPUT_COUNTER:
 	ADD R5, R5, #-1		; Subtract 1 from the loop counter stored in R5
-	BRz OUT_PROMPT		; We've reached the max character count, so start again.
+	BRz OUT_PROMPT		; We've reached the max character count, so start
+				; again.
 	BRnzp GET_INPUT
 
 
@@ -77,7 +81,8 @@ SET_TO:
 
 ; Multiply the number by 10
 MULTIPLY_BY_TEN:
-	JSR CHECK_FLAG		; Jump to check if we have flagged something, this will only return here if
+	JSR CHECK_FLAG		; Jump to check if we have flagged something,
+				; this will only return here if
 				; we have not flagged something.
 	ADD R4, R1, R1		; Store  2x R1 in R4
 	ADD R6, R4, R4		; Store  4x R1 in R1
@@ -85,8 +90,10 @@ MULTIPLY_BY_TEN:
 	ADD R1, R6, R4		; Store 10x R1 in R1
 	ADD R1, R1, R3		; Add the current number
 	ADD R4, R1, #-16	; We don't want numbers greater than 23.
-	ADD R4, R4, #-7		; Because we can't add numbers less than -16, we do this twice
-	BRp FLAG_THAT		; If the number is greater than 23, no need to keep going
+	ADD R4, R4, #-7		; Because we can't add numbers less than -16,
+				; we do this twice
+	BRp FLAG_THAT		; If the number is greater than 23, no need to
+				; keep going
 	BRnzp DECREMENT_INPUT_COUNTER
 
 
@@ -99,11 +106,12 @@ CHECK_FLAG:
 	RET			; Return
 
 
-; Check if the previous number input was a zero, and if so just flag it because its not
-; useable.
+; Check if the previous number input was a zero, and if so just flag it because
+; its not useable.
 CHECK_ZERO:
 	ADD R6, R1, #-1		; Set R6 to be equal to R1 - 1
-	BRn FLAG_THAT		; If R6 is less than 0, then R1 must have been 0, so flag it
+	BRn FLAG_THAT		; If R6 is less than 0, then R1 must have been 0,
+				; so flag it
 	BRnzp MULTIPLY_BY_TEN	; Otherwise, multiply the current number by 10
 
 
@@ -120,8 +128,9 @@ FLAG_THAT:
 CLEAR_FLAG:
 	LEA R4, FLAG		; Load the address of FLAG into R4
 	AND R6, R6, #0		; Reset R6
-	STR R6, R4, #0		; Store R6's value (0) into the address of R4, with offset 0
-	RET			; Return
+	STR R6, R4, #0		; Store R6's value (0) into the address of R4,
+				; with offset 0
+	RET
 
 
 ; Check the input for anything incorrect
@@ -131,8 +140,8 @@ CHECK_INPUT:
 	BRzp OUT_PROMPT		; so start again.
 	ADD R4, R1, #-3		; We also don't want numbers less than 3
 	BRn OUT_PROMPT		; so start again.
-	; Note, we don't have to check if the number is greater than 23 because we already did
-	; that in MULTIPLY_BY_TEN
+	; Note, we don't have to check if the number is greater than 23 because
+	; we already did that in MULTIPLY_BY_TEN
 	ST R1, NUMBER		; Store the value of R1 into the address
 	BRnzp INIT_LOOP		; Get ready to find the Nth Fibonacci number
 
@@ -154,54 +163,63 @@ OUTER_LOOP:
 ; Inner loop which handles all of the subtracting
 INNER_LOOP:
 	ADD R5, R5, R4		; Subtract the current number from R5
-	BRn CHECK_DIGIT		; and if R5 is now negative, then we've got the digit in R6
+	BRn CHECK_DIGIT		; and if R5 is now negative, then we've got the
+				; digit in R6
 	ADD R6, R6, #1		; Otherwise, add 1 the digit in the current place
 	BRnzp INNER_LOOP	; And loop again
 
 ; We've found what the digit is, so lets check some things
 CHECK_DIGIT:
-	ADD R6, R6, #0		; If R6 is greater than 0, output it
+	ADD R6, R6, #0		; If R6 is greater than 0, output it.
 	BRp OUTPUT
-	ADD R3, R3, #0		; Otherwise, if there are no other digits output then skip
+	ADD R3, R3, #0		; Otherwise, if there are no other digits output
+				; then skip.
 	BRz INCREMENT
 
 ; Output the digit at the current place
 OUTPUT:
-	LD R0,  ZERO		; Load the ascii value for 0 into R0
-	ADD R0, R0, R6		; Add the digit to it to get the ascii value for it
-	OUT			; Display it
-	ADD R3, R3, #1		; We've output a digit, so increment the amount of digits we've output
+	LD R0,  ZERO		; Load the ascii value for 0 into R0.
+	ADD R0, R0, R6		; Add the digit to get the ascii value for it.
+	OUT			; Display it.
+	ADD R3, R3, #1		; We've output a digit, so increment the amount
+				; of digits we've output.
 
-; The end of a loop, so lets increment a few things
+; The end of a loop, so lets increment a few things.
 INCREMENT:
 	ADD R2, R2, #1		; Increment the pointer to the numbers
 	AND R6, R6, #0		; Clear R6 so it can be used again
-	Not R4, R4		; Set R4 for two's compliment because we put the number
-	ADD R4, R4, #1		; into the negative, so we need to make it positive again
+	Not R4, R4		; Set R4 for two's compliment because we put the
+				; number
+	ADD R4, R4, #1		; into the negative, so we need to make it
+				; positive again
 	ADD R5, R5, R4		; Make R5 positive.
 	BRnzp OUTER_LOOP	; and loop again.
 
 ; We've reached the last digit, so display it and return
 END:
-	LD R0, ZERO		; We want to find the digits ascii value, so add it to
-	ADD R0, R0, R5		; the ascii value for 0
+	LD R0, ZERO		; We want to find the digits ascii value, so add
+	ADD R0, R0, R5		; it to the ascii value for 0
 	OUT
-	LEA R0, SPACE		; Print a space character between each fibonacci number
+	LEA R0, SPACE		; Print a space character between each fibonacci
+				; number
 	PUTS
-	LD R7, SAVER7		; Reload the return address
-	RET			; and return
+	LD R7, SAVER7		; Reload the return address.
+	RET
 
 
-; These have to go here, otherwise their offset will be too great for the 9bit offset.
-; For saving the value of R7 while converting to ASCII
+; These have to go here, otherwise their offset will be too great for the 9bit
+; offset. For saving the value of R7 while converting to ASCII
 SAVER7	.FILL	0
 
 ; Strings that will be used throughout the program
 PROMPT	.STRINGZ	"\nEnter a number from 3 to 23: "
-SPACE	.STRINGZ	" "	; A space character has the ascii value of 0x20, too large to add to a register.
+SPACE	.STRINGZ	" "	; A space character has the ascii value of 0x20,
+				; too large to add to a register.
 
-NUMBER	.FILL	0	; The number that we will use as the number of fibonacci numbers we want
-FLAG	.FILL	0	; A way to tell the program we've received input we don't want
+NUMBER	.FILL	0	; The number that we will use as the number of fibonacci
+			; numbers we want
+FLAG	.FILL	0	; A way to tell the program we've received input we don't
+			; want
 
 ; ASCII values that will be used to check input, as well as convert to ASCII
 ZERO	.FILL	#48
@@ -246,7 +264,8 @@ BASE_CASE: 			; We hit a base case, so return 1
 	AND R5, R5, #0		; We hit a base case,
 	ADD R5, R5, #1		; so we want to return 1
 
-; We've found this fibonacci number, so return to the last return address stored in the stack.
+; We've found this fibonacci number, so return to the last return address stored
+; in the stack.
 RETURN:
 	ADD R2, R2, #-1 	; Decrement the stack pointer
 	LDR R7, R2, #0 		; Load return address from stack
@@ -265,7 +284,8 @@ LOOP:
 	LEA R4, TEMP_VAL_STACK 	; R4 is now the pointer to the temporary value stack
 	JSR RECURSIVE_FIBONACCI ; Find the fibonacci number
 
-	ADD R0, R0,#-1 		; Decrement the stack pointer, as the result is at its top
+	ADD R0, R0,#-1 		; Decrement the stack pointer, as the result is at
+				; the top
 	LDR R5, R0,#0 		; Load R5 from stack
 	JSR CONVERT_TO_ASCII	; Display the fibonacci number
 	LD R3, COUNT		; Load the current count into R3
@@ -289,7 +309,8 @@ LOOPER		.FILL INIT_LOOP
 
 ; Our stack pointers
 STACK:	 	.BLKW #100	; Return address and frame stack pointer.
-RESULT_STACK:	.BLKW #100	; Result stack pointer, holds all results during the recursion.
+RESULT_STACK:	.BLKW #100	; Result stack pointer, holds all results during
+				; the recursion.
 TEMP_VAL_STACK:	.BLKW #100	; To store all temporary values we use.
 
 .END
