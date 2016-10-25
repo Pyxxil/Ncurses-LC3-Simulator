@@ -1,5 +1,6 @@
-#include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
+#include <stdio.h>
 
 #include "Machine.h"
 #include "Memory.h"
@@ -35,9 +36,18 @@ static unsigned int const BREAKPOINTATTR = COLOR_PAIR(1) | A_REVERSE;
 static void installOS(struct program *prog)
 {
 	FILE *OSFile = fopen(OS_OBJ_FILE, "r");
+	if (NULL == OSFile) {
+		perror("LC3-Simulator");
+		exit(EXIT_FAILURE);
+	}
+
 	uint16_t OSOrigin, tmp;
 
-	fread(&OSOrigin, WORD_SIZE, 1, OSFile);
+	if (fread(&OSOrigin, WORD_SIZE, 1, OSFile) != 1) {
+		fprintf(stderr, "Unable to read from the OS object file.\n");
+		exit(EXIT_FAILURE);
+	}
+
 	OSOrigin = 0xffff & (OSOrigin << 8 | OSOrigin >> 8);
 
 	while (fread(&tmp, WORD_SIZE, 1, OSFile) == 1) {
@@ -70,13 +80,22 @@ int populate_memory(struct program *prog)
 {
 	installOS(prog);
 	FILE *file = fopen(prog->objectfile, "rb");
+	if (NULL == file) {
+		perror("LC3-Simulator");
+		exit(EXIT_FAILURE);
+	}
+
 	uint16_t tmp_PC, instruction;
 
 	if (file == NULL || !file)
 		return 1;
 
 	// First line in the .obj file is the starting PC.
-	fread(&tmp_PC, WORD_SIZE, 1, file);
+	if (fread(&tmp_PC, WORD_SIZE, 1, file) != 1) {
+		fprintf(stderr, "Unable to read from %s.\n", prog->objectfile);
+		exit(EXIT_FAILURE);
+	}
+
 	prog->simulator.PC = tmp_PC = 0xffff & (tmp_PC << 8 | tmp_PC >> 8);
 
 	while (fread(&instruction, WORD_SIZE, 1, file) == 1) {

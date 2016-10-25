@@ -243,6 +243,11 @@ static void run_machine(struct program *prog)
 
 	output_height = 2 * (LINES - 6) / 3 - 2;
 	memory_output = malloc(sizeof(uint16_t) * output_height);
+	if (NULL == memory_output) {
+		perror("LC3-Simulator");
+		exit(EXIT_FAILURE);
+	}
+
 	generate_context(context, prog, 0, prog->simulator.PC);
 
 	while (simulating) {
@@ -276,9 +281,19 @@ static void run_machine(struct program *prog)
 	free(memory_output);
 }
 
+void exit_handle(void)
+{
+	fflush(stdout);
+	delwin(status);
+	delwin(output);
+	delwin(context);
+	endwin();
+}
+
 void start_machine(struct program *prog)
 {
 	initscr();
+	atexit(exit_handle);
 
 	raw();
 	curs_set(0);
@@ -302,9 +317,8 @@ void start_machine(struct program *prog)
 	scrollok(output, 1);
 
 	if (NULL == prog->objectfile) {
-		prog->objectfile = (char *) malloc(sizeof(char) * MSGWIDTH);
-		prompt((char const *) NULL, "Enter the .obj file: ",
-			prog->objectfile);
+		prog->objectfile = malloc(sizeof(char) * MSGWIDTH);
+		prompt(NULL, "Enter the .obj file: ", prog->objectfile);
 	}
 
 	prog->simulator = init_state;

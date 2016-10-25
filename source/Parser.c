@@ -25,7 +25,11 @@ static const unsigned MAX_LABEL_LENGTH = 80;
 static inline void strmcpy(char **to, char const *from)
 {
 	size_t len = strlen(from) + 1;
-	*to = (char *) malloc(sizeof(char) * len);
+	*to = malloc(sizeof(char) * len);
+	if (NULL == *to) {
+		perror("LC3-Simulator");
+		exit(EXIT_FAILURE);
+	}
 	strncpy(*to, from, len);
 }
 
@@ -75,6 +79,11 @@ struct list listHead  = {
 static void insert(uint16_t instruction)
 {
 	struct list *list = malloc(sizeof(struct list));
+	if (NULL == list) {
+		perror("LC3-Simulator");
+		exit(EXIT_FAILURE);
+	}
+
 	list->instruction = instruction;
 	list->next = NULL;
 
@@ -155,11 +164,21 @@ struct symbol *findSymbolByAddress(uint16_t address)
 static void __addSymbol(char const *const name, uint16_t address)
 {
 	struct symbol *symbol = malloc(sizeof(struct symbol));
+	if (NULL == symbol) {
+		perror("LC3-Simulator");
+		exit(EXIT_FAILURE);
+	}
+
 	strmcpy(&symbol->name, name);
 	symbol->address = address;
 	symbol->fromOS = false;
 
 	struct symbolTable *table = malloc(sizeof(struct symbolTable));
+	if (NULL == table) {
+		perror("LC3-Simulator");
+		exit(EXIT_FAILURE);
+	}
+
 	table->sym = symbol;
 	table->next = NULL;
 
@@ -206,12 +225,9 @@ static void populateSymbols(char *fileName)
 	char beginning[3];
 	ungetc(c, file);
 
-	while (c != EOF) {
-		memset(label, 0, MAX_LABEL_LENGTH);
-		fscanf(file, "%s %s %hx", beginning, label, &address);
+	while (fscanf(file, "%s %s %hx", beginning, label, &address) != EOF) {
 		__addSymbol(label, address);
-		c = fgetc(file);
-		ungetc(c, file);
+		memset(label, 0, MAX_LABEL_LENGTH);
 	}
 
 	fclose(file);
@@ -243,10 +259,20 @@ void populateSymbolsFromFile(struct program *prog)
 		size_t length = strlen(prog->objectfile);
 		if (NULL != ext) {
 			prog->symbolfile = calloc(length + 1, sizeof(char));
+			if (NULL == prog->symbolfile) {
+				perror("LC3-Simulator");
+				exit(EXIT_FAILURE);
+			}
+
 			strncpy(prog->symbolfile, prog->objectfile,
 				ext - prog->objectfile);
 		} else {
 			prog->symbolfile = calloc(length + 5, sizeof(char));
+			if (NULL == prog->symbolfile) {
+				perror("LC3-Simulator");
+				exit(EXIT_FAILURE);
+			}
+
 			strcpy(prog->symbolfile, prog->objectfile);
 		}
 
@@ -389,7 +415,9 @@ static bool endOfLine(FILE *file)
 
 enum Token nextToken(FILE *file, char *buffer)
 {
-	fscanf(file, "%99s", buffer);
+	if (fscanf(file, "%99s", buffer) == EOF) {
+		*buffer = '\0';
+	}
 
 	if (!uppercmp(buffer, "ADD")) {
 		return OP_ADD;
@@ -632,11 +660,21 @@ bool parse(struct program *prog)
 		if (NULL == prog->symbolfile) {
 			if (NULL != ext) {
 				prog->symbolfile = calloc(length, sizeof(char));
+				if (NULL == prog->symbolfile) {
+					perror("LC3-Simulator");
+					exit(EXIT_FAILURE);
+				}
+
 				strncpy(prog->symbolfile, prog->assemblyfile,
 					ext - prog->assemblyfile);
 			} else {
 				prog->symbolfile = calloc(length + 5,
 							sizeof(char));
+				if (NULL == prog->symbolfile) {
+					perror("LC3-Simulator");
+					exit(EXIT_FAILURE);
+				}
+
 				strcpy(prog->symbolfile, prog->assemblyfile);
 			}
 
@@ -646,11 +684,21 @@ bool parse(struct program *prog)
 		if (NULL == prog->hexoutfile) {
 			if (NULL != ext) {
 				prog->hexoutfile = calloc(length, sizeof(char));
+				if (NULL == prog->hexoutfile) {
+					perror("LC3-Simulator");
+					exit(EXIT_FAILURE);
+				}
+
 				strncpy(prog->hexoutfile, prog->assemblyfile,
 					ext - prog->assemblyfile);
 			} else {
 				prog->hexoutfile = calloc(length + 5,
 							sizeof(char));
+				if (NULL == prog->hexoutfile) {
+					perror("LC3-Simulator");
+					exit(EXIT_FAILURE);
+				}
+
 				strcpy(prog->hexoutfile, prog->assemblyfile);
 			}
 
@@ -660,11 +708,21 @@ bool parse(struct program *prog)
 		if (NULL == prog->binoutfile) {
 			if (NULL != ext) {
 				prog->binoutfile = calloc(length, sizeof(char));
+				if (NULL == prog->binoutfile) {
+					perror("LC3-Simulator");
+					exit(EXIT_FAILURE);
+				}
+
 				strncpy(prog->binoutfile, prog->assemblyfile,
 					ext - prog->assemblyfile);
 			} else {
 				prog->binoutfile = calloc(length + 5,
 							sizeof(char));
+				if (NULL == prog->binoutfile) {
+					perror("LC3-Simulator");
+					exit(EXIT_FAILURE);
+				}
+
 				strcpy(prog->binoutfile, prog->assemblyfile);
 			}
 
@@ -674,11 +732,21 @@ bool parse(struct program *prog)
 		if (NULL == prog->objectfile) {
 			if (NULL != ext) {
 				prog->objectfile = calloc(length, sizeof(char));
+				if (NULL == prog->objectfile) {
+					perror("LC3-Simulator");
+					exit(EXIT_FAILURE);
+				}
+
 				strncpy(prog->objectfile, prog->assemblyfile,
 					ext - prog->assemblyfile);
 			} else {
 				prog->objectfile = calloc(length + 5,
 							sizeof(char));
+				if (NULL == prog->objectfile) {
+					perror("LC3-Simulator");
+					exit(EXIT_FAILURE);
+				}
+
 				strcpy(prog->objectfile, prog->assemblyfile);
 			}
 
@@ -701,6 +769,11 @@ bool parse(struct program *prog)
 	(void) OSInstalled;
 
 	FILE *asmFile = fopen(prog->assemblyfile, "r");
+	if (NULL == asmFile) {
+		perror("LC3-Simulator");
+		exit(EXIT_FAILURE);
+	}
+
 	printf("STARTING FIRST PASS...\n");
 
 	while (1) {
@@ -874,7 +947,15 @@ bool parse(struct program *prog)
 			oper3 = nextImmediate(asmFile, false);
 
 			if (oper3 == INT_MAX) {
-				fscanf(asmFile, "%79s", label);
+				if (fscanf(asmFile, "%79s", label) == EOF) {
+					fprintf(stderr, "Line %d: Unexpected "
+							"end of file.\n",
+							currentLine);
+					ungetc(EOF, asmFile);
+					errors++;
+					continue;
+				}
+
 				extractLabel(label, asmFile);
 				sym = findSymbol(label);
 
@@ -927,7 +1008,15 @@ bool parse(struct program *prog)
 				continue;
 			}
 
-			fscanf(asmFile, "%79s", label);
+			if (fscanf(asmFile, "%79s", label) == EOF) {
+				fprintf(stderr, "Line %d: Unexpected "
+						"end of file.\n",
+						currentLine);
+				ungetc(EOF, asmFile);
+				errors++;
+				continue;
+			}
+
 			extractLabel(label, asmFile);
 			sym = findSymbol(label);
 			if (NULL == sym) {
@@ -1082,7 +1171,15 @@ bool parse(struct program *prog)
 				break;
 			}
 
-			fscanf(asmFile, "%79s", label);
+			if (fscanf(asmFile, "%79s", label) == EOF) {
+				fprintf(stderr, "Line %d: Unexpected "
+						"end of file.\n",
+						currentLine);
+				ungetc(EOF, asmFile);
+				errors++;
+				continue;
+			}
+
 			extractLabel(label, asmFile);
 			sym = findSymbol(label);
 			if (NULL == sym) {
@@ -1147,7 +1244,15 @@ bool parse(struct program *prog)
 				ungetc(c, asmFile);
 			}
 
-			fscanf(asmFile, "%79s", label);
+			if (fscanf(asmFile, "%79s", label) == EOF) {
+				fprintf(stderr, "Line %d: Unexpected "
+						"end of file.\n",
+						currentLine);
+				ungetc(EOF, asmFile);
+				errors++;
+				continue;
+			}
+
 			extractLabel(label, asmFile);
 			sym = findSymbol(label);
 			if (NULL == sym) {
@@ -1382,6 +1487,11 @@ bool parse(struct program *prog)
 		FILE *hexFile = fopen(prog->hexoutfile, "w+");
 		FILE *binFile = fopen(prog->binoutfile, "w+");
 		FILE *objFile = fopen(prog->objectfile, "wb+");
+		if (NULL == symFile || NULL == hexFile || NULL == binFile ||
+				NULL == objFile) {
+			perror("LC3-Simulator");
+			exit(EXIT_FAILURE);
+		}
 
 		fprintf(symFile, "// Symbol table\n");
 		fprintf(symFile, "// Scope level 0:\n");
