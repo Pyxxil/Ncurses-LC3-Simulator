@@ -1,11 +1,10 @@
 ## Features
 * [x] Run .obj files
-* [ ] Handle files as input or generated
-  * Mostly there, just need an option to switch the file while running
+* [x] Handle files as input or generated
 * [ ] Assemble Files
-  * [ ] Output a .obj file, .sym file, .bin file, and .hex file
-  * [ ] Proper Error Handling
-* [ ]
+  * [x] Output a .obj file, .sym file, .bin file, and .hex file
+  * [ ] Proper Error Handling (Mostly done).
+* [ ] Allow the user to specify multiple files to assemble
 
 ## Debugging
 * [ ] Add a function to dump the simulator contents
