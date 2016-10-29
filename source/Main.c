@@ -7,15 +7,6 @@
 #include "Parser.h"
 #include "Error.h"
 
-struct program* program = NULL;
-
-void _exit(void)
-{
-	if (NULL != program)
-		tidyup(program);
-
-	freeTable(&tableHead);
-}
 
 int main(int argc, char **argv)
 {
@@ -31,21 +22,21 @@ int main(int argc, char **argv)
 		.verbosity    = 0,
 	};
 
-	program = &prog;
-	atexit(_exit);
-
 	unsigned long long errval = argparse(argc, argv, &prog);
 
 	if (errval & (0xFFFFll << 32)) {
-		errhandle(program);
+		errhandle(&prog);
 	} else {
-		if ((errval & ASSEMBLE) && (!parse(program) ||
+		if ((errval & ASSEMBLE) && (!parse(&prog) ||
 				(errval & ASSEMBLE_ONLY))) {
 			/* NO OP */;
 		} else {
-			start_machine(program);
+			start_machine(&prog);
 		}
 	}
+
+	tidyup(&prog);
+	freeTable(&tableHead);
 
 	return errval;
 }

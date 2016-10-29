@@ -4,9 +4,8 @@
 
 An ncurses simulator for the LC-3.
 
-It is able to assemble, and run, programs (currently this takes two calls).
-
-Assembly is still a work in progress, but it works for the most part.
+It is able to assemble, and run, programs. Assembly is still a work in progress,
+but it works for the most part.
 
 Usage:
 

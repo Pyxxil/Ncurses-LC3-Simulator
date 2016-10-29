@@ -96,18 +96,26 @@ static void insert(uint16_t instruction)
 	listTail = list;
 }
 
-static void freeList(struct list *list)
+static void __freeList(struct list *list)
 {
 	if (NULL != list->next) {
-		freeList(list->next);
+		__freeList(list->next);
 		free(list->next);
 	}
 }
 
-void freeTable(struct symbolTable *table)
+static void freeList(struct list *list)
+{
+	__freeList(list);
+
+	if (NULL != listTail)
+		listTail = NULL;
+}
+
+static void __freeTable(struct symbolTable *table)
 {
 	if (NULL != table->next) {
-		freeTable(table->next);
+		__freeTable(table->next);
 		free(table->next);
 	}
 
@@ -115,6 +123,14 @@ void freeTable(struct symbolTable *table)
 		free(table->sym->name);
 		free(table->sym);
 	}
+}
+
+void freeTable(struct symbolTable *table)
+{
+	__freeTable(table);
+
+	if (NULL != tableTail)
+		tableTail = NULL;
 }
 
 /*
