@@ -143,11 +143,10 @@ static char *instruction(uint16_t instr, uint16_t address, char *buff,
 		strcat(buff, ", ");
 		if (instr & 0x20) {
 			strcat(buff, "#");
-			if (instr & 0x10) {
-				strcat(buff, "-");
-				instr = ~(instr & 0x1f) + 1;
-			}
-			sprintf(buff, "%s%hhd", buff, instr & 0x1F);
+			char immediate[5];
+			snprintf(immediate, 5, "%hhd",
+				((int16_t) (instr << 11)) >> 11);
+			strcat(buff, immediate);
 		} else {
 			strcat(buff, "R");
 			buff[13] = (instr & 0x7) + 0x30;
@@ -251,11 +250,9 @@ static char *instruction(uint16_t instr, uint16_t address, char *buff,
 		strcat(buff, ", R");
 		buff[9] = ((instr >> 6) & 0x7) + 0x30;
 		strcat(buff, ", #");
-		if (instr & 0x20) {
-			strcat(buff, "-");
-			instr = ~(instr & 0x1f) + 1;
-		}
-		sprintf(buff, "%s%d", buff, instr & 0x3f);
+		char immediate[5];
+		snprintf(immediate, 5, "%hhd", ((int16_t) (instr << 10)) << 10);
+		strcat(buff, immediate);
 		break;
 	case NOT:
 		strcpy(buff, "NOT R");
