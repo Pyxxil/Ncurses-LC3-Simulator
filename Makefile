@@ -28,7 +28,7 @@ DEFINES  = -DOS_PATH="$(OSPATH)"
 # Flags to use when compiling
 CFLAGS = $(INCLUDES) -std=c11 -g -O2 $(DEFINES)
 # Flags to add when compiling the debug version
-DFLAGS = -Wall -Werror -Wpedantic -Wextra
+DFLAGS = -Wall -Werror -Wpedantic -Wconversion -Wextra
 
 RM = rm -f
 
@@ -53,23 +53,20 @@ tags: $(SRC)
 
 # Build the executable file
 .PHONY: build
-build: building
 build: $(OBJS)
+	@echo $(EXTRA) "LD $(EXECUTABLE)"
 	@$(CC) $(CFLAGS) $(LIBS) -o $(EXECUTABLE) $(OBJS)
-
-.PHONY: building
-building:
-	@echo " Creating executable -> $(EXECUTABLE)"
 
 .PHONY: asm
 asm: $(ASM)
 
 %.o: %.c
-	@echo $(EXTRA) "CC $< -> $@"
+	@echo $(EXTRA) "CC $@"
 	@$(CC) $(CFLAGS) -c $< -o $@
 
 %.s: %.c
-	$(CC) $(CFLAGS) -c $< -S -o $@
+	@echo $(EXTRA) "CC $@"
+	@$(CC) $(CFLAGS) -c $< -S -o $@
 
 .PHONY: mostlyclean
 # Remove most of the files created during compilation.
@@ -81,4 +78,3 @@ mostlyclean:
 .PHONY: clean
 clean: mostlyclean
 	@if [[ -s $(EXECUTABLE) ]]; then echo " RM $(EXECUTABLE)"; $(RM) $(EXECUTABLE); fi;
-

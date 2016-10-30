@@ -38,6 +38,6 @@ int main(int argc, char **argv)
 	tidyup(&prog);
 	freeTable(&tableHead);
 
-	return errval;
+	return 0;
 }
 

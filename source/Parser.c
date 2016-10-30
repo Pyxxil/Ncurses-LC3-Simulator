@@ -281,7 +281,7 @@ void populateSymbolsFromFile(struct program *prog)
 			}
 
 			strncpy(prog->symbolfile, prog->objectfile,
-				ext - prog->objectfile);
+				(size_t) (ext - prog->objectfile));
 		} else {
 			prog->symbolfile = calloc(length + 5, sizeof(char));
 			if (NULL == prog->symbolfile) {
@@ -309,7 +309,7 @@ static int uppercmp(char *from, char const *const to)
 	strcpy(copy, from);
 
 	for (size_t i = 0; copy[i]; i++) {
-		copy[i] = toupper(copy[i]);
+		copy[i] = (char) toupper(copy[i]);
 	}
 
 	return strcmp(copy, to);
@@ -355,8 +355,8 @@ static uint16_t nzp(char const *const _nzp)
 static void objWrite(uint16_t *instruction, FILE *objFile)
 {
 	unsigned char bytes[2];
-	bytes[0] = (*instruction & 0xff00) >> 8;
-	bytes[1] = *instruction & 0xff;
+	bytes[0] = (unsigned char) ((*instruction & 0xff00) >> 8);
+	bytes[1] = (unsigned char) (*instruction & 0xff);
 	fwrite(bytes, 2, 1, objFile);
 }
 
@@ -565,7 +565,7 @@ static int nextImmediate(FILE *file, bool allowedComma)
 
 	int c = fgetc(file);
 	int immediate;
-	unsigned repr;
+	int repr;
 
 	char line[MAX_LABEL_LENGTH];
 	memset(line, 0, MAX_LABEL_LENGTH);
@@ -602,7 +602,7 @@ static int nextImmediate(FILE *file, bool allowedComma)
 			}
 		} else {
 			repr = 10;
-			line[0] = c;
+			line[0] = (char) c;
 		}
 	} else {
 		ungetc(c, file);
@@ -611,7 +611,7 @@ static int nextImmediate(FILE *file, bool allowedComma)
 
 	c = fgetc(file);
 	for (size_t i = 1; i < MAX_LABEL_LENGTH && isxdigit(c); i++) {
-		line[i] = c;
+		line[i] = (char) c;
 		c = fgetc(file);
 	}
 	ungetc(c, file);
@@ -661,7 +661,7 @@ static uint16_t nextRegister(FILE *file, bool allowedComma)
 		return 65535;
 	}
 
-	return c - 0x30;
+	return (uint16_t) (c - 0x30);
 }
 
 bool parse(struct program *prog)
@@ -682,7 +682,7 @@ bool parse(struct program *prog)
 				}
 
 				strncpy(prog->symbolfile, prog->assemblyfile,
-					ext - prog->assemblyfile);
+					(size_t) (ext - prog->assemblyfile));
 			} else {
 				prog->symbolfile = calloc(length + 5,
 							sizeof(char));
@@ -706,7 +706,7 @@ bool parse(struct program *prog)
 				}
 
 				strncpy(prog->hexoutfile, prog->assemblyfile,
-					ext - prog->assemblyfile);
+					(size_t) (ext - prog->assemblyfile));
 			} else {
 				prog->hexoutfile = calloc(length + 5,
 							sizeof(char));
@@ -730,7 +730,7 @@ bool parse(struct program *prog)
 				}
 
 				strncpy(prog->binoutfile, prog->assemblyfile,
-					ext - prog->assemblyfile);
+					(size_t) (ext - prog->assemblyfile));
 			} else {
 				prog->binoutfile = calloc(length + 5,
 							sizeof(char));
@@ -754,7 +754,7 @@ bool parse(struct program *prog)
 				}
 
 				strncpy(prog->objectfile, prog->assemblyfile,
-					ext - prog->assemblyfile);
+					(size_t) (ext - prog->assemblyfile));
 			} else {
 				prog->objectfile = calloc(length + 5,
 							sizeof(char));
@@ -868,7 +868,7 @@ bool parse(struct program *prog)
 				continue;
 			}
 
-			pc = actualPC = oper3;
+			pc = actualPC = (uint16_t) oper3;
 		//	printf("PC  %x\n", pc);
 			origSeen = true;
 			break;
@@ -910,7 +910,7 @@ bool parse(struct program *prog)
 						break;
 					}
 				} else {
-					line[i] = c;
+					line[i] = (char) c;
 					instruction = c & 0xff;
 				}
 
@@ -947,7 +947,7 @@ bool parse(struct program *prog)
 
 			pc += oper3 - 1;
 			if (pass != 1) {
-				oper1 = oper3;
+				oper1 = (uint16_t) oper3;
 				instruction = 0;
 				while (oper3-- > 1) {
 					insert(instruction);
@@ -985,7 +985,7 @@ bool parse(struct program *prog)
 				}
 				instruction = sym->address;
 			} else {
-				instruction = oper3;
+				instruction = (uint16_t) oper3;
 			}
 			break;
 		case DIR_END:
@@ -1108,7 +1108,7 @@ bool parse(struct program *prog)
 
 			instruction = instruction | oper1 << 9 | oper2 << 6 | oper3;
 			if (prog->verbosity) {
-				printf("%-5s  R%d  R%d", line, oper1, oper2);
+				printf("%-5s  R%d  R%d ", line, oper1, oper2);
 				if (prog->verbosity > 2) {
 					printf("  (line %3d)", currentLine);
 				}
