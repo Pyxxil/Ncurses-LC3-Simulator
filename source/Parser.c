@@ -220,12 +220,6 @@ static int addSymbol(char const *const name, uint16_t address)
 	return 0;
 }
 
-bool symbolsEmpty()
-{
-	return tableHead.next == NULL;
-}
-
-
 static void populateSymbols(char *fileName)
 {
 	FILE *file = fopen(fileName, "r");
@@ -255,7 +249,7 @@ void populateOSSymbols()
 	// For now this will serve as a way of being able to tell whether
 	// something is a part of the Operating System, or from the User's
 	// program.
-	for (struct symbolTable *table= tableHead.next; table != NULL;
+	for (struct symbolTable *table = tableHead.next; table != NULL;
 			table = table->next) {
 		table->sym->fromOS = true;
 	}
@@ -296,6 +290,7 @@ void populateSymbolsFromFile(struct program *prog)
 	}
 
 	populateSymbols(prog->symbolfile);
+	printf("%s\n", prog->symbolfile);
 }
 
 /*

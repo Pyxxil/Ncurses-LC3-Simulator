@@ -188,33 +188,33 @@ OUTPUT:
 INCREMENT:
 	ADD R2, R2, #1		; Increment the pointer to the numbers
 	AND R6, R6, #0		; Clear R6 so it can be used again
-	Not R4, R4		; Set R4 for two's compliment because we put the
+	NOT R4, R4		; Set R4 for two's compliment because we put the
 				; number
 	ADD R4, R4, #1		; into the negative, so we need to make it
 				; positive again
 	ADD R5, R5, R4		; Make R5 positive.
-	BRnzp OUTER_LOOP	; and loop again.
+	BRnzp OUTER_LOOP
 
 ; We've reached the last digit, so display it and return
 END:
 	LD R0, ZERO		; We want to find the digits ascii value, so add
 	ADD R0, R0, R5		; it to the ascii value for 0
 	OUT
-	LEA R0, SPACE		; Print a space character between each fibonacci
-				; number
-	PUTS
+	LD R0, SPACE		; Print a space character between each fibonacci
+	OUT			; number
 	LD R7, SAVER7		; Reload the return address.
 	RET
 
 
-; These have to go here, otherwise their offset will be too great for the 9bit
-; offset. For saving the value of R7 while converting to ASCII
+; These have to go here, otherwise their offset will be too great for the 9 bit
+; offset that can be provided to most of the memory access/writer instructions.
 SAVER7	.FILL	0
 
 ; Strings that will be used throughout the program
 PROMPT	.STRINGZ	"\nEnter a number from 3 to 23: "
-SPACE	.STRINGZ	" "	; A space character has the ascii value of 0x20,
-				; too large to add to a register.
+
+SPACE	.FILL 0x20	; A space character has the ascii value of 0x20, too large
+			; for an immediate offset to ADD.
 
 NUMBER	.FILL	0	; The number that we will use as the number of fibonacci
 			; numbers we want
@@ -299,8 +299,7 @@ LOOP:
 	BRnzp LOOP		; and loop again.
 
 ; We've finished finding the fibonacci numbers, so end the program.
-FINISH:
-	HALT
+FINISH: HALT
 
 ; The loop count (will also be used to find the fibonacci number we want)
 COUNT:		.FILL 1

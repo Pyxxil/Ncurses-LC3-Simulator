@@ -1,12 +1,24 @@
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <signal.h>
 
-#include "Argparse.h"
+#include "Error.h"
+#include "Parser.h"
 #include "Machine.h"
 #include "Structs.h"
-#include "Parser.h"
-#include "Error.h"
+#include "Argparse.h"
 
+static struct program *program = NULL;
+
+void close(int sig)
+{
+	if (NULL != program)
+		tidyup(program);
+
+	freeTable(&tableHead);
+
+	exit(EXIT_FAILURE);
+}
 
 int main(int argc, char **argv)
 {
@@ -22,7 +34,10 @@ int main(int argc, char **argv)
 		.verbosity    = 0,
 	};
 
+	program = &prog;
+
 	unsigned long long errval = argparse(argc, argv, &prog);
+	signal(SIGINT, close);
 
 	if (errval & (0xFFFFll << 32)) {
 		errhandle(&prog);

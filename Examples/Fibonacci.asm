@@ -11,8 +11,8 @@
 ;	-- Iteratively finding the Nth Fibonacci Number
 ; --------------------------------------------------------------
 
-; NOTE: As R1 is used as the input and the counter, we don't want to overwrite at all by anything other than
-;	the Iteration part of the program.
+; NOTE: As R1 is used as the input and the counter, we don't want to overwrite at
+;	all by anything other than the Iteration part of the program.
 
 ;       Getting input			| Converting to ASCII		| Iteration
 ; R0 -- Input and output		| R0 --	Output			| R0 -- Unused
@@ -141,7 +141,7 @@ CHECK_INPUT:
 	ADD R4, R4, #1		; Start at 1
 	BRnzp ITERATIVE_FIBONACCI	; Iteratively retrieve each fibonacci number
 
-	
+
 ; Take a number in R5 and convert each digit to ASCII to print to the display
 CONVERT_TO_ASCII:
 	ST R7, SAVER7		; Store the return address
@@ -212,7 +212,7 @@ ITERATIVE_FIBONACCI:
 ; Finish the program
 FINISH:
 	HALT
-	
+
 
 ; Strings that will be used throughout the program
 PROMPT	.STRINGZ	"\nEnter a number from 3 to 23: "

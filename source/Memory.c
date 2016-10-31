@@ -17,15 +17,16 @@
 #define OSPATH(path)  STR(path)
 #define OS_OBJ_FILE OSPATH(OS_PATH) "/LC3_OS.obj"
 
-uint16_t selected 	  = 0;
-uint16_t output_height 	  = 0;
-uint16_t selected_address = 0;
+uint16_t selected         = 0;
+uint16_t output_height    = 0;
 uint16_t *memory_output   = NULL;
+uint16_t selected_address = 0;
 
 bool OSInstalled = false;
+static bool symsInstalled = false;
 
-static char const *const MEMFORMAT = "0x%04X  %s  0x%04X  %-25s %-50s";
-static unsigned int const SELECTATTR = A_REVERSE | A_BOLD;
+static char const  *const MEMFORMAT      = "0x%04X  %s  0x%04X  %-25s %-50s";
+static unsigned int const SELECTATTR     = A_REVERSE | A_BOLD;
 static unsigned int const BREAKPOINTATTR = COLOR_PAIR(1) | A_REVERSE;
 
 /*
@@ -72,13 +73,17 @@ static void installOS(struct program *prog)
  * Populate the memory of the supplied simulator with the contents of
  * the provided file.
  *
- * prog -- The program we want to populate the memory of, which also contains the
- *         file we will read the memory from.
+ * @prog: The program we want to populate the memory of, which also contains the
+ *        file we will read the memory from.
+ *
+ * Returns: 0 on success, >0 on failure.
  */
 
 int populate_memory(struct program *prog)
 {
 	installOS(prog);
+	symsInstalled = false;
+
 	FILE *file = fopen(prog->objectfile, "rb");
 	if (NULL == file) {
 		perror("LC3-Simulator");
@@ -118,10 +123,17 @@ int populate_memory(struct program *prog)
 	return 0;
 }
 
-
 /*
  * Convert a binary instruction to characters.
+ *
+ * @instr:   The 16 bit binary value that we want to convert.
+ * @address: The address of the supplied instruction.
+ * @buff:    Where we are to store the converted instruction.
+ * @prog:    The program containing all instructions/files we need.
+ *
+ * Returns: The buff supplied.
  */
+
 static char *instruction(uint16_t instr, uint16_t address, char *buff,
 		struct program *prog)
 {
@@ -129,8 +141,9 @@ static char *instruction(uint16_t instr, uint16_t address, char *buff,
 	int16_t offset;
 
 	struct symbol *symbol;
-	if (symbolsEmpty()) {
+	if (!symsInstalled) {
 		populateSymbolsFromFile(prog);
+		symsInstalled = true;
 	}
 
 	switch (opcode) {
@@ -300,8 +313,8 @@ static void wprint(WINDOW *window, struct program *prog, size_t address, int y,
 	}
 
 	char instr[100] = { 0 };
-	instruction(prog->simulator.memory[address].value, address + 1, instr,
-			prog);
+	instruction(prog->simulator.memory[address].value, address + 1,
+			instr, prog);
 	struct symbol *symbol = findSymbolByAddress(address);
 	char label[100] = { 0 };
 	if (symbol != NULL) {
