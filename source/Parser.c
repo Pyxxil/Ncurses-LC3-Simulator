@@ -290,7 +290,6 @@ void populateSymbolsFromFile(struct program *prog)
 	}
 
 	populateSymbols(prog->symbolfile);
-	printf("%s\n", prog->symbolfile);
 }
 
 /*

@@ -80,9 +80,9 @@ static void sstate(enum STATE *currentState)
 	doupdate();
 }
 
-static int popup_window(char const *message, int original_value)
+static int popup_window(char const *message, int original_value, bool ignore)
 {
-	int msgwidth = MSGWIDTH + strlen(message);
+	int msgwidth = MSGWIDTH + strlen(message), ret = 0;
 	char string[7] = { 0 };
 
 	WINDOW *popup = newwin(MSGHEIGHT, msgwidth, (LINES - MSGHEIGHT) / 2,
@@ -92,14 +92,19 @@ static int popup_window(char const *message, int original_value)
 	echo();
 
 	mvwaddstr(popup, 2, 1, message);
-	wgetstr(popup, string);
-	string[6] = '\0';
 
-	char *end = NULL;
-	int ret = (int) strtol(string, &end, 16);
+	if (ignore) {
+		wgetch(popup);
+	} else {
+		wgetnstr(popup, string, 6);
+		string[6] = '\0';
 
-	if (*end || strlen(string) == 0)
-		ret = original_value;
+		char *end = NULL;
+		ret = (int) strtol(string, &end, 16);
+
+		if (*end || strlen(string) == 0)
+			ret = original_value;
+	}
 
 	noecho();
 	delwin(popup);
@@ -120,7 +125,7 @@ static bool simview(WINDOW *output, WINDOW *status, struct program *prog,
 		input = wgetch(status);
 
 		if (prog->simulator.memory[prog->simulator.PC].isBreakpoint) {
-			popup_window("Breakpoint hit!", 0);
+			popup_window("Breakpoint hit!", 0, true);
 			prog->simulator.isPaused = true;
 			prog->simulator.memory[prog->simulator.PC]
 				.isBreakpoint = false;
@@ -211,7 +216,7 @@ static bool memview(WINDOW *window, struct program *prog,
 		} else if (input == JUMP) {
 			jump_addr = popup_window(
 				"Enter a hex address to jump to: ",
-				selected_address);
+				selected_address, false);
 			if (jump_addr == selected_address)
 				continue;
 			generate_context(window, prog, 0, jump_addr);
@@ -222,7 +227,8 @@ static bool memview(WINDOW *window, struct program *prog,
 		} else if (input == EDITFILE) {
 			new_value = popup_window(
 				"Enter the new instruction (in hex): ",
-				prog->simulator.memory[selected_address].value);
+				prog->simulator.memory[selected_address].value,
+				false);
 			prog->simulator.memory[selected_address].value =
 				new_value;
 			update(window, prog);
@@ -271,23 +277,26 @@ static void run_machine(struct program *prog)
 			}
 			simulating = memview(context, prog, &currentState);
 			break;
-		case EDIT:
-			break;
 		default:
 			break;
 		}
 	}
 
 	free(memory_output);
+	memory_output = NULL;
 }
 
 void exit_handle(void)
 {
 	fflush(stdout);
+
 	delwin(status);
 	delwin(output);
 	delwin(context);
 	endwin();
+
+	if (NULL != memory_output)
+		free(memory_output);
 }
 
 void start_machine(struct program *prog)
