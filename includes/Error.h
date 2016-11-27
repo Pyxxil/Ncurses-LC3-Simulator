@@ -37,9 +37,9 @@ extern char *input_files,
 #define MUL_NO_ARG_PROVIDED 		0x004000000000
 #define MUL_INVALID_VERBOSE_LEVEL 	0x008000000000
 
-extern void read_error(void);
+__attribute__((noreturn)) void read_error(void);
 
-extern void tidyup(struct program *);
+void tidyup(struct program *);
 
 #endif // ERROR_H
 

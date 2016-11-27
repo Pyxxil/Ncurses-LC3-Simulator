@@ -5,9 +5,9 @@
 
 char *input_files        = NULL;
 char *incorrect_opts     = NULL;
-char *unimplemented_opts = NULL;
 char *deprecated_opts    = NULL;
 char *no_args_provided   = NULL;
+char *unimplemented_opts = NULL;
 
 /*
  * Failed to read to the end of the file for some reason,
@@ -15,7 +15,7 @@ char *no_args_provided   = NULL;
  * status.
  */
 
-inline void read_error()
+inline void read_error(void)
 {
 	fprintf(stderr, "Error: Failed to read to end of file\n");
 	exit(EXIT_FAILURE);
@@ -24,26 +24,26 @@ inline void read_error()
 
 void tidyup(struct program *prog)
 {
-	if (prog->name != NULL)
+	if (NULL != prog->name)
 		free(prog->name);
-	if (input_files != NULL)
+	if (NULL != input_files)
 		free(input_files);
-	if (prog->objectfile != NULL)
+	if (NULL != prog->objectfile)
 		free(prog->objectfile);
-	if (prog->assemblyfile != NULL)
+	if (NULL != prog->assemblyfile)
 		free(prog->assemblyfile);
-	if (prog->symbolfile != NULL)
+	if (NULL != prog->symbolfile)
 		free(prog->symbolfile);
-	if (prog->hexoutfile != NULL)
+	if (NULL != prog->hexoutfile)
 		free(prog->hexoutfile);
-	if (prog->binoutfile != NULL)
+	if (NULL != prog->binoutfile)
 		free(prog->binoutfile);
-	if (prog->logfile != NULL)
+	if (NULL != prog->logfile)
 		free(prog->logfile);
-	if (incorrect_opts != NULL)
+	if (NULL != incorrect_opts)
 		free(incorrect_opts);
-	if (deprecated_opts != NULL)
+	if (NULL != deprecated_opts)
 		free(deprecated_opts);
-	if (unimplemented_opts != NULL)
+	if (NULL != unimplemented_opts)
 		free(unimplemented_opts);
 }

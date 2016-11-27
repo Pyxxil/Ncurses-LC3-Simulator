@@ -2,7 +2,6 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <stdio.h>
-#include <ctype.h>
 
 #include "Argparse.h"
 #include "Error.h"
@@ -27,7 +26,7 @@ static void ERR(char const *const string, ...)
 	va_start(args, string);
 
 	fprintf(stderr, "\n");
-	fprintf(stderr, string, args);
+	vfprintf(stderr, string, args);
 	fprintf(stderr, "\n");
 
 	va_end(args);
@@ -65,7 +64,7 @@ static void error(unsigned long long error, unsigned long long mul,
 	errvalue |= errvalue & error ? mul : error;
 	errcount ++;
 
-	if (*errorString == NULL) {
+	if (NULL == *errorString) {
 		strmcpy(errorString, arg);
 		return;
 	}
@@ -107,7 +106,7 @@ void errhandle(struct program const *prog)
 
 static void addFile(char **file, char const *from, char const *flag)
 {
-	if (*file == NULL)
+	if (NULL == *file)
 		strmcpy(file, from);
 	else
 		error(MUL_INPUT_FILES, MUL_INPUT_FILES, &input_files, flag);
@@ -125,12 +124,12 @@ static void addFile(char **file, char const *from, char const *flag)
 
 unsigned long long argparse(int argcount, char **argvals, struct program *prog)
 {
-	prefixsize = strlen(errprefix);
 	int argindex = 1;
+	char const *arg = NULL;
+
+	prefixsize = strlen(errprefix);
 
 	strmcpy(&prog->name, argvals[0]);
-
-	char const *arg = (char const *) NULL;
 
 	while (argindex < argcount) {
 		arg = argvals[argindex++];
@@ -139,7 +138,7 @@ unsigned long long argparse(int argcount, char **argvals, struct program *prog)
 			usage(prog->name);
 			exit(EXIT_SUCCESS);
 		} else if (!strcmp(arg, "--assemble") || !strcmp(arg, "-a")) {
-			if (argindex >= argcount || *argvals[argindex] == '-') {
+			if (argindex >= argcount || '-' == *argvals[argindex]) {
 				error(NO_ARG_PROVIDED, MUL_NO_ARG_PROVIDED,
 					&no_args_provided, arg);
 			} else {
@@ -149,7 +148,7 @@ unsigned long long argparse(int argcount, char **argvals, struct program *prog)
 				argindex++;
 			}
 		} else if (!strcmp(arg, "--objectfile") || !strcmp(arg, "-o")) {
-			if (argindex >= argcount || *argvals[argindex] == '-') {
+			if (argindex >= argcount || '-' == *argvals[argindex]) {
 				error(NO_ARG_PROVIDED, MUL_NO_ARG_PROVIDED,
 					&no_args_provided, arg);
 			} else {
@@ -158,7 +157,7 @@ unsigned long long argparse(int argcount, char **argvals, struct program *prog)
 				argindex++;
 			}
 		} else if (!strcmp(arg, "--logfile") || !strcmp(arg, "-l")) {
-			if (argindex >= argcount || *argvals[argindex] == '-') {
+			if (argindex >= argcount || '-' == *argvals[argindex]) {
 				error(NO_ARG_PROVIDED, MUL_NO_ARG_PROVIDED,
 					&no_args_provided, arg);
 			} else {
@@ -171,8 +170,8 @@ unsigned long long argparse(int argcount, char **argvals, struct program *prog)
 			// Should we check for verbosity first before gathering
 			// all information?
 			char *end = NULL;
-			if (argindex < argcount && *argvals[argindex] != '-') {
-				int verboseLevel = strtol(argvals[argindex++],
+			if (argindex < argcount && '-' != *argvals[argindex]) {
+				int verboseLevel = (int) strtol(argvals[argindex++],
 						&end, 10);
 				if (*end) {
 					error(INVALID_VERBOSE_LEVEL,

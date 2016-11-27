@@ -15,7 +15,7 @@
 #define OSPATH(path) STR(path)
 #define OS_SYM_FILE OSPATH(OS_PATH) "/LC3_OS.sym"
 
-static const unsigned MAX_LABEL_LENGTH = 80;
+static unsigned const MAX_LABEL_LENGTH = 80;
 
 /*
  * Copy the contents of one string to another, allocating enough memory to the
@@ -41,8 +41,8 @@ static inline void strmcpy(char **to, char const *from)
 static void skipWhitespace(FILE *file)
 {
 	int c = 0;
-	while ((c = fgetc(file)) != EOF && isspace(c)) {
-		if (c == '\n')
+	while (EOF != (c = fgetc(file)) && isspace(c)) {
+		if ('\n' == c)
 			break;
 	}
 	ungetc(c, file);
@@ -55,7 +55,7 @@ static void skipWhitespace(FILE *file)
 static void nextLine(FILE *file)
 {
 	int c = 0;
-	while ((c = fgetc(file)) != '\n' && c != EOF);
+	while ('\n' != (c = fgetc(file)) && EOF != c);
 	ungetc(c, file);
 }
 
@@ -180,16 +180,18 @@ struct symbol *findSymbolByAddress(uint16_t address)
 static void __addSymbol(char const *const name, uint16_t address)
 {
 	struct symbol *symbol = malloc(sizeof(struct symbol));
+	struct symbolTable *table;
+
 	if (NULL == symbol) {
 		perror("LC3-Simulator");
 		exit(EXIT_FAILURE);
 	}
 
+	table = malloc(sizeof(struct symbolTable));
 	strmcpy(&symbol->name, name);
 	symbol->address = address;
 	symbol->fromOS = false;
 
-	struct symbolTable *table = malloc(sizeof(struct symbolTable));
 	if (NULL == table) {
 		perror("LC3-Simulator");
 		exit(EXIT_FAILURE);
@@ -223,19 +225,19 @@ static int addSymbol(char const *const name, uint16_t address)
 static void populateSymbols(char *fileName)
 {
 	FILE *file = fopen(fileName, "r");
-
+	uint16_t address;
+	char label[MAX_LABEL_LENGTH];
+	char beginning[3];
 	int c;
+
 	for (size_t i = 4; i > 0; i--) {
 		nextLine(file);
 		c = fgetc(file);
 	}
 
-	uint16_t address;
-	char label[MAX_LABEL_LENGTH];
-	char beginning[3];
 	ungetc(c, file);
 
-	while (fscanf(file, "%s %s %hx", beginning, label, &address) != EOF) {
+	while (EOF != fscanf(file, "%s %s %hx", beginning, label, &address)) {
 		__addSymbol(label, address);
 		memset(label, 0, MAX_LABEL_LENGTH);
 	}
@@ -243,13 +245,13 @@ static void populateSymbols(char *fileName)
 	fclose(file);
 }
 
-void populateOSSymbols()
+void populateOSSymbols(void)
 {
-	populateSymbols(OS_SYM_FILE);
+	populateSymbols((char *) OS_SYM_FILE);
 	// For now this will serve as a way of being able to tell whether
 	// something is a part of the Operating System, or from the User's
 	// program.
-	for (struct symbolTable *table = tableHead.next; table != NULL;
+	for (struct symbolTable *table = tableHead.next; NULL != table;
 			table = table->next) {
 		table->sym->fromOS = true;
 	}
@@ -332,11 +334,11 @@ static uint16_t nzp(char const *const _nzp)
 	uint16_t __nzp = 0;
 
 	for (size_t i = 0; _nzp[i]; i++) {
-		if (toupper(_nzp[i]) == 'N') {
+		if ('N' == toupper(_nzp[i])) {
 			__nzp |= 0x0800;
-		} else if (toupper(_nzp[i]) == 'Z') {
+		} else if ('Z' == toupper(_nzp[i])) {
 			__nzp |= 0x0400;
-		} else if (toupper(_nzp[i]) == 'P') {
+		} else if ('P' == toupper(_nzp[i])) {
 			__nzp |= 0x0200;
 		} else {
 			return 0x1;
@@ -382,10 +384,10 @@ static bool iscomment(FILE *file)
 {
 	int c = fgetc(file);
 
-	if (c == ';') {
+	if (';' == c) {
 		return true;
-	} else if (c == '/') {
-		if ((c = fgetc(file)) == '/') {
+	} else if ('/' == c) {
+		if ('/' == (c = fgetc(file))) {
 			return true;
 		}
 		ungetc(c, file);
@@ -401,10 +403,11 @@ static bool iscomment(FILE *file)
 
 static bool endOfLine(FILE *file)
 {
+	int c;
 	skipWhitespace(file);
-	int c = fgetc(file);
 
-	if (c != '\n' && c != EOF) {
+	c = fgetc(file);
+	if ('\n' != c && EOF != c) {
 		ungetc(c, file);
 		if (!iscomment(file)) {
 			return false;
@@ -423,9 +426,9 @@ static bool endOfLine(FILE *file)
  * found as a label.
  */
 
-enum Token nextToken(FILE *file, char *buffer)
+static enum Token nextToken(FILE *file, char *buffer)
 {
-	if (fscanf(file, "%99s", buffer) == EOF) {
+	if (EOF == fscanf(file, "%99s", buffer)) {
 		*buffer = '\0';
 	}
 
@@ -526,8 +529,8 @@ static void extractLabel(char *label, FILE *file)
 	size_t length = strlen(label);
 	size_t i = 0;
 	for (; i < length; i++) {
-		if (label[i] == ';' || label[i] == ':' ||
-				(label[i] == '/' && label[i + 1] == '/') ) {
+		if (';' == label[i] || ':' == label[i] ||
+				('/' == label[i] && '/' == label[i + 1])) {
 			break;
 		}
 	}
@@ -555,39 +558,41 @@ static void extractLabel(char *label, FILE *file)
 
 static int nextImmediate(FILE *file, bool allowedComma)
 {
-	skipWhitespace(file);
-
-	int c = fgetc(file);
+	int c;
 	int immediate;
 	int repr;
-
 	char line[MAX_LABEL_LENGTH];
+	char *end = NULL;
+
+	skipWhitespace(file);
+
+	c = fgetc(file);
 	memset(line, 0, MAX_LABEL_LENGTH);
 
-	if (allowedComma && c == ',') {
+	if (allowedComma && ',' == c) {
 		skipWhitespace(file);
 		c = fgetc(file);
 	}
 
-	if (c == '-') {
+	if ('-' == c) {
 		repr = 10;
 		line[0] = '-';
-	} else if (c == '#') {
+	} else if ('#' == c) {
 		repr = 10;
 		c = fgetc(file);
-		if (c == '-') {
+		if ('-' == c) {
 			line[0] = '-';
 		} else {
 			line[0] = '0';
 			ungetc(c, file);
 		}
-	} else if (toupper(c) == 'X') {
+	} else if ('X' == toupper(c)) {
 		repr = 16;
 		line[0] = '0';
 	} else if (isdigit(c)) {
-		if (c == '0') {
+		if ('0' == c) {
 			c = fgetc(file);
-			if (toupper(c) == 'X') {
+			if ('X' == toupper(c)) {
 				repr = 16;
 				line[0] = '0';
 			} else {
@@ -610,7 +615,6 @@ static int nextImmediate(FILE *file, bool allowedComma)
 	}
 	ungetc(c, file);
 
-	char *end = NULL;
 	immediate = (int) strtol(line, &end, repr);
 
 	if (*end) {
@@ -635,15 +639,16 @@ static int nextImmediate(FILE *file, bool allowedComma)
 
 static uint16_t nextRegister(FILE *file, bool allowedComma)
 {
+	int c;
 	skipWhitespace(file);
-	int c = fgetc(file);
 
-	if (allowedComma && c == ',') {
+	c = fgetc(file);
+	if (allowedComma && ',' == c) {
 		skipWhitespace(file);
 		c = fgetc(file);
 	}
 
-	if (toupper(c) != 'R') {
+	if ('R' != toupper(c)) {
 		ungetc(c, file);
 		return 65535;
 	}
@@ -660,6 +665,16 @@ static uint16_t nextRegister(FILE *file, bool allowedComma)
 
 bool parse(struct program *prog)
 {
+	uint16_t instruction = 0, pc = 0, oper1, oper2, actualPC;
+	int c, currentLine = 1, errors = 0, oper3, pass = 1, error_count = 0;
+	char line[100] = { 0 }, label[MAX_LABEL_LENGTH], *end;
+	bool origSeen = false, endSeen = false;
+
+	enum Token tok;
+	struct symbol *sym;
+
+	FILE *asmFile;
+
 	if (NULL == prog->assemblyfile) {
 		fprintf(stderr, "No assembly file provided.\n");
 		return false;
@@ -764,21 +779,12 @@ bool parse(struct program *prog)
 		}
 	}
 
-	uint16_t instruction = 0, pc = 0, oper1, oper2, actualPC;
-	int c, currentLine = 1, errors = 0, oper3, pass = 1;
-	char line[100] = { 0 }, label[MAX_LABEL_LENGTH], *end;
-	bool origSeen = false, endSeen = false;
-
-	enum Token tok;
-	struct symbol *sym;
-
 	// This isn't the best place for this as it populates the symbol table
 	// with information we don't need to show.
 	populateOSSymbols();
-	bool OSInstalled = true;
-	(void) OSInstalled;
+	OSInstalled = true;
 
-	FILE *asmFile = fopen(prog->assemblyfile, "r");
+	asmFile = fopen(prog->assemblyfile, "r");
 	if (NULL == asmFile) {
 		perror("LC3-Simulator");
 		exit(EXIT_FAILURE);
@@ -797,27 +803,28 @@ bool parse(struct program *prog)
 		skipWhitespace(asmFile);
 		c = fgetc(asmFile);
 
-		if (c == EOF) {
-			if (pass == 2) {
+		if (EOF == c) {
+			if (2 == pass) {
 				printf("%d error%s found in second pass.\n",
-					errors, errors != 1 ? "'s" : "");
+					errors, 1 != errors ? "'s" : "");
 				break;
 			}
 			printf("%d error%s found in first pass.\n",
-				errors, errors == 1 ? "" : "'s");
+				errors, 1 == errors ? "" : "'s");
 			printf("STARTING SECOND PASS...\n");
 			pass = 2;
 			pc = actualPC;
 			rewind(asmFile);
 			currentLine = 1;
+			error_count = errors;
 			errors = 0;
 			endSeen = false;
 			continue;
-		} else if (c == '\n') {
+		} else if ('\n' == c) {
 			currentLine++;
 			continue;
-		} else if (c == ';' || c == '/') {
-			if (c == '/' && (c = fgetc(asmFile)) != '/') {
+		} else if (';' == c || '/' == c) {
+			if ('/' == c && '/' == (c = fgetc(asmFile))) {
 				ungetc(c, asmFile);
 			} else {
 				nextLine(asmFile);
@@ -833,7 +840,7 @@ bool parse(struct program *prog)
 
 		switch (tok) {
 		case DIR_ORIG:
-			if (pass != 1) {
+			if (1 != pass) {
 				instruction = actualPC;
 				nextLine(asmFile);
 				break;
@@ -869,7 +876,7 @@ bool parse(struct program *prog)
 		case DIR_STRINGZ:
 			c = fgetc(asmFile);
 
-			if (c != '"') {
+			if ('"' != c) {
 				fprintf(stderr, "  Line %d: No string "
 					"supplied to .STRINGZ.\n",
 					currentLine);
@@ -879,9 +886,9 @@ bool parse(struct program *prog)
 			}
 
 			memset(line, 0, 100);
-			for (size_t i = 0; (c = fgetc(asmFile)) != '"' &&
+			for (size_t i = 0; '"' != (c = fgetc(asmFile)) &&
 					i < 100; i++) {
-				if (c == '\\') {
+				if ('\\' == c) {
 					switch (c = fgetc(asmFile)) {
 					case 'n':
 						line[i] = '\n';
@@ -909,7 +916,7 @@ bool parse(struct program *prog)
 				}
 
 				pc++;
-				if (pass != 1) {
+				if (1 != pass) {
 					insert(instruction);
 				}
 			}
@@ -920,7 +927,7 @@ bool parse(struct program *prog)
 		case DIR_BLKW:
 			oper3 = nextImmediate(asmFile, false);
 
-			if (oper3 == INT_MAX) {
+			if (INT_MAX == oper3) {
 				fprintf(stderr, "  Line %d: Invalid operand "
 					"for .BLKW.\n", currentLine);
 			} else if (oper3 < 1) {
@@ -940,7 +947,7 @@ bool parse(struct program *prog)
 			}
 
 			pc += oper3 - 1;
-			if (pass != 1) {
+			if (1 != pass) {
 				oper1 = (uint16_t) oper3;
 				instruction = 0;
 				while (oper3-- > 1) {
@@ -949,15 +956,15 @@ bool parse(struct program *prog)
 			}
 			break;
 		case DIR_FILL:
-			if (pass == 1) {
+			if (1 == pass) {
 				nextLine(asmFile);
 				break;
 			}
 
 			oper3 = nextImmediate(asmFile, false);
 
-			if (oper3 == INT_MAX) {
-				if (fscanf(asmFile, "%79s", label) == EOF) {
+			if (INT_MAX == oper3) {
+				if (EOF == fscanf(asmFile, "%79s", label)) {
 					fprintf(stderr, "Line %d: Unexpected "
 							"end of file.\n",
 							currentLine);
@@ -983,7 +990,7 @@ bool parse(struct program *prog)
 			}
 			break;
 		case DIR_END:
-			if (pass != 1) {
+			if (1 != pass) {
 				nextLine(asmFile);
 				endSeen = true;
 				break;
@@ -999,12 +1006,12 @@ bool parse(struct program *prog)
 			break;
 		case OP_BR: case OP_BRN: case OP_BRZ: case OP_BRP:
 		case OP_BRNZ: case OP_BRNP: case OP_BRZP:
-			if (pass == 1) {
+			if (1 == pass) {
 				nextLine(asmFile);
 				break;
 			}
 
-			if (strlen(line) == 2) {
+			if (2 == strlen(line)) {
 				instruction = 0x7 << 9;
 			} else {
 				instruction = nzp(line + 2);
@@ -1018,7 +1025,7 @@ bool parse(struct program *prog)
 				continue;
 			}
 
-			if (fscanf(asmFile, "%79s", label) == EOF) {
+			if (EOF == fscanf(asmFile, "%79s", label)) {
 				fprintf(stderr, "Line %d: Unexpected "
 						"end of file.\n",
 						currentLine);
@@ -1062,13 +1069,13 @@ bool parse(struct program *prog)
 		case OP_ADD:
 			instruction += 0x1000;
 
-			if (pass == 1) {
+			if (1 == pass) {
 				nextLine(asmFile);
 				break;
 			}
 
 			oper1 = nextRegister(asmFile, false);
-			if (oper1 == 65535) {
+			if (65535 == oper1) {
 				fprintf(stderr, "  Line %d: Invalid operand "
 					"provided to %s.\n", currentLine, line);
 				nextLine(asmFile);
@@ -1077,7 +1084,7 @@ bool parse(struct program *prog)
 			}
 
 			oper2 = nextRegister(asmFile, true);
-			if (oper2 == 65535) {
+			if (65535 == oper2) {
 				fprintf(stderr, "  Line %d: Invalid operand "
 					"provided to %s.\n", currentLine, line);
 				nextLine(asmFile);
@@ -1086,7 +1093,7 @@ bool parse(struct program *prog)
 			}
 
 			oper3 = nextRegister(asmFile, true);
-			if (oper3 == 65535) {
+			if (65535 == oper3) {
 				oper3 = nextImmediate(asmFile, true);
 				if (oper3 > 15 || oper3 < -16) {
 					fprintf(stderr, "  Line %d: Invalid "
@@ -1100,7 +1107,8 @@ bool parse(struct program *prog)
 				instruction |= 0x20;
 			}
 
-			instruction = instruction | oper1 << 9 | oper2 << 6 | oper3;
+			instruction = instruction | (uint16_t) (oper1 << 9 |
+					oper2 << 6 | oper3);
 			if (prog->verbosity) {
 				printf("%-5s  R%d  R%d ", line, oper1, oper2);
 				if (prog->verbosity > 2) {
@@ -1112,13 +1120,13 @@ bool parse(struct program *prog)
 		case OP_NOT:
 			instruction += 0x903f;
 
-			if (pass == 1) {
+			if (1 == pass) {
 				nextLine(asmFile);
 				break;
 			}
 
 			oper1 = nextRegister(asmFile, false);
-			if (oper1 == 65535) {
+			if (65535 == oper1) {
 				fprintf(stderr, "  Line %d: Invalid operand "
 					"provided to NOT.\n", currentLine);
 				nextLine(asmFile);
@@ -1127,7 +1135,7 @@ bool parse(struct program *prog)
 			}
 
 			oper2 = nextRegister(asmFile, true);
-			if (oper2 == 65535) {
+			if (65535 == oper2) {
 				fprintf(stderr, "  Line %d: Invalid operand "
 					"provided to NOT.\n", currentLine);
 				nextLine(asmFile);
@@ -1150,13 +1158,13 @@ bool parse(struct program *prog)
 		case OP_JSRR:
 			instruction += 0x4000;
 
-			if (pass == 1) {
+			if (1 == pass) {
 				nextLine(asmFile);
 				break;
 			}
 
 			oper1 = nextRegister(asmFile, false);
-			if (oper1 == 65535) {
+			if (65535 == oper1) {
 				fprintf(stderr, "  Line %d: Invalid operand "
 					"provided to %s.\n", currentLine, line);
 				nextLine(asmFile);
@@ -1176,12 +1184,12 @@ bool parse(struct program *prog)
 		case OP_JSR:
 			instruction = 0x4800;
 
-			if (pass == 1) {
+			if (1 == pass) {
 				nextLine(asmFile);
 				break;
 			}
 
-			if (fscanf(asmFile, "%79s", label) == EOF) {
+			if (EOF == fscanf(asmFile, "%79s", label)) {
 				fprintf(stderr, "Line %d: Unexpected "
 						"end of file.\n",
 						currentLine);
@@ -1231,13 +1239,13 @@ bool parse(struct program *prog)
 		case OP_LD:
 			instruction += 0x2000;
 
-			if (pass == 1) {
+			if (1 == pass) {
 				nextLine(asmFile);
 				break;
 			}
 
 			oper1 = nextRegister(asmFile, false);
-			if (oper1 == 65535) {
+			if (65535 == oper1) {
 				fprintf(stderr, "  Line %d: Invalid operand "
 					"for %s.\n", currentLine, line);
 				nextLine(asmFile);
@@ -1248,13 +1256,13 @@ bool parse(struct program *prog)
 			skipWhitespace(asmFile);
 			c = fgetc(asmFile);
 
-			if (c == ',') {
+			if (',' == c) {
 				skipWhitespace(asmFile);
 			} else {
 				ungetc(c, asmFile);
 			}
 
-			if (fscanf(asmFile, "%79s", label) == EOF) {
+			if (EOF == fscanf(asmFile, "%79s", label)) {
 				fprintf(stderr, "Line %d: Unexpected "
 						"end of file.\n",
 						currentLine);
@@ -1300,13 +1308,13 @@ bool parse(struct program *prog)
 		case OP_LDR:
 			instruction += 0x6000;
 
-			if (pass == 1) {
+			if (1 == pass) {
 				nextLine(asmFile);
 				break;
 			}
 
 			oper1 = nextRegister(asmFile, false);
-			if (oper1 == 65535) {
+			if (65535 == oper1) {
 				fprintf(stderr, "  Line %d: Invalid operand "
 					"provided to %s.\n", currentLine, line);
 				nextLine(asmFile);
@@ -1315,7 +1323,7 @@ bool parse(struct program *prog)
 			}
 
 			oper2 = nextRegister(asmFile, true);
-			if (oper2 == 65535) {
+			if (65535 == oper2) {
 				fprintf(stderr, "  Line %d: Invalid operand "
 					"provided to %s.\n", currentLine, line);
 				nextLine(asmFile);
@@ -1324,7 +1332,7 @@ bool parse(struct program *prog)
 			}
 
 			oper3 = nextImmediate(asmFile, true);
-			if (oper3 == INT_MAX) {
+			if (INT_MAX == oper3) {
 				fprintf(stderr, "  Line %d: Invalid operand "
 					"provided to %s.\n", currentLine, line);
 				nextLine(asmFile);
@@ -1350,7 +1358,7 @@ bool parse(struct program *prog)
 			}
 			break;
 		case OP_RET:
-			if (pass == 1) {
+			if (1 == pass) {
 				nextLine(asmFile);
 				break;
 			}
@@ -1365,7 +1373,7 @@ bool parse(struct program *prog)
 			}
 			break;
 		case OP_RTI:
-			if (pass == 1) {
+			if (1 == pass) {
 				nextLine(asmFile);
 				break;
 			}
@@ -1379,13 +1387,13 @@ bool parse(struct program *prog)
 			}
 			break;
 		case OP_TRAP:
-			if (pass == 1) {
+			if (1 == pass) {
 				nextLine(asmFile);
 				break;
 			}
 
 			oper3 = nextImmediate(asmFile, false);
-			if (oper3 == INT_MAX) {
+			if (INT_MAX == oper3) {
 				fprintf(stderr, "  Line %d: Invalid operand "
 					"for TRAP.\n", currentLine);
 				nextLine(asmFile);
@@ -1399,7 +1407,7 @@ bool parse(struct program *prog)
 				continue;
 			}
 
-			instruction = 0xf000 + oper3;
+			instruction = 0xf000 + (uint16_t) oper3;
 			if (prog->verbosity) {
 				printf("%-5s 0x%x", line, oper3);
 				if (prog->verbosity > 2) {
@@ -1408,28 +1416,21 @@ bool parse(struct program *prog)
 				puts("");
 			}
 			break;
-		case OP_HALT: case OP_PUTS: case OP_PUTC: case OP_GETC:
-		case OP_OUT: case OP_PUTSP: case OP_IN:
-			instruction = 0xf025;
+		case OP_HALT:
+			instruction += (uint16_t) 0x0001;
+		case OP_PUTSP:
+			instruction += (uint16_t) 0x0001;
+		case OP_IN:
+			instruction += (uint16_t) 0x0001;
+		case OP_PUTS:
+			instruction += (uint16_t) 0x0001;
+		case OP_PUTC: case OP_OUT:
+			instruction += (uint16_t) 0x0001;
+		case OP_GETC:
+			instruction += (uint16_t) 0xF020;
 
-			if (pass == 1) {
+			if (1 == pass) {
 				nextLine(asmFile);
-				break;
-			}
-
-			switch (tok) {
-			case OP_GETC:			// 0xF020
-				instruction--;
-			case OP_PUTC: case OP_OUT:	// 0xF021
-				instruction--;
-			case OP_PUTS:			// 0xF022
-				instruction--;
-			case OP_IN:			// 0xF023
-				instruction--;
-			case OP_PUTSP:			// 0xF024
-				instruction--;
-			case OP_HALT:			// oxF025
-			default:
 				break;
 			}
 
@@ -1442,8 +1443,9 @@ bool parse(struct program *prog)
 			}
 			break;
 		case OP_BRUNK: case OP_UNK:
+		default:
 			pc--;
-			if (pass == 1) {
+			if (1 == pass) {
 				end = strchr(line, ':');
 				if (NULL != end) {
 					char *colon = end + strlen(end) - 1;
@@ -1475,24 +1477,25 @@ bool parse(struct program *prog)
 			break;
 		}
 
-		if (pass != 1) {
-			if (tok != OP_BRUNK && tok != OP_UNK) {
+		if (1 != pass) {
+			if (OP_BRUNK != tok && OP_UNK != tok) {
 				if (!endOfLine(asmFile)) {
 					fprintf(stderr, "  Line %d: Too many "
 						"operands provided for %s.\n",
 						currentLine, line);
 					nextLine(asmFile);
 					errors++;
-				} else if (errors == 0 && origSeen && !endSeen) {
+				} else if (!errors && origSeen && !endSeen) {
 					insert(instruction);
 				}
 			}
 		}
 	}
 
+	error_count += errors;
 	fclose(asmFile);
 
-	if (errors == 0) {
+	if (!error_count) {
 		FILE *symFile = fopen(prog->symbolfile, "w+");
 		FILE *hexFile = fopen(prog->hexoutfile, "w+");
 		FILE *binFile = fopen(prog->binoutfile, "w+");
@@ -1508,14 +1511,14 @@ bool parse(struct program *prog)
 		fprintf(symFile, "//\tSymbol Name        Page Address\n");
 		fprintf(symFile, "//\t-----------------  ------------\n");
 
-		for (struct symbolTable *table= tableHead.next; table != NULL;
+		for (struct symbolTable *table= tableHead.next; NULL != table;
 				table = table->next) {
 			if (!table->sym->fromOS) {
 				symWrite(table->sym, symFile);
 			}
 		}
 
-		for (struct list *list = listHead.next; list != NULL;
+		for (struct list *list = listHead.next; NULL != list;
 				list = list->next) {
 			hexWrite(&(list->instruction), hexFile);
 			binWrite(&(list->instruction), binFile);
@@ -1530,6 +1533,6 @@ bool parse(struct program *prog)
 
 	freeList(&listHead);
 
-	return errors == 0;
+	return !error_count;
 }
 

@@ -28,7 +28,13 @@ DEFINES  = -DOS_PATH="$(OSPATH)"
 # Flags to use when compiling
 CFLAGS = $(INCLUDES) -std=c11 -g -O2 $(DEFINES)
 # Flags to add when compiling the debug version
-DFLAGS = -Wall -Werror -Wpedantic -Wconversion -Wextra
+DFLAGS = $(INCLUDES) $(DEFINES) -std=c11 -Wall -Werror -Wpedantic -Wextra \
+	 -Wcast-align -Wconversion -Wfloat-equal -Wformat=2 -Wmissing-braces \
+	 -Wmissing-declarations -Wmissing-field-initializers \
+	 -Wmissing-prototypes -Woverlength-strings -Wparentheses -Wreturn-type \
+	 -Wshadow -Wsign-compare -Wsign-conversion -Wswitch -Wswitch-enum \
+	 -Wuninitialized -Wunknown-pragmas -Wunreachable-code -Wunused-function \
+	 -Wunused-label -Wunused-parameter -Wunused-value -Wunused-variable
 
 RM = rm -f
 
@@ -40,7 +46,7 @@ default: build
 
 # Add the debug flags
 .PHONY: debug
-debug: CFLAGS += $(DFLAGS)
+debug: CFLAGS = $(DFLAGS)
 debug: EXTRA = " (DEBUG)"
 debug: mostlyclean
 # Build the system

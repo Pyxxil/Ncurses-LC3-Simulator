@@ -10,8 +10,10 @@
 
 static struct program *program = NULL;
 
-void close(int sig)
+ __attribute__((noreturn)) static void close(int sig)
 {
+	(void) sig;
+
 	if (NULL != program)
 		tidyup(program);
 
@@ -22,10 +24,11 @@ void close(int sig)
 
 int main(int argc, char **argv)
 {
+	unsigned long long errval;
+
 	struct program prog = {
 		.name         = NULL,
 		.logfile      = NULL,
-		.objectfile   = NULL,
 		.assemblyfile = NULL,
 		.symbolfile   = NULL,
 		.hexoutfile   = NULL,
@@ -36,7 +39,7 @@ int main(int argc, char **argv)
 
 	program = &prog;
 
-	unsigned long long errval = argparse(argc, argv, &prog);
+	errval = argparse(argc, argv, &prog);
 	signal(SIGINT, close);
 
 	if (errval & (0xFFFFll << 32)) {

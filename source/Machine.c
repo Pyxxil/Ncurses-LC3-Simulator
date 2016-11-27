@@ -13,18 +13,14 @@ static int MSGWIDTH, MSGHEIGHT;
 int mem_populated = -1;
 
 static struct LC3 const init_state = {
-	.memory	   = {{ 0 }},
-	.registers =  { 0 },
-	.IR	   =    0,
-	.PC	   =    0,
-	.CC	   =   'Z',
+	.CC 	   =    'Z',
 	.isHalted  =  false,
 	.isPaused  =   true,
 };
 
 static void prompt(char const *err, char const *message, char *file)
 {
-	int msgwidth = MSGWIDTH + strlen(message);
+	int msgwidth = MSGWIDTH + (int) strlen(message);
 
 	WINDOW *popup = newwin(MSGHEIGHT, msgwidth, (LINES - MSGHEIGHT) / 2,
 			(COLS - msgwidth) / 2);
@@ -32,9 +28,9 @@ static void prompt(char const *err, char const *message, char *file)
 	box(popup, 0, 0);
 	echo();
 
-	if (err != NULL) {
+	if (NULL != err) {
 		mvwaddstr(popup, MSGHEIGHT / 2 - 1,
-			(MSGWIDTH - strlen(err)) / 2, err);
+			(MSGWIDTH - (int) strlen(err)) / 2, err);
 	}
 
 	mvwaddstr(popup, MSGHEIGHT / 2, 1, message);
@@ -47,7 +43,7 @@ static int init_machine(struct program *prog)
 	int ret;
 	prog->simulator = init_state;
 
-	while ((ret = populate_memory(prog)) == 1) {
+	while (1 == (ret = populate_memory(prog))) {
 		prompt("Invalid file name.", "Enter the .obj file: ",
 			prog->objectfile);
 	}
@@ -62,10 +58,9 @@ static int init_machine(struct program *prog)
 static void sstate(enum STATE *currentState)
 {
 	mvprintw(0, 0, "Currently Viewing: %- 15s",
-		(*currentState == MEM)  ? "Memory View" :
-		(*currentState == MAIN) ? "Main View" :
-		(*currentState == EDIT) ? "Editor" :
-		(*currentState == SIM)  ? "Simulator" :
+		(MEM  == *currentState) ? "Memory View" :
+		(MAIN == *currentState) ? "Main View" :
+		(SIM  == *currentState) ? "Simulator" :
 		"Unknown");
 	refresh();
 
@@ -82,8 +77,10 @@ static void sstate(enum STATE *currentState)
 
 static int popup_window(char const *message, int original_value, bool ignore)
 {
-	int msgwidth = MSGWIDTH + strlen(message), ret = 0;
+	int msgwidth = MSGWIDTH + (int) strlen(message);
+	int ret = 0;
 	char string[7] = { 0 };
+	char *end = NULL;
 
 	WINDOW *popup = newwin(MSGHEIGHT, msgwidth, (LINES - MSGHEIGHT) / 2,
 			(COLS - msgwidth) / 2);
@@ -99,10 +96,8 @@ static int popup_window(char const *message, int original_value, bool ignore)
 		wgetnstr(popup, string, 6);
 		string[6] = '\0';
 
-		char *end = NULL;
 		ret = (int) strtol(string, &end, 16);
-
-		if (*end || strlen(string) == 0)
+		if (*end || !strlen(string))
 			ret = original_value;
 	}
 
@@ -112,7 +107,7 @@ static int popup_window(char const *message, int original_value, bool ignore)
 	return ret;
 }
 
-static bool simview(WINDOW *output, WINDOW *status, struct program *prog,
+static bool simview(WINDOW *out, WINDOW *state, struct program *prog,
 			enum STATE *currentState)
 {
 	int input;
@@ -121,7 +116,7 @@ static bool simview(WINDOW *output, WINDOW *status, struct program *prog,
 	sstate(currentState);
 
 	while (1) {
-		wtimeout(status, timeout);
+		wtimeout(state, timeout);
 		input = wgetch(status);
 
 		if (prog->simulator.memory[prog->simulator.PC].isBreakpoint) {
@@ -131,67 +126,67 @@ static bool simview(WINDOW *output, WINDOW *status, struct program *prog,
 				.isBreakpoint = false;
 		}
 
-		if (input == QUIT) {
+		if (QUIT == input) {
 			return false;
-		} else if (input == GOBACK) {
+		} else if (GOBACK == input) {
 			*currentState = MAIN;
 			prog->simulator.isPaused = true;
 			return true;
-		} else if (input == PAUSE) {
+		} else if (PAUSE == input) {
 			prog->simulator.isPaused = !(prog->simulator.isPaused);
-		} else if (input == START || input == RUN) {
+		} else if (START == input|| RUN == input) {
 			if (!prog->simulator.isHalted)
 				prog->simulator.isPaused = false;
-		} else if (input == RESTART) {
+		} else if (RESTART == input) {
 			mem_populated = -1;
 			init_machine(prog);
-			wclear(output);
-			wrefresh(output);
-		} else if (input == STEP_NEXT) {
+			wclear(out);
+			wrefresh(out);
+		} else if (STEP_NEXT == input) {
 			execute_next(&(prog->simulator), output);
 			prog->simulator.isPaused = true;
-			print_state(&(prog->simulator), status);
-		} else if (input == CONTINUE) {
+			print_state(&(prog->simulator), state);
+		} else if (CONTINUE == input) {
 			mem_populated = -1;
 			init_machine(prog);
-		} else if (input == CONTINUE_RUN) {
+		} else if (CONTINUE_RUN == input) {
 			mem_populated = -1;
 			init_machine(prog);
 			prog->simulator.isPaused = false;
 		}
 
 		if (!(prog->simulator.isPaused) && !(prog->simulator.isHalted)) {
-			execute_next(&(prog->simulator), output);
+			execute_next(&(prog->simulator), out);
 			timeout = 0;
 		} else {
 			sstate(currentState);
-			print_state(&(prog->simulator), status);
+			print_state(&(prog->simulator), state);
 			timeout = -1;
 			generate_context(context, prog, 0, prog->simulator.PC);
 		}
 	}
 }
 
-static bool mainview(WINDOW *status, enum STATE *currentState,
+static bool mainview(WINDOW *state, enum STATE *currentState,
 			struct program *prog)
 {
 	int input;
 
 	while (1) {
 		sstate(currentState);
-		input = wgetch(status);
-		if (input == QUIT) {
+		input = wgetch(state);
+		if (QUIT == input) {
 			return false;
-		} else if (input == LOGDUMP) {
+		} else if (LOGDUMP == input) {
 			if (logDump(prog))
 				return false;
-		} else if (input == SIMVIEW) {
+		} else if (SIMVIEW == input) {
 			*currentState = SIM;
 			return true;
-		} else if (input == MEMVIEW) {
+		} else if (MEMVIEW == input) {
 			*currentState = MEM;
 			return true;
-		} else if (input == FILESEL) {
+		} else if (FILESEL == input) {
 			prompt((char const *) NULL, "Enter the .obj file: ",
 				prog->objectfile);
 			if (init_machine(prog))
@@ -208,33 +203,33 @@ static bool memview(WINDOW *window, struct program *prog,
 	while (1) {
 		sstate(currentState);
 		input = wgetch(window);
-		if (input == QUIT) {
+		if (QUIT == input) {
 			return false;
-		} else if (input == GOBACK) {
+		} else if (GOBACK == input) {
 			*currentState = MAIN;
 			return true;
-		} else if (input == JUMP) {
+		} else if (JUMP == input) {
 			jump_addr = popup_window(
 				"Enter a hex address to jump to: ",
 				selected_address, false);
 			if (jump_addr == selected_address)
 				continue;
-			generate_context(window, prog, 0, jump_addr);
-		} else if (input == KEYUP) {
+			generate_context(window, prog, 0, (uint16_t) jump_addr);
+		} else if (KEYUP == input) {
 			move_context(window, prog, UP);
-		} else if (input == KEYDOWN) {
+		} else if (KEYDOWN == input) {
 			move_context(window, prog, DOWN);
-		} else if (input == EDITFILE) {
+		} else if (EDITFILE == input) {
 			new_value = popup_window(
 				"Enter the new instruction (in hex): ",
 				prog->simulator.memory[selected_address].value,
 				false);
 			prog->simulator.memory[selected_address].value =
-				new_value;
+				(uint16_t) new_value;
 			update(window, prog);
-		} else if (input == SETPC) {
+		} else if (SETPC == input) {
 			prog->simulator.PC = selected_address;
-		} else if (input == BREAKPOINTSET) {
+		} else if (BREAKPOINTSET == input) {
 			prog->simulator.memory[selected_address]
 				.isBreakpoint = !prog->simulator.memory[
 					selected_address].isBreakpoint;
@@ -247,7 +242,7 @@ static void run_machine(struct program *prog)
 	bool simulating = true;
 	enum STATE currentState = MAIN;
 
-	output_height = 2 * (LINES - 6) / 3 - 2;
+	output_height = (uint16_t) (2 * (LINES - 6) / 3 - 2);
 	memory_output = malloc(sizeof(uint16_t) * output_height);
 	if (NULL == memory_output) {
 		perror("LC3-Simulator");
@@ -268,12 +263,12 @@ static void run_machine(struct program *prog)
 					&currentState);
 			break;
 		case MEM:
-			if (mem_populated == -1) {
+			if (-1 == mem_populated) {
 				generate_context(context, prog, 0,
 						prog->simulator.PC);
 			} else {
 				generate_context(context, prog, selected,
-						mem_populated);
+						(uint16_t) mem_populated);
 			}
 			simulating = memview(context, prog, &currentState);
 			break;
@@ -286,7 +281,7 @@ static void run_machine(struct program *prog)
 	memory_output = NULL;
 }
 
-void exit_handle(void)
+static void exit_handle(void)
 {
 	fflush(stdout);
 
@@ -326,11 +321,12 @@ void start_machine(struct program *prog)
 	scrollok(output, 1);
 
 	if (NULL == prog->objectfile) {
-		prog->objectfile = malloc(sizeof(char) * MSGWIDTH);
+		prog->objectfile = malloc(sizeof(char) * (size_t) MSGWIDTH);
 		prompt(NULL, "Enter the .obj file: ", prog->objectfile);
 	}
 
 	prog->simulator = init_state;
+
 	if (!init_machine(prog))
 		run_machine(prog);
 

@@ -17,8 +17,8 @@ static const uint16_t MCR  = 0xFFFE;
 
 static void setcc(uint16_t *last_result, unsigned char *CC)
 {
-	if (*last_result == 0)  *CC = 'Z';
-	else if (((int16_t) *last_result) < 0)  *CC = 'N';
+	if (!*last_result) *CC = 'Z';
+	else if (((int16_t) *last_result) < 0) *CC = 'N';
 	else *CC = 'P';
 }
 
@@ -36,14 +36,14 @@ void print_state(struct LC3 *simulator, WINDOW *window)
 
 	// Print the first four registers.
 	for (; index < 4; ++index) {
-		mvwprintw(window, index + 1, 3, "R%d 0x%04X %hd", index,
+		mvwprintw(window, (int) index + 1, 3, "R%d 0x%04X %hd", index,
 			simulator->registers[index],
 			simulator->registers[index]);
 	}
 
 	// Print the last 4 registers.
 	for (; index < 8; ++index) {
-		mvwprintw(window, index - 3, 20, "R%d 0x%04X %hd", index,
+		mvwprintw(window, (int) index - 3, 20, "R%d 0x%04X %hd", index,
 			simulator->registers[index],
 			simulator->registers[index]);
 	}
@@ -81,7 +81,7 @@ void execute_next(struct LC3 *simulator, WINDOW *output)
 		// It also gives a signed PC offset in bits[8:0].
 		PCoffset = ((int16_t) ((simulator->IR & 0x1FF) << 7)) >> 7;
 		// Set the register to equal the PC + SEXT(PCoffset).
-		*DR = simulator->PC + PCoffset;
+		*DR = (uint16_t) ((int16_t) simulator->PC + PCoffset);
 		// We then flag for the condition code to be set.
 		setcc(DR, &simulator->CC);
 		break;
@@ -93,9 +93,9 @@ void execute_next(struct LC3 *simulator, WINDOW *output)
 		// Then we want to find what is stored at that address in
 		// memory, and then load the value stored at that address into
 		// the destination register.
-		if (simulator->memory[simulator->PC + PCoffset].value == KBDR) {
+		if (KBDR == simulator->memory[simulator->PC + PCoffset].value) {
 			wtimeout(output, -1);
-			*DR = wgetch(output);
+			*DR = (uint16_t) wgetch(output);
 			wtimeout(output, 0);
 		} else {
 			*DR = simulator->memory[
@@ -145,21 +145,22 @@ void execute_next(struct LC3 *simulator, WINDOW *output)
 		}
 		// We then ADD/AND the two source registers together, and store
 		// that result in the destination register.
-		*DR = opcode == ADD ? SR1 + SR2 : SR1 & SR2;
+		*DR = ADD == opcode ? SR1 + SR2 : SR1 & SR2;
 		// We then flag for the condition code to be set.
 		setcc(DR, &simulator->CC);
 		break;
 	case BR:
 		// BR takes 3 potential conditions, and checks if that condition
 		// is set.
-		if ((((simulator->IR >> 11) & 1) && simulator->CC == 'N') ||
-			(((simulator->IR >> 10) & 1) && simulator->CC == 'Z') ||
-			(((simulator->IR >> 9) & 1) && simulator->CC == 'P')) {
+		if ((((simulator->IR >> 11) & 1) && 'N' == simulator->CC) ||
+			(((simulator->IR >> 10) & 1) && 'Z' == simulator->CC) ||
+			(((simulator->IR >> 9) & 1) && 'P' == simulator->CC)) {
 			// If that condition is set, then we want the signed 9
 			// bit PCoffset provided.
 			PCoffset = ((int16_t) ((simulator->IR & 0x1FF) << 7)) >> 7;
 			// Which is then added to the current program counter.
-			simulator->PC = simulator->PC + PCoffset;
+			simulator->PC =
+				(uint16_t) ((int16_t) simulator->PC + PCoffset);
 		}
 		break;
 	case LDR:
@@ -186,7 +187,7 @@ void execute_next(struct LC3 *simulator, WINDOW *output)
 		simulator->memory[
 			simulator->memory[
 				simulator->PC + PCoffset].value].value = SR1;
-		if (simulator->memory[simulator->PC + PCoffset].value == MCR) {
+		if (MCR == simulator->memory[simulator->PC + PCoffset].value) {
 			simulator->isHalted = true;
 		}
 		break;
@@ -199,7 +200,8 @@ void execute_next(struct LC3 *simulator, WINDOW *output)
 		if (simulator->IR & 0x800) {
 			PCoffset =
 				((int16_t) ((simulator->IR & 0x7FF) << 5)) >> 5;
-			simulator->PC = simulator->PC + (int16_t) PCoffset;
+			simulator->PC =
+				(uint16_t) ((int16_t) simulator->PC + PCoffset);
 		} else {
 			SR1 = simulator->registers[(simulator->IR >> 6) & 7];
 			simulator->PC = SR1;

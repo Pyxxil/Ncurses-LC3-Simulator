@@ -32,14 +32,16 @@
 unsigned int logDump(struct program const *program)
 {
 	static bool beenHere = false;
+	FILE *logfile;
 
-	if (!beenHere && program->logfile == NULL)
+	if (!beenHere && NULL == program->logfile)
 		return ErrNoFile;
 
 	beenHere = true;
-	FILE *logfile = fopen(program->logfile, "a");
 
-	if (logfile == NULL)
+	logfile = fopen(program->logfile, "a");
+
+	if (NULL == logfile)
 		return ErrFileOpen;
 
 	fprintf(logfile, "=====================\n");
@@ -62,6 +64,7 @@ unsigned int logDump(struct program const *program)
 	fprintf(logfile, "=====================\n");
 
 	fclose(logfile);
+
 	return 0;
 }
 

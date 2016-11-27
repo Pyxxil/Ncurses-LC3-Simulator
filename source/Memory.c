@@ -17,7 +17,7 @@
 #define OSPATH(path)  STR(path)
 #define OS_OBJ_FILE OSPATH(OS_PATH) "/LC3_OS.obj"
 
-uint16_t selected         = 0;
+int selected = 0;
 uint16_t output_height    = 0;
 uint16_t *memory_output   = NULL;
 uint16_t selected_address = 0;
@@ -36,22 +36,22 @@ static unsigned int const BREAKPOINTATTR = COLOR_PAIR(1) | A_REVERSE;
 
 static void installOS(struct program *prog)
 {
+	uint16_t OSOrigin, tmp;
+
 	FILE *OSFile = fopen(OS_OBJ_FILE, "r");
 	if (NULL == OSFile) {
 		perror("LC3-Simulator");
 		exit(EXIT_FAILURE);
 	}
 
-	uint16_t OSOrigin, tmp;
-
-	if (fread(&OSOrigin, WORD_SIZE, 1, OSFile) != 1) {
+	if (1 != fread(&OSOrigin, WORD_SIZE, 1, OSFile)) {
 		fprintf(stderr, "Unable to read from the OS object file.\n");
 		exit(EXIT_FAILURE);
 	}
 
 	OSOrigin = 0xffff & (OSOrigin << 8 | OSOrigin >> 8);
 
-	while (fread(&tmp, WORD_SIZE, 1, OSFile) == 1) {
+	while (1 == fread(&tmp, WORD_SIZE, 1, OSFile)) {
 		prog->simulator.memory[OSOrigin] = (struct memory_slot) {
 			.value = 0xffff & (tmp << 8 | tmp >> 8),
 			.address = OSOrigin,
@@ -81,8 +81,7 @@ static void installOS(struct program *prog)
 
 int populate_memory(struct program *prog)
 {
-	installOS(prog);
-	symsInstalled = false;
+	uint16_t tmp_PC, instruction;
 
 	FILE *file = fopen(prog->objectfile, "rb");
 	if (NULL == file) {
@@ -90,20 +89,21 @@ int populate_memory(struct program *prog)
 		exit(EXIT_FAILURE);
 	}
 
-	uint16_t tmp_PC, instruction;
+	installOS(prog);
+	symsInstalled = false;
 
-	if (file == NULL || !file)
+	if (NULL == file || !file)
 		return 1;
 
 	// First line in the .obj file is the starting PC.
-	if (fread(&tmp_PC, WORD_SIZE, 1, file) != 1) {
+	if (1 != fread(&tmp_PC, WORD_SIZE, 1, file)) {
 		fprintf(stderr, "Unable to read from %s.\n", prog->objectfile);
 		exit(EXIT_FAILURE);
 	}
 
 	prog->simulator.PC = tmp_PC = 0xffff & (tmp_PC << 8 | tmp_PC >> 8);
 
-	while (fread(&instruction, WORD_SIZE, 1, file) == 1) {
+	while (1 == fread(&instruction, WORD_SIZE, 1, file)) {
 		prog->simulator.memory[tmp_PC] = (struct memory_slot) {
 			.value = 0xffff & (instruction << 8 | instruction >> 8),
 			.address = tmp_PC,
@@ -114,8 +114,8 @@ int populate_memory(struct program *prog)
 
 	if (!feof(file)) {
 		fclose(file);
-		read_error();
 		tidyup(prog);
+		read_error();
 		return 2;
 	}
 
@@ -139,8 +139,9 @@ static char *instruction(uint16_t instr, uint16_t address, char *buff,
 {
 	uint16_t opcode = instr & 0xF000;
 	int16_t offset;
-
+	char immediate[5];
 	struct symbol *symbol;
+
 	if (!symsInstalled) {
 		populateSymbolsFromFile(prog);
 		symsInstalled = true;
@@ -149,16 +150,15 @@ static char *instruction(uint16_t instr, uint16_t address, char *buff,
 	switch (opcode) {
 	case AND:
 	case ADD:
-		strcpy(buff, opcode == AND ? "AND R" : "ADD R");
+		strcpy(buff, AND == opcode ? "AND R" : "ADD R");
 		buff[5] = ((instr >> 9) & 0x7) + 0x30;
 		strcat(buff, ", R");
 		buff[9] = ((instr >> 6) & 0x7) + 0x30;
 		strcat(buff, ", ");
 		if (instr & 0x20) {
 			strcat(buff, "#");
-			char immediate[5];
-			snprintf(immediate, 5, "%hhd",
-				((int16_t) (instr << 11)) >> 11);
+			snprintf(immediate, 5, "%hd",
+				(int16_t) (((int16_t) (instr << 11)) >> 11));
 			strcat(buff, immediate);
 		} else {
 			strcat(buff, "R");
@@ -166,7 +166,7 @@ static char *instruction(uint16_t instr, uint16_t address, char *buff,
 		}
 		break;
 	case JMP:
-		if (instr == 0xC1C0) {
+		if (0xC1C0 == instr) {
 			strcpy(buff, "RET");
 		} else {
 			strcpy(buff, "JMP R");
@@ -192,7 +192,8 @@ static char *instruction(uint16_t instr, uint16_t address, char *buff,
 		strcat(buff, " ");
 		if (instr & 0x0100) {
 			offset = ((int16_t) (instr << 7)) >> 7;
-			symbol = findSymbolByAddress(address + offset);
+			symbol = findSymbolByAddress((uint16_t) address +
+					(uint16_t) offset);
 		} else {
 			symbol = findSymbolByAddress(address + (instr & 0x00FF));
 		}
@@ -210,7 +211,8 @@ static char *instruction(uint16_t instr, uint16_t address, char *buff,
 
 		if (instr & 0x0400) {
 			offset = ((int16_t) (instr << 5)) >> 5;
-			symbol = findSymbolByAddress(address + offset);
+			symbol = findSymbolByAddress((uint16_t) address +
+					(uint16_t) offset);
 		} else {
 			symbol = findSymbolByAddress(address + (instr & 0x03FF));
 		}
@@ -241,14 +243,19 @@ static char *instruction(uint16_t instr, uint16_t address, char *buff,
 		case STI:
 			strcpy(buff, "STI R");
 			break;
+		default:
+			break;
 		}
+
 		buff[strlen(buff)] = ((instr >> 9) & 0x7) + 0x30;
 		strcat(buff, ", ");
 		if (instr & 0x0100) {
 			offset = ((int16_t) (instr << 7)) >> 7;
-			symbol = findSymbolByAddress(address + offset);
+			symbol = findSymbolByAddress((uint16_t) address +
+					(uint16_t) offset);
 		} else {
-			symbol = findSymbolByAddress(address + (instr & 0x00FF));
+			symbol = findSymbolByAddress((uint16_t) address +
+					(uint16_t) (instr & 0x00FF));
 		}
 		if (NULL != symbol) {
 			strcat(buff, symbol->name);
@@ -258,13 +265,13 @@ static char *instruction(uint16_t instr, uint16_t address, char *buff,
 		break;
 	case LDR:
 	case STR:
-		strcpy(buff, opcode == STR ? "STR R" : "LDR R");
+		strcpy(buff, STR == opcode ? "STR R" : "LDR R");
 		buff[5] = ((instr >> 9) & 0x7) + 0x30;
 		strcat(buff, ", R");
 		buff[9] = ((instr >> 6) & 0x7) + 0x30;
 		strcat(buff, ", #");
-		char immediate[5];
-		snprintf(immediate, 5, "%hhd", ((int16_t) (instr << 10)) << 10);
+		snprintf(immediate, 5, "%hd",
+				(int16_t) (((int16_t) (instr << 10)) << 10));
 		strcat(buff, immediate);
 		break;
 	case NOT:
@@ -298,6 +305,8 @@ static char *instruction(uint16_t instr, uint16_t address, char *buff,
 			break;
 		}
 		break;
+	default:
+		break;
 	}
 
 	return buff;
@@ -306,18 +315,21 @@ static char *instruction(uint16_t instr, uint16_t address, char *buff,
 static void wprint(WINDOW *window, struct program *prog, size_t address, int y,
 		int x)
 {
+	struct symbol *symbol = findSymbolByAddress((uint16_t) address);
+	char instr[100] = { 0 };
+	char label[100] = { 0 };
+
 	char binary[] = "0000000000000000";
 	for (int i = 15, bit = 1; i >= 0; i--, bit <<= 1) {
 		binary[i] = prog->simulator.memory[address].value & bit ?
 			'1' : '0';
 	}
 
-	char instr[100] = { 0 };
-	instruction(prog->simulator.memory[address].value, address + 1,
+	instruction(prog->simulator.memory[address].value, (uint16_t) (address + 1),
 			instr, prog);
-	struct symbol *symbol = findSymbolByAddress(address);
-	char label[100] = { 0 };
-	if (symbol != NULL) {
+
+	symbol = findSymbolByAddress((uint16_t) address);
+	if (NULL != symbol) {
 		strcpy(label, symbol->name);
 	}
 
@@ -350,7 +362,8 @@ static void redraw(WINDOW *window, struct program *prog)
 			}
 
 			wprint(window, prog,
-				selected_address - selected + i, i + 1, 1);
+				(size_t) selected_address - (size_t) selected +
+				(size_t) i, i + 1, 1);
 
 			if (prog->simulator
 					.memory[selected_address - selected + i]
@@ -363,8 +376,8 @@ static void redraw(WINDOW *window, struct program *prog)
 				wattron(window, BREAKPOINTATTR);
 			}
 
-			wprint(window, prog, selected_address + i,
-				i + 1, 1);
+			wprint(window, prog, (size_t) selected_address +
+					(size_t) i, i + 1, 1);
 
 			if (prog->simulator.memory[selected_address + i]
 					.isBreakpoint) {
@@ -387,14 +400,14 @@ static void redraw(WINDOW *window, struct program *prog)
 void generate_context(WINDOW *window, struct program *prog, int _selected,
 		uint16_t _selected_address)
 {
+	int i = 0;
+
 	selected = _selected;
 	selected_address = _selected_address;
 
 	selected =
 		((selected_address + (output_height - 1 - selected)) > 0xfffe) ?
 		(output_height - (0xfffe - selected_address)) - 1 : selected;
-
-	int i = 0;
 
 	for (; i < selected; i++)
 		memory_output[i] =
@@ -416,13 +429,15 @@ void move_context(WINDOW *window, struct program *prog, enum DIRECTION direction
 
 	switch (direction) {
 	case UP:
-		selected_address -= (selected_address == 0) ? 0 : 1;
-		selected = (selected == 0) ? _redraw = true, 0 : selected - 1;
+		selected_address -= !!selected_address;
+		selected = !selected ? _redraw = true, 0 : selected - 1;
 		break;
 	case DOWN:
-		selected_address += (selected_address == 0xfffe) ? 0 : 1;
-		selected = (selected == (output_height - 1)) ? _redraw = true,
+		selected_address += (0xFFFE == selected_address) ? 0 : 1;
+		selected = ((output_height - 1) == selected) ? _redraw = true,
 				(output_height - 1) : selected + 1;
+		break;
+	default:
 		break;
 	}
 

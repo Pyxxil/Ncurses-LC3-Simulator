@@ -6,7 +6,7 @@
 #include "Structs.h"
 #include "Enums.h"
 
-extern uint16_t selected;
+extern int selected;
 extern uint16_t output_height;
 extern uint16_t *memory_output;
 extern uint16_t selected_address;
