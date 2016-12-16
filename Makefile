@@ -1,6 +1,8 @@
 # Use gcc as the compiler
 CC = gcc
 
+SHELL = /bin/bash
+
 # The program name
 EXECUTABLE = LC3Simulator
 OSPATH = $(shell pwd)
@@ -29,7 +31,7 @@ DEFINES  = -DOS_PATH="$(OSPATH)"
 CFLAGS = $(INCLUDES) -std=c11 -g -O2 $(DEFINES)
 # Flags to add when compiling the debug version
 DFLAGS = $(INCLUDES) $(DEFINES) -std=c11 -Wall -Werror -Wpedantic -Wextra \
-	 -Wcast-align -Wconversion -Wfloat-equal -Wformat=2 -Wmissing-braces \
+	 -Wcast-align -Wconversion -Wfloat-equal -Wmissing-braces \
 	 -Wmissing-declarations -Wmissing-field-initializers \
 	 -Wmissing-prototypes -Woverlength-strings -Wparentheses -Wreturn-type \
 	 -Wshadow -Wsign-compare -Wsign-conversion -Wswitch -Wswitch-enum \
@@ -61,7 +63,7 @@ tags: $(SRC)
 .PHONY: build
 build: $(OBJS)
 	@echo $(EXTRA) "LD $(EXECUTABLE)"
-	@$(CC) $(CFLAGS) $(LIBS) -o $(EXECUTABLE) $(OBJS)
+	@$(CC) $(CFLAGS) -o $(EXECUTABLE) $(OBJS) $(LIBS)
 
 .PHONY: asm
 asm: $(ASM)
@@ -84,3 +86,4 @@ mostlyclean:
 .PHONY: clean
 clean: mostlyclean
 	@if [[ -s $(EXECUTABLE) ]]; then echo " RM $(EXECUTABLE)"; $(RM) $(EXECUTABLE); fi;
+

@@ -1,12 +1,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <signal.h>
+#include <string.h>
 
 #include "Error.h"
 #include "Parser.h"
 #include "Machine.h"
 #include "Structs.h"
-#include "Argparse.h"
+#include "OptParse.h"
 
 static struct program *program = NULL;
 
@@ -24,8 +25,6 @@ static struct program *program = NULL;
 
 int main(int argc, char **argv)
 {
-	unsigned long long errval;
-
 	struct program prog = {
 		.name         = NULL,
 		.logfile      = NULL,
@@ -39,18 +38,65 @@ int main(int argc, char **argv)
 
 	program = &prog;
 
-	errval = argparse(argc, argv, &prog);
 	signal(SIGINT, close);
 
-	if (errval & (0xFFFFll << 32)) {
-		errhandle(&prog);
-	} else {
-		if ((errval & ASSEMBLE) && (!parse(&prog) ||
-				(errval & ASSEMBLE_ONLY))) {
-			/* NO OP */;
-		} else {
-			start_machine(&prog);
+	int err = 0;
+
+	options _options[] = {
+		{
+			.long_option = "assemble",
+			.short_option = 'a',
+			.option = REQUIRED,
+		},
+		{
+			.long_option = "assemble-only",
+			.short_option = 'o',
+			.option = NONE,
+		},
+		{
+			.long_option = "verbose",
+			.short_option = 'v',
+			.option = OPTIONAL,
+		},
+		{
+			NULL, '\0', NONE,
+		},
+	};
+
+	int option = 0;
+
+	while ((option = parse_options(_options, argc, argv)) != 0) {
+		switch (option) {
+		case 'a':
+			program->assemblyfile = strdup(returned_option.long_option);
+			err |= ASSEMBLE;
+			break;
+		case 'o':
+			err |= ASSEMBLE_ONLY;
+			break;
+		case 'v':
+			if (returned_option.option == OPTIONAL) {
+				char *end = NULL;
+				program->verbosity = (int) strtol(returned_option.long_option, &end, 10);
+				if (*end) {
+					printf("Invalid argument supplied for verbosity: %s\n",
+							returned_option.long_option);
+					exit(0);
+				}
+			} else {
+				program->verbosity++;
+			}
+			printf("Program verbosity set to %d\n", program->verbosity);
+			break;
+		default:
+			break;
 		}
+	}
+
+	if (err & ASSEMBLE && !parse(program)) {
+		// NO_OPT
+	} else if (!(err & ASSEMBLE_ONLY)) {
+		start_machine(&prog);
 	}
 
 	tidyup(&prog);

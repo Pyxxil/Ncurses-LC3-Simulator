@@ -112,7 +112,7 @@ void execute_next(struct LC3 *simulator, WINDOW *output)
 		SR1 = simulator->registers[(simulator->IR >> 6) & 7];
 		// We then bitwise NOT the two registers together, and store the
 		// result in the destination register.
-		*DR = ~SR1;
+		*DR = (uint16_t) ~SR1;
 		// We then flag for the condition code to be set.
 		setcc(DR, &simulator->CC);
 		break;
@@ -138,14 +138,14 @@ void execute_next(struct LC3 *simulator, WINDOW *output)
 		// meaning we have a signed 5 bit integer as the second operand,
 		// or we have another source register as the second operand.
 		if (simulator->IR & 0x0020) {
-			SR2 = (simulator->IR & 0x1F)
-				| ((simulator->IR & 0x10) ? 0xFFE0 : 0);
+			SR2 = (uint16_t) ((simulator->IR & 0x1F)
+				| ((simulator->IR & 0x10) ? 0xFFE0 : 0));
 		} else {
 			SR2 = simulator->registers[simulator->IR & 7];
 		}
 		// We then ADD/AND the two source registers together, and store
 		// that result in the destination register.
-		*DR = ADD == opcode ? SR1 + SR2 : SR1 & SR2;
+		*DR = (ADD == opcode) ? SR1 + SR2 : SR1 & SR2;
 		// We then flag for the condition code to be set.
 		setcc(DR, &simulator->CC);
 		break;

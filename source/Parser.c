@@ -387,11 +387,11 @@ static bool iscomment(FILE *file)
 	if (';' == c) {
 		return true;
 	} else if ('/' == c) {
-		if ('/' == (c = fgetc(file))) {
+		c = fgetc(file);
+		if ('/' == c) {
 			return true;
 		}
 		ungetc(c, file);
-		return false;
 	}
 
 	return false;
@@ -1056,11 +1056,11 @@ bool parse(struct program *prog)
 
 			instruction |= (oper3 & 0x1ff);
 			if (prog->verbosity) {
+				if (prog->verbosity > 2) {
+					printf("Line %3d:  ", currentLine);
+				}
 				printf("%-5s  R%d  %-30s  (%4d addresses away)",
 					line, oper1, sym->name, oper3);
-				if (prog->verbosity > 2) {
-					printf("  (line %3d)", currentLine);
-				}
 				puts("");
 			}
 			break;
@@ -1110,10 +1110,10 @@ bool parse(struct program *prog)
 			instruction = instruction | (uint16_t) (oper1 << 9 |
 					oper2 << 6 | oper3);
 			if (prog->verbosity) {
-				printf("%-5s  R%d  R%d ", line, oper1, oper2);
 				if (prog->verbosity > 2) {
-					printf("  (line %3d)", currentLine);
+					printf("Line %3d:  ", currentLine);
 				}
+				printf("%-5s  R%d  R%d ", line, oper1, oper2);
 				puts("");
 			}
 			break;
@@ -1145,11 +1145,10 @@ bool parse(struct program *prog)
 
 			instruction |= oper1 << 9 | oper2 << 6;
 			if (prog->verbosity) {
-				printf("%-5s  R%d  R%d",
-					line, oper1, oper2);
 				if (prog->verbosity > 2) {
-					printf("  (line %3d)", currentLine);
+					printf("Line %3d:  ", currentLine);
 				}
+				printf("%-5s  R%d  R%d", line, oper1, oper2);
 				puts("");
 			}
 			break;
@@ -1174,10 +1173,10 @@ bool parse(struct program *prog)
 
 			instruction |= oper1 << 6;
 			if (prog->verbosity) {
-				printf("%-5s  R%d", line, oper1);
 				if (prog->verbosity > 2) {
-					printf("  (line %3d)", currentLine);
+					printf("Line %3d:  ", currentLine);
 				}
+				printf("%-5s  R%d", line, oper1);
 				puts("");
 			}
 			break;
@@ -1220,11 +1219,11 @@ bool parse(struct program *prog)
 
 			instruction |= (oper3 & 0x7ff);
 			if (prog->verbosity) {
+				if (prog->verbosity > 2) {
+					printf("Line %3d:  ", currentLine);
+				}
 				printf("%-5s  R%d  %-30s  (%4d addresses away)",
 					line, oper1, sym->name, oper3);
-				if (prog->verbosity > 2) {
-					printf("  (line %3d)", currentLine);
-				}
 				puts("");
 			}
 			break;
@@ -1295,11 +1294,11 @@ bool parse(struct program *prog)
 
 			instruction |= oper1 << 9 | (oper3 & 0x1ff);
 			if (prog->verbosity) {
+				if (prog->verbosity > 2) {
+					printf("Line %3d:  ", currentLine);
+				}
 				printf("%-5s  R%d  %-30s  (%4d addresses away)",
 					line, oper1, sym->name, oper3);
-				if (prog->verbosity > 2) {
-					printf("  (line %3d)", currentLine);
-				}
 				puts("");
 			}
 			break;
@@ -1349,11 +1348,11 @@ bool parse(struct program *prog)
 
 			instruction |= oper1 << 9 | oper2 << 6 | (oper3 & 0x3f);
 			if (prog->verbosity) {
+				if (prog->verbosity > 2) {
+					printf("Line %3d:  ", currentLine);
+				}
 				printf("%-5s  R%d  R%d #%d",
 					line, oper1, oper2, oper3);
-				if (prog->verbosity > 2) {
-					printf("  (line %3d)", currentLine);
-				}
 				puts("");
 			}
 			break;
@@ -1365,10 +1364,10 @@ bool parse(struct program *prog)
 
 			instruction = 0xc1c0;
 			if (prog->verbosity) {
-				printf("%-4s", line);
 				if (prog->verbosity > 2) {
-					printf("  (line %3d)", currentLine);
+					printf("Line %3d:  ", currentLine);
 				}
+				printf("%-4s", line);
 				puts("");
 			}
 			break;
@@ -1379,10 +1378,10 @@ bool parse(struct program *prog)
 			}
 
 			if (prog->verbosity) {
-				printf("%-5s", line);
 				if (prog->verbosity > 2) {
-					printf(" (line %3d)", currentLine);
+					printf("Line %3d:  ", currentLine);
 				}
+				printf("%-5s", line);
 				puts("");
 			}
 			break;
@@ -1409,10 +1408,10 @@ bool parse(struct program *prog)
 
 			instruction = 0xf000 + (uint16_t) oper3;
 			if (prog->verbosity) {
-				printf("%-5s 0x%x", line, oper3);
 				if (prog->verbosity > 2) {
-					printf("  (line %3d)", currentLine);
+					printf("Line %3d:  ", currentLine);
 				}
+				printf("%-5s 0x%x", line, oper3);
 				puts("");
 			}
 			break;
@@ -1435,10 +1434,10 @@ bool parse(struct program *prog)
 			}
 
 			if (prog->verbosity) {
-				printf("%-5s", line);
 				if (prog->verbosity > 2) {
-					printf(" (line %3d)", currentLine);
+					printf("Line %3d:  ", currentLine);
 				}
+				printf("%-62s", line);
 				puts("");
 			}
 			break;
