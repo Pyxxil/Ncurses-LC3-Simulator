@@ -9,6 +9,10 @@ static size_t internal_arg_count;
 static size_t internal_arg_index;
 static size_t internal_offset;
 
+static bool matched_with_equals = false;
+
+static char const *equals = NULL;
+
 static unsigned char reset = 1;
 
 options returned_option = {
@@ -34,8 +38,10 @@ static OPT_TYPE option_type(char const *option)
 		if ('-' == option[1]) {
 			return LONG;
 		}
+
 		return SHORT;
 	}
+
 	return NOT_OPT;
 }
 
@@ -50,6 +56,60 @@ static inline bool is_valid_argument(char **argument_values)
 	return (internal_arg_count - internal_arg_offset) > internal_arg_index &&
 		(isdigit(argument_values[internal_arg_index + internal_arg_offset][1]) ||
 		 option_type(argument_values[internal_arg_index + internal_arg_offset]) == NOT_OPT);
+}
+
+static void grab_arg(char **from, options *option)
+{
+	bool valid = false;
+	if ((matched_with_equals && equals + 1) || (valid = is_valid_argument(from))) {
+		returned_option = (options) {
+			.long_option = valid ? from[internal_arg_index + internal_arg_offset] :
+				equals + 1,
+			.short_option = option->short_option,
+			.option = option->option,
+		};
+	} else {
+		returned_option.option = NONE;
+	}
+}
+
+static bool is_long_match(char **against, char const *option)
+{
+	char const *possible_match = against[internal_arg_index] + 2;
+	size_t option_length = strlen(option);
+	size_t match_length = strlen(possible_match);
+	equals = strchr(possible_match, '=');
+
+	matched_with_equals = false;
+
+	if (!strncmp(possible_match, option, option_length)) {
+		if (equals && (size_t) equals - (size_t) possible_match == option_length) {
+			return matched_with_equals = true;
+		}
+
+		return option_length == match_length;
+	}
+
+	return false;
+}
+
+static bool is_short_match(char **against, unsigned char option)
+{
+	char const *possible_match = against[internal_arg_index];
+	equals = strchr(possible_match, '=');
+
+	matched_with_equals = false;
+
+	if (possible_match[internal_offset] == option) {
+		if (equals && (size_t) equals == (size_t) possible_match +
+				internal_offset + 1) {
+			return matched_with_equals = true;
+		}
+
+		return true;
+	}
+
+	return false;
 }
 
 int parse_options(options *__options, int argument_count, char **argument_values)
@@ -78,47 +138,25 @@ int parse_options(options *__options, int argument_count, char **argument_values
 		switch (opt_type) {
 		/*
 		 * A long option is of the type '--long-opt', where any character
-		 * is possible.
+		 * is possible, as long as there are two leading '-' characters.
 		 *
-		 * Some programs allow the user, if the option has an optional/required
-		 * argument, to end it with an '=' value. This would mean the
-		 * option looks like so:
-		 * 	--long-opt=argument
-		 *
-		 * This is something that hopefully will be implemented at a
-		 * later date, for now the argument must be supplied as a second
-		 * command line string, such as:
-		 * 	--long-opt argument
-		 *
-		 * See the comments above the line 'case SHORT' below for a few
-		 * problems with the current implementation.
+		 * Options that take arguments can be provided by the user in
+		 * either of two ways:
+		 * 	--long-opt=arg
+		 * or
+		 * 	--long-opt arg
+		 * Both will supply the same information back to the program.
 		 */
 		case LONG:
 			internal_offset = 1;
 			internal_arg_offset = 1;
-			if (!strcmp(argument_values[internal_arg_index] + 2,
-					_option->long_option)) {
+			if (is_long_match(argument_values, _option->long_option)) {
 				switch (_option->option) {
-				case REQUIRED:
-					if (is_valid_argument(argument_values)) {
-						returned_option.long_option =
-							argument_values[++internal_arg_index];
-						returned_option.option = REQUIRED;
-					} else {
-						//returned_option.long_option =
-						//	argument_values[internal_arg_index];
-						returned_option.option = NONE;
-					}
-					break;
+				case REQUIRED: // FALLTHROUGH
 				case OPTIONAL:
-					if (is_valid_argument(argument_values)) {
-						returned_option.long_option =
-							argument_values[++internal_arg_index];
-						returned_option.option = OPTIONAL;
-					} else {
-						//returned_option.long_option =
-						//	argument_values[internal_arg_index];
-						returned_option.option = NONE;
+					grab_arg(argument_values, _option);
+					if (returned_option.option != NONE) {
+						//internal_arg_index++;
 					}
 					break;
 				case NONE: // FALLTHROUGH
@@ -137,29 +175,20 @@ int parse_options(options *__options, int argument_count, char **argument_values
 		 * characters after the '-' are seperate options.
 		 *
 		 * I'm not sure if I'll keep the following behaviour around, but
-		 * currently the following is valid (assume f requires an arg):
-		 * 	-fff file1 file2 file3
-		 * would result in the parser returning 3 flags, each with a
-		 * different file, that is to say it's semantically equivalent
-		 * to this:
-		 * 	-f file1 -f file2 -f file3
+		 * currently the following are all parsed as the same string:
+		 * 	-xyz file1 file2 file3
+		 * 	-xyz=file3 file1 file2
+		 * 	-x file1 -y file2 -z file3
+		 * Will, on matching the flags x, y, and z, will provide a
+		 * matched object containing file1 for the x option, file2 for
+		 * the y option, and file3 for the z option.
 		 *
-		 * One of the problems currently with how the parser deals with
-		 * determing whether the current argument is a flag or not is to
-		 * check whether it starts with '-'. This means that if you want
-		 * to have the user pass in a negative number, you'd either have
-		 * to work around using quotes (or some other delimiter) to
-		 * gather these
-		 *  -> Currently have a work around. The problem with this
-		 *  -> is that it doesn't currently work with optionals (in
-		 *  -> that it doesn't check whether, say, -1 is a valid
-		 *  -> option before just assuming it's a valid argument for
-		 *  -> the option).
-		 *
-		 *  -> It might be possible that, later, when the parser allows
-		 *  -> using '-' at the end of an option to give the argument that
-		 *  -> the work around above might not be needed, but for now it
-		 *  -> will do.
+		 * Negative numbers, if given after a flag that takes an
+		 * optional or required argument, are not seen as options
+		 * themselves. However, if they are given as sole options, e.g.
+		 * 	./Program -1
+		 * then the -1 will be parsed as an option, and will likely
+		 * return an INVALID_SHORT_OPT.
 		 */
 		case SHORT:
 			if ('\0' == argument_values[internal_arg_index][internal_offset]) {
@@ -167,28 +196,17 @@ int parse_options(options *__options, int argument_count, char **argument_values
 				internal_offset = 1;
 				internal_arg_offset = 1;
 				return parse_options(__options, argument_count, argument_values);
-			} else if (argument_values[internal_arg_index][internal_offset]
-					== _option->short_option) {
+			} else if (is_short_match(argument_values, _option->short_option)) {
 				switch (_option->option) {
-				case REQUIRED:
-					if (is_valid_argument(argument_values)) {
-						returned_option.long_option =
-							argument_values[internal_arg_index - 1];
-						returned_option.option = REQUIRED;
-						internal_arg_offset++;
-					} else {
-						returned_option.option = NONE;
-					}
-					break;
+				case REQUIRED: // FALLTHROUGH
 				case OPTIONAL:
-					if (is_valid_argument(argument_values)) {
-						returned_option.long_option =
-							argument_values[internal_arg_index +
-								internal_arg_offset];
-						returned_option.option = OPTIONAL;
+					grab_arg(argument_values, _option);
+					if (matched_with_equals) {
+						internal_arg_index += internal_arg_offset;
+						internal_offset = 0;
+						internal_arg_offset = 1;
+					} else if (returned_option.option != NONE) {
 						internal_arg_offset++;
-					} else {
-						returned_option.option = NONE;
 					}
 					break;
 				case NONE:
@@ -197,7 +215,6 @@ int parse_options(options *__options, int argument_count, char **argument_values
 				}
 
 				internal_offset++;
-
 				return returned_option.short_option = _option->short_option;
 			}
 			break;
@@ -227,12 +244,14 @@ int parse_options(options *__options, int argument_count, char **argument_values
 	switch (opt_type) {
 	case SHORT:
 		returned_option.short_option =
-			(unsigned char) argument_values[internal_arg_index][internal_offset++];
+			(unsigned char) argument_values[internal_arg_index]
+				[internal_offset++];
 		return INVALID_SHORT_OPT;
 	case LONG:
 		returned_option.long_option = argument_values[internal_arg_index++];
 		return INVALID_LONG_OPT;
 	case NOT_OPT:
+	default:
 		returned_option.long_option = argument_values[internal_arg_index++];
 		return NO_OPT;
 	}

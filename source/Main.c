@@ -11,7 +11,7 @@
 
 static struct program *program = NULL;
 
- __attribute__((noreturn)) static void close(int sig)
+__attribute__((noreturn)) static void close(int sig)
 {
 	(void) sig;
 
@@ -21,6 +21,20 @@ static struct program *program = NULL;
 	freeTable(&tableHead);
 
 	exit(EXIT_FAILURE);
+}
+
+__attribute__((noreturn)) static void usage(char const *const name)
+{
+	printf(
+		"Usage: %s [options]                                       \n\n"
+		"Options:                                                    \n"
+		"  -a [--assemble] file   Assemble the given file.           \n"
+		"  -v [--verbose] <level> Set the verbosity of the assembler.\n"
+		"  -o [--assemble-only]   Only assemble the given program.   \n",
+		name
+	);
+
+	exit(EXIT_SUCCESS);
 }
 
 int main(int argc, char **argv)
@@ -59,6 +73,11 @@ int main(int argc, char **argv)
 			.option = OPTIONAL,
 		},
 		{
+			.long_option = "help",
+			.short_option = 'h',
+			.option = NONE,
+		},
+		{
 			NULL, '\0', NONE,
 		},
 	};
@@ -86,7 +105,9 @@ int main(int argc, char **argv)
 			} else {
 				program->verbosity++;
 			}
-			printf("Program verbosity set to %d\n", program->verbosity);
+			break;
+		case 'h':
+			usage(argv[0]);
 			break;
 		default:
 			break;
