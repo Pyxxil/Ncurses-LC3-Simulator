@@ -25,6 +25,4 @@ extern options returned_option;
 
 int parse_options(options *__options, int argument_count, char **argument_values);
 
-void reset_parser(void);
-
 #endif // OPTPARSE_H

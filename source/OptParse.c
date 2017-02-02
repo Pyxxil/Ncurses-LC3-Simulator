@@ -84,7 +84,7 @@ static bool is_long_match(char **against, char const *option)
 
 	if (!strncmp(possible_match, option, option_length)) {
 		if (equals && (size_t) equals - (size_t) possible_match == option_length) {
-			return matched_with_equals = true;
+			return (matched_with_equals = true);
 		}
 
 		return option_length == match_length;
@@ -103,7 +103,7 @@ static bool is_short_match(char **against, unsigned char option)
 	if (possible_match[internal_offset] == option) {
 		if (equals && (size_t) equals == (size_t) possible_match +
 				internal_offset + 1) {
-			return matched_with_equals = true;
+			return (matched_with_equals = true);
 		}
 
 		return true;
@@ -156,7 +156,7 @@ int parse_options(options *__options, int argument_count, char **argument_values
 				case OPTIONAL:
 					grab_arg(argument_values, _option);
 					if (returned_option.option != NONE) {
-						//internal_arg_index++;
+						internal_arg_index++;
 					}
 					break;
 				case NONE: // FALLTHROUGH
@@ -255,10 +255,5 @@ int parse_options(options *__options, int argument_count, char **argument_values
 		returned_option.long_option = argument_values[internal_arg_index++];
 		return NO_OPT;
 	}
-}
-
-void reset_parser(void)
-{
-	reset = 1;
 }
 

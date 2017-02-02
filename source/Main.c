@@ -1,12 +1,14 @@
+#ifdef __linux__
+#define _XOPEN_SOURCE 500
+#endif
+
 #include <stdio.h>
 #include <stdlib.h>
-#include <signal.h>
 #include <string.h>
 
 #include "Error.h"
 #include "Parser.h"
 #include "Machine.h"
-#include "Structs.h"
 #include "OptParse.h"
 
 static struct program *program = NULL;
@@ -15,8 +17,9 @@ __attribute__((noreturn)) static void close(int sig)
 {
 	(void) sig;
 
-	if (NULL != program)
-		tidyup(program);
+	if (NULL != program) {
+		tidy_up(program);
+	}
 
 	freeTable(&tableHead);
 
@@ -25,13 +28,12 @@ __attribute__((noreturn)) static void close(int sig)
 
 __attribute__((noreturn)) static void usage(char const *const name)
 {
-	printf(
-		"Usage: %s [options]                                       \n\n"
-		"Options:                                                    \n"
-		"  -a [--assemble] file   Assemble the given file.           \n"
-		"  -v [--verbose] <level> Set the verbosity of the assembler.\n"
-		"  -o [--assemble-only]   Only assemble the given program.   \n",
-		name
+	printf("Usage: %s [options]                                       \n\n"
+	       "Options:                                                    \n"
+	       "  -a [--assemble] file   Assemble the given file.           \n"
+	       "  -v [--verbose] <level> Set the verbosity of the assembler.\n"
+	       "  -o [--assemble-only]   Only assemble the given program.   \n",
+	       name
 	);
 
 	exit(EXIT_SUCCESS);
@@ -87,7 +89,17 @@ int main(int argc, char **argv)
 	while ((option = parse_options(_options, argc, argv)) != 0) {
 		switch (option) {
 		case 'a':
+			if (returned_option.option == NONE) {
+				fprintf(stderr, "Option --assemble requires a file.\n");
+				exit(EXIT_FAILURE);
+			}
+
 			program->assemblyfile = strdup(returned_option.long_option);
+			if (NULL == program->assemblyfile) {
+				perror("LC3-Simulator");
+				exit(EXIT_FAILURE);
+			}
+
 			err |= ASSEMBLE;
 			break;
 		case 'o':
@@ -96,10 +108,11 @@ int main(int argc, char **argv)
 		case 'v':
 			if (returned_option.option == OPTIONAL) {
 				char *end = NULL;
-				program->verbosity = (int) strtol(returned_option.long_option, &end, 10);
+				program->verbosity = (int) strtol(
+					returned_option.long_option, &end, 10);
 				if (*end) {
-					printf("Invalid argument supplied for verbosity: %s\n",
-							returned_option.long_option);
+					printf("Invalid verbosity level: %s\n",
+					       returned_option.long_option);
 					exit(0);
 				}
 			} else {
@@ -108,9 +121,15 @@ int main(int argc, char **argv)
 			break;
 		case 'h':
 			usage(argv[0]);
-			break;
 		default:
-			break;
+			if (returned_option.long_option != NULL) {
+				fprintf(stderr, "Invalid opt: %s\n",
+					returned_option.long_option);
+			} else {
+				fprintf(stderr, "Invalid opt: -%c\n",
+					returned_option.short_option);
+			}
+			exit(EXIT_FAILURE);
 		}
 	}
 
@@ -120,7 +139,7 @@ int main(int argc, char **argv)
 		start_machine(&prog);
 	}
 
-	tidyup(&prog);
+	tidy_up(&prog);
 	freeTable(&tableHead);
 
 	return 0;
