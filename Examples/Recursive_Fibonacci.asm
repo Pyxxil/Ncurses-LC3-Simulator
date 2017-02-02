@@ -64,11 +64,17 @@ GET_INPUT:
 	BRnzp MULTIPLY_BY_TEN	; Always multiply the current number by ten if
 				; it doesn't get updated by the above.
 
+TOO_MANY_CHARS:
+	LEA R0, TOO_MANY
+	PUTS
+	BR OUT_PROMPT
+
+TOO_MANY .STRINGZ "\nEntered too many characters (Max 10).\n"
 
 ; Decrement the input counter by one
 DECREMENT_INPUT_COUNTER:
 	ADD R5, R5, #-1		; Subtract 1 from the loop counter stored in R5
-	BRz OUT_PROMPT		; We've reached the max character count, so start
+	BRz TOO_MANY_CHARS	; We've reached the max character count, so start
 				; again.
 	BRnzp GET_INPUT
 
@@ -302,14 +308,15 @@ LOOP:
 FINISH: HALT
 
 ; The loop count (will also be used to find the fibonacci number we want)
-COUNT:		.FILL 1
+COUNT		.FILL 1
 SAVER		.FILL SAVER7
 LOOPER		.FILL INIT_LOOP
 
 ; Our stack pointers
-STACK:	 	.BLKW #100	; Return address and frame stack pointer.
-RESULT_STACK:	.BLKW #100	; Result stack pointer, holds all results during
+STACK	 	.BLKW #100	; Return address and frame stack pointer.
+RESULT_STACK	.BLKW #100	; Result stack pointer, holds all results during
 				; the recursion.
-TEMP_VAL_STACK:	.BLKW #100	; To store all temporary values we use.
+TEMP_VAL_STACK	.BLKW #100	; To store all temporary values we use.
 
 .END
+
