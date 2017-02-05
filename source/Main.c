@@ -56,7 +56,7 @@ int main(int argc, char **argv)
 
 	signal(SIGINT, close);
 
-	int err = 0;
+	int opts = 0;
 
 	options _options[] = {
 		{
@@ -73,6 +73,11 @@ int main(int argc, char **argv)
 			.long_option = "verbose",
 			.short_option = 'v',
 			.option = OPTIONAL,
+		},
+		{
+			.long_option = "objectfile",
+			.short_option = 'f',
+			.option = REQUIRED,
 		},
 		{
 			.long_option = "help",
@@ -96,14 +101,26 @@ int main(int argc, char **argv)
 
 			program->assemblyfile = strdup(returned_option.long_option);
 			if (NULL == program->assemblyfile) {
-				perror("LC3-Simulator");
+				perror(argv[0]);
 				exit(EXIT_FAILURE);
 			}
 
-			err |= ASSEMBLE;
+			opts |= ASSEMBLE;
+			break;
+		case 'f':
+			if (returned_option.option == NONE) {
+				fprintf(stderr, "Option --objectfile requires a file.\n");
+				exit(EXIT_FAILURE);
+			}
+
+			program->objectfile = strdup(returned_option.long_option);
+			if (NULL == program->objectfile) {
+				perror(argv[0]);
+				exit(EXIT_FAILURE);
+			}
 			break;
 		case 'o':
-			err |= ASSEMBLE_ONLY;
+			opts |= ASSEMBLE_ONLY;
 			break;
 		case 'v':
 			if (returned_option.option == OPTIONAL) {
@@ -133,9 +150,9 @@ int main(int argc, char **argv)
 		}
 	}
 
-	if (err & ASSEMBLE && !parse(program)) {
+	if (opts & ASSEMBLE && !parse(program)) {
 		// NO_OPT
-	} else if (!(err & ASSEMBLE_ONLY)) {
+	} else if (!(opts & ASSEMBLE_ONLY)) {
 		start_machine(&prog);
 	}
 

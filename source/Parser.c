@@ -358,7 +358,7 @@ static uint16_t nzp(char const *const _nzp)
 		}
 	}
 
-	return __nzp;
+	return (uint16_t) (__nzp ? __nzp : 0x0e00);
 }
 
 static void objWrite(uint16_t *instruction, FILE *objFile)
@@ -1030,12 +1030,7 @@ bool parse(struct program *prog)
 				break;
 			}
 
-			if (2 == strlen(line)) {
-				instruction = 0x7 << 9;
-			} else {
-				instruction = nzp(line + 2);
-			}
-
+			instruction = nzp(line + 2);
 			if (instruction & 7) {
 				fprintf(stderr, "Line %3d: "
 					"Invalid BR instruction.\n",
@@ -1132,7 +1127,12 @@ bool parse(struct program *prog)
 				if (prog->verbosity > 2) {
 					printf("Line %3d:  ", current_line);
 				}
-				printf("%-5s  R%d  R%d ", line, operand_one, operand_two);
+				printf("%-5s  R%d  R%d  ", line, operand_one, operand_two);
+				if (instruction & 0x20) {
+					printf("#%d", ((int16_t) ((operand_three & 0x3f) << 11)) >> 11);
+				} else {
+					printf("R%d", operand_three & 7);
+				}
 				puts("");
 			}
 			break;
