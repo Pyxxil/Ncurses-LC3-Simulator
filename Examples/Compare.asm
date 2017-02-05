@@ -207,9 +207,7 @@ PROCESS_R2:
     ADD R0, R3, #0                  ; Check to see if a minus sign has been read,
                                     ; due to conversion a minus sign will be -3,
                                     ; which is an illegal value
-    BRn MAKE_R2_NEGATIVE            ; If minus sign has been reached, then go
-                                    ; and Make R2 negative
-    BR CHECKING_LOOP                ; Go and compare the two numbers
+    BRzp CHECKING_LOOP              ; Go and compare the two numbers
 
 
 MAKE_R2_NEGATIVE:
@@ -225,7 +223,6 @@ CHECKING_LOOP:
     ADD R3, R2, #0                  ; Check if R2 is negative or positive
     BRn R1_POSITIVE_R2_NEGATIVE     ; At this point it is known that R1 is positive
                                     ; or 0 and R2 is negative
-    AND R3, R3, #0                  ; Clear value in R3
     BR R1_R2_SAME_SIGN              ; If neither previous branch was triggered,
                                     ; it means that both R1 and R2 are positive
 
@@ -234,9 +231,6 @@ R1_NEGATIVE:
     AND R3, R3, #0                  ; Clear value in R3
     ADD R3, R2, #0                  ; Check if R2 is negative or positive
     BRn R1_R2_SAME_SIGN             ; If R2 Is negative, then both R1 and R2 are negative
-    AND R3, R3, #0                  ; Clear value in R3
-    BR R1_NEGATIVE_R2_POSITIVE      ; If the previous branch was not triggered,
-                                    ; then R1 is negative and R2 is positive or 0
 
 
 R1_NEGATIVE_R2_POSITIVE:
@@ -303,7 +297,7 @@ LookUp10:
     .FILL  #90
 
 ; Lookup table for base 100 values
-LookUp100
+LookUp100:
     .FILL  #0
     .FILL  #100
     .FILL  #200

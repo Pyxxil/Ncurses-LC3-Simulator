@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-struct memory_slot {
+struct memorySlot {
 	uint16_t address;
 	uint16_t value;
 	bool isBreakpoint;
@@ -17,7 +17,7 @@ struct LC3 {
 	uint16_t registers[8];
 	bool isHalted;
 	bool isPaused;
-	struct memory_slot memory[0xffff];
+	struct memorySlot memory[0xffff];
 };
 
 struct program {

@@ -7,15 +7,15 @@
 #include "Enums.h"
 
 extern int selected;
-extern uint16_t output_height;
-extern uint16_t *memory_output;
-extern uint16_t selected_address;
+extern uint16_t outputHeight;
+extern uint16_t *memoryOutput;
+extern uint16_t selectedAddress;
 
 void update(WINDOW *, struct program *);
-int populate_memory(struct program *);
-void print_memory(WINDOW *, struct program *, uint16_t *, const char);
+int populateMemory(struct program *);
+void printMemory(WINDOW *, struct program *, uint16_t *, const char);
 
-void generate_context(WINDOW *, struct program *, int, uint16_t);
-void move_context(WINDOW *, struct program *, enum DIRECTION);
+void generateContext(WINDOW *, struct program *, int, uint16_t);
+void moveContext(WINDOW *, struct program *, enum DIRECTION);
 
 #endif // MEMORY_H

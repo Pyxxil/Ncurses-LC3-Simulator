@@ -13,7 +13,7 @@ function build () {
 	cd ..
 }
 
-if (( $# > 1 )); then
+if (( $# >= 1 )); then
 	case "$1" in
 		build)
 			build
@@ -22,7 +22,7 @@ if (( $# > 1 )); then
 			clean
 			;;
 		*)
-			build
+			echo "Invalid target $1"
 			;;
 	esac
 else

@@ -11,33 +11,33 @@
 
 __attribute__((noreturn)) inline void read_error(void)
 {
-	fprintf(stderr, "Error: Failed to read to end of file\n");
-	exit(EXIT_FAILURE);
+        fprintf(stderr, "Error: Failed to read to end of file\n");
+        exit(EXIT_FAILURE);
 }
 
 
-void tidy_up(struct program *program)
+void tidyUp(struct program *program)
 {
-	if (NULL != program->name) {
-		free(program->name);
-	}
-	if (NULL != program->objectfile) {
-		free(program->objectfile);
-	}
-	if (NULL != program->assemblyfile) {
-		free(program->assemblyfile);
-	}
-	if (NULL != program->symbolfile) {
-		free(program->symbolfile);
-	}
-	if (NULL != program->hexoutfile) {
-		free(program->hexoutfile);
-	}
-	if (NULL != program->binoutfile) {
-		free(program->binoutfile);
-	}
-	if (NULL != program->logfile) {
-		free(program->logfile);
-	}
+        if (NULL != program->name) {
+                free(program->name);
+        }
+        if (NULL != program->objectfile) {
+                free(program->objectfile);
+        }
+        if (NULL != program->assemblyfile) {
+                free(program->assemblyfile);
+        }
+        if (NULL != program->symbolfile) {
+                free(program->symbolfile);
+        }
+        if (NULL != program->hexoutfile) {
+                free(program->hexoutfile);
+        }
+        if (NULL != program->binoutfile) {
+                free(program->binoutfile);
+        }
+        if (NULL != program->logfile) {
+                free(program->logfile);
+        }
 }
 

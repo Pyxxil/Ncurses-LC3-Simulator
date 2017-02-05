@@ -15,7 +15,7 @@
 
 __attribute__((noreturn)) void read_error(void);
 
-void tidy_up(struct program *);
+void tidyUp(struct program *);
 
 #endif // ERROR_H
 

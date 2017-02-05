@@ -31,40 +31,40 @@
 
 unsigned int logDump(struct program const *program)
 {
-	static bool beenHere = false;
-	FILE *logfile;
+        static bool beenHere = false;
+        FILE *logfile;
 
-	if (!beenHere && NULL == program->logfile)
-		return ErrNoFile;
+        if (!beenHere && NULL == program->logfile)
+                return ErrNoFile;
 
-	beenHere = true;
+        beenHere = true;
 
-	logfile = fopen(program->logfile, "a");
+        logfile = fopen(program->logfile, "a");
 
-	if (NULL == logfile)
-		return ErrFileOpen;
+        if (NULL == logfile)
+                return ErrFileOpen;
 
-	fprintf(logfile, "=====================\n");
-	fprintf(logfile, "REG       HEX     DEC\n");
-	fprintf(logfile, "---------------------\n");
+        fprintf(logfile, "=====================\n");
+        fprintf(logfile, "REG       HEX     DEC\n");
+        fprintf(logfile, "---------------------\n");
 
-	for (unsigned char reg = 0; reg < 8; reg++) {
-		fprintf(logfile, "R%d  --  0x%04x  %5d\n", reg,
-			program->simulator.registers[reg],
-			program->simulator.registers[reg]);
-	}
+        for (unsigned char reg = 0; reg < 8; reg++) {
+                fprintf(logfile, "R%d  --  0x%04x  %5d\n", reg,
+                        program->simulator.registers[reg],
+                        program->simulator.registers[reg]);
+        }
 
-	fprintf(logfile, "PC  --  0x%04x  %5d\n", program->simulator.PC,
-		program->simulator.PC);
+        fprintf(logfile, "PC  --  0x%04x  %5d\n", program->simulator.PC,
+                program->simulator.PC);
 
-	fprintf(logfile, "IR  --  0x%04x  %5d\n", program->simulator.IR,
-		program->simulator.IR);
+        fprintf(logfile, "IR  --  0x%04x  %5d\n", program->simulator.IR,
+                program->simulator.IR);
 
-	fprintf(logfile, "CC  --  %c\n", program->simulator.CC);
-	fprintf(logfile, "=====================\n");
+        fprintf(logfile, "CC  --  %c\n", program->simulator.CC);
+        fprintf(logfile, "=====================\n");
 
-	fclose(logfile);
+        fclose(logfile);
 
-	return 0;
+        return 0;
 }
 

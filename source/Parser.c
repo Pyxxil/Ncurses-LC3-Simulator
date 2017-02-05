@@ -16,7 +16,7 @@
 #define OS_SYM_FILE OSPATH(OS_PATH) "/LC3_OS.sym"
 
 // This will have to do for now... It allows the use of '//' as a comment.
-static char last_skipped_char = 0;
+static char lastSkippedChar = 0;
 
 static unsigned const MAX_LABEL_LENGTH = 80;
 
@@ -52,7 +52,7 @@ static void skipWhitespace(FILE *file)
 	}
 
 	ungetc(c, file);
-	last_skipped_char = (char) c;
+	lastSkippedChar = (char) c;
 }
 
 /*
@@ -549,6 +549,7 @@ static void extractLabel(char *label, FILE *file)
 			break;
 		}
 	}
+
 	for (; --length >= i;) {
 		ungetc(label[length], file);
 		label[length] = '\0';
@@ -679,8 +680,8 @@ static uint16_t nextRegister(FILE *file, bool allowedComma)
 
 bool parse(struct program *prog)
 {
-	uint16_t instruction = 0, pc = 0, operand_one, operand_two, real_pc = 0;
-	int c, current_line = 1, errors = 0, operand_three, pass = 1, error_count = 0;
+	uint16_t instruction = 0, pc = 0, operandOne, operandTwo, realPc = 0;
+	int c, currentLine = 1, errors = 0, operandThree, pass = 1, errorCount = 0;
 	char line[100] = {0}, label[MAX_LABEL_LENGTH], *end;
 	bool origSeen = false, endSeen = false;
 
@@ -810,7 +811,7 @@ bool parse(struct program *prog)
 		memset(line, 0, sizeof(line));
 		memset(label, 0, MAX_LABEL_LENGTH);
 		instruction = 0;
-		operand_one = 0;
+		operandOne = 0;
 
 		skipWhitespace(asmFile);
 		c = fgetc(asmFile);
@@ -825,22 +826,22 @@ bool parse(struct program *prog)
 				errors, 1 == errors ? "" : "'s");
 			printf("STARTING SECOND PASS...\n");
 			pass = 2;
-			pc = real_pc;
+			pc = realPc;
 			rewind(asmFile);
-			current_line = 1;
-			error_count = errors;
+			currentLine = 1;
+			errorCount = errors;
 			errors = 0;
 			endSeen = false;
 			continue;
 		} else if ('\n' == c) {
-			current_line++;
+			currentLine++;
 			continue;
 		} else  if (';' == c) {
 			nextLine(asmFile);
 			continue;
 		} else if ('/' == c) {
 			c = fgetc(asmFile);
-			if ('/' == last_skipped_char || '/' == c) {
+			if ('/' == lastSkippedChar || '/' == c) {
 				nextLine(asmFile);
 				continue;
 			}
@@ -858,35 +859,35 @@ bool parse(struct program *prog)
 		switch (tok) {
 		case DIR_ORIG:
 			if (1 != pass) {
-				instruction = real_pc;
+				instruction = realPc;
 				nextLine(asmFile);
 				break;
 			}
 
 			if (origSeen) {
 				fprintf(stderr, "Line %3d: Extra .ORIG "
-					"directive.\n", current_line);
+					"directive.\n", currentLine);
 				nextLine(asmFile);
 				errors++;
 				continue;
 			} else if (endSeen) {
 				fprintf(stderr, "Line %3d: .END seen "
-					"before .ORIG.\n", current_line);
+					"before .ORIG.\n", currentLine);
 				nextLine(asmFile);
 				errors++;
 				continue;
 			}
 
-			operand_three = nextImmediate(asmFile, false);
-			if (operand_three > 0xffff || operand_three < 0) {
+			operandThree = nextImmediate(asmFile, false);
+			if (operandThree > 0xffff || operandThree < 0) {
 				fprintf(stderr, "Line %3d: Invalid operand "
-					"for .ORIG.\n", current_line);
+					"for .ORIG.\n", currentLine);
 				nextLine(asmFile);
 				errors++;
 				continue;
 			}
 
-			pc = real_pc = (uint16_t) operand_three;
+			pc = realPc = (uint16_t) operandThree;
 			origSeen = true;
 			break;
 		case DIR_STRINGZ:
@@ -895,7 +896,7 @@ bool parse(struct program *prog)
 			if ('"' != c) {
 				fprintf(stderr, "Line %3d: No string "
 					"supplied to .STRINGZ.\n",
-				current_line);
+				currentLine);
 				nextLine(asmFile);
 				errors++;
 				continue;
@@ -941,31 +942,31 @@ bool parse(struct program *prog)
 			line[strlen(line)] = '\0';
 			break;
 		case DIR_BLKW:
-			operand_three = nextImmediate(asmFile, false);
+			operandThree = nextImmediate(asmFile, false);
 
-			if (INT_MAX == operand_three) {
+			if (INT_MAX == operandThree) {
 				fprintf(stderr, "Line %3d: Invalid operand "
-					"for .BLKW.\n", current_line);
-			} else if (operand_three < 1) {
+					"for .BLKW.\n", currentLine);
+			} else if (operandThree < 1) {
 				fprintf(stderr, "Line %3d: .BLKW "
 					"requires an argument > 0.\n",
-				current_line);
+				currentLine);
 				nextLine(asmFile);
 				errors++;
 				continue;
-			} else if (operand_three > 150) {
+			} else if (operandThree > 150) {
 				fprintf(stderr, "Line %3d: .BLKW "
 					"requires an argument < 150.\n",
-				current_line);
+				currentLine);
 				nextLine(asmFile);
 				errors++;
 				continue;
 			}
 
-			pc += operand_three - 1;
+			pc += operandThree - 1;
 			if (1 != pass) {
 				instruction = 0;
-				while (operand_three-- > 1) {
+				while (operandThree-- > 1) {
 					insert(instruction);
 				}
 			}
@@ -976,12 +977,12 @@ bool parse(struct program *prog)
 				break;
 			}
 
-			operand_three = nextImmediate(asmFile, false);
+			operandThree = nextImmediate(asmFile, false);
 
-			if (INT_MAX == operand_three) {
+			if (INT_MAX == operandThree) {
 				if (EOF == fscanf(asmFile, "%79s", label)) {
 					fprintf(stderr, "Line %3d: Unexpected "
-						"end of file.\n", current_line);
+						"end of file.\n", currentLine);
 					ungetc(EOF, asmFile);
 					errors++;
 					continue;
@@ -993,14 +994,14 @@ bool parse(struct program *prog)
 				if (NULL == sym) {
 					fprintf(stderr, "Line %3d: Invalid "
 						"literal for base %d.\n",
-						current_line, operand_three);
+						currentLine, operandThree);
 					nextLine(asmFile);
 					errors++;
 					continue;
 				}
 				instruction = sym->address;
 			} else {
-				instruction = (uint16_t) operand_three;
+				instruction = (uint16_t) operandThree;
 			}
 			break;
 		case DIR_END:
@@ -1012,19 +1013,19 @@ bool parse(struct program *prog)
 
 			if (endSeen) {
 				fprintf(stderr, "Line %3d: Extra .END "
-					"directive.\n", current_line);
+					"directive.\n", currentLine);
 				errors++;
 			}
 
 			endSeen = true;
 			break;
 		case OP_BR:
-		case OP_BRN:
-		case OP_BRZ:
-		case OP_BRP:
-		case OP_BRNZ:
-		case OP_BRNP:
-		case OP_BRZP:
+		case OP_BRN:            // FALLTHROUGH
+		case OP_BRZ:            // FALLTHROUGH
+		case OP_BRP:            // FALLTHROUGH
+		case OP_BRNZ:           // FALLTHROUGH
+		case OP_BRNP:           // FALLTHROUGH
+		case OP_BRZP:           // FALLTHROUGH
 			if (1 == pass) {
 				nextLine(asmFile);
 				break;
@@ -1034,7 +1035,7 @@ bool parse(struct program *prog)
 			if (instruction & 7) {
 				fprintf(stderr, "Line %3d: "
 					"Invalid BR instruction.\n",
-					current_line);
+					currentLine);
 				errors++;
 				continue;
 			}
@@ -1042,7 +1043,7 @@ bool parse(struct program *prog)
 			if (EOF == fscanf(asmFile, "%79s", label)) {
 				fprintf(stderr, "Line %3d: Unexpected "
 					"end of file.\n",
-					current_line);
+					currentLine);
 				ungetc(EOF, asmFile);
 				errors++;
 				continue;
@@ -1052,35 +1053,40 @@ bool parse(struct program *prog)
 			sym = findSymbol(label);
 			if (NULL == sym) {
 				fprintf(stderr, "Line %3d: Invalid "
-					"label '%s'.\n", current_line,
+					"label '%s'.\n", currentLine,
 					label);
 				nextLine(asmFile);
 				errors++;
 				continue;
 			}
 
-			operand_three = sym->address - pc + 1;
-			if (operand_three < -256 || operand_three > 255) {
+			operandThree = sym->address - pc + 1;
+			if (operandThree < -256 || operandThree > 255) {
 				fprintf(stderr, "Line %3d: Label is "
-					"too far away.\n", current_line);
+					"too far away.\n", currentLine);
 				nextLine(asmFile);
 				errors++;
 				continue;
 			}
 
-			instruction |= (operand_three & 0x1ff);
+			instruction |= (operandThree & 0x1ff);
 			if (prog->verbosity) {
 				if (prog->verbosity > 2) {
-					printf("Line %3d:  ", current_line);
+					printf("Line %3d:  ", currentLine);
 				}
-				printf("%-5s  R%d  %-30s  (%4d addresses away)",
-					line, operand_one, sym->name, operand_three);
+				printf("%-5s  R%d  %-30s  (%4d address%s away)",
+					line, operandOne, sym->name, operandThree, operandThree > 1 ? "es" : "");
 				puts("");
+                                if ((instruction & 0xFE00) == (listTail->instruction & 0xFE00)) {
+                                        fprintf(stderr, "Line %3d: WARNING: Statement possibly has no effect, "
+						"as last line has same BR condition.\n",
+						currentLine);
+                                }
 			}
 			break;
-		case OP_AND:        // FALLTHORUGH
+		case OP_AND:
 			instruction = 0x4000;
-		case OP_ADD:
+		case OP_ADD:            // FALLTHORUGH
 			instruction += 0x1000;
 
 			if (1 == pass) {
@@ -1088,50 +1094,50 @@ bool parse(struct program *prog)
 				break;
 			}
 
-			operand_one = nextRegister(asmFile, false);
-			if (65535 == operand_one) {
+			operandOne = nextRegister(asmFile, false);
+			if (65535 == operandOne) {
 				fprintf(stderr, "Line %3d: Invalid operand "
-					"provided to %s.\n", current_line, line);
+					"provided to %s.\n", currentLine, line);
 				nextLine(asmFile);
 				errors++;
 				continue;
 			}
 
-			operand_two = nextRegister(asmFile, true);
-			if (65535 == operand_two) {
+			operandTwo = nextRegister(asmFile, true);
+			if (65535 == operandTwo) {
 				fprintf(stderr, "Line %3d: Invalid operand "
-					"provided to %s.\n", current_line, line);
+					"provided to %s.\n", currentLine, line);
 				nextLine(asmFile);
 				errors++;
 				continue;
 			}
 
-			operand_three = nextRegister(asmFile, true);
-			if (65535 == operand_three) {
-				operand_three = nextImmediate(asmFile, true);
-				if (operand_three > 15 || operand_three < -16) {
+			operandThree = nextRegister(asmFile, true);
+			if (65535 == operandThree) {
+				operandThree = nextImmediate(asmFile, true);
+				if (operandThree > 15 || operandThree < -16) {
 					fprintf(stderr, "Line %3d: Invalid "
 						"operand provided to %s.\n",
-						current_line, line);
+						currentLine, line);
 					nextLine(asmFile);
 					errors++;
 					continue;
 				}
-				operand_three &= 0x3f;
+				operandThree &= 0x3f;
 				instruction |= 0x20;
 			}
 
-			instruction = instruction | (uint16_t) (operand_one << 9 |
-								operand_two << 6 | operand_three);
+			instruction = instruction | (uint16_t) (operandOne << 9 |
+								operandTwo << 6 | operandThree);
 			if (prog->verbosity) {
 				if (prog->verbosity > 2) {
-					printf("Line %3d:  ", current_line);
+					printf("Line %3d:  ", currentLine);
 				}
-				printf("%-5s  R%d  R%d  ", line, operand_one, operand_two);
+				printf("%-5s  R%d  R%d  ", line, operandOne, operandTwo);
 				if (instruction & 0x20) {
-					printf("#%d", ((int16_t) ((operand_three & 0x3f) << 11)) >> 11);
+					printf("#%d", ((int16_t) ((operandThree & 0x3f) << 11)) >> 11);
 				} else {
-					printf("R%d", operand_three & 7);
+					printf("R%d", operandThree & 7);
 				}
 				puts("");
 			}
@@ -1144,36 +1150,36 @@ bool parse(struct program *prog)
 				break;
 			}
 
-			operand_one = nextRegister(asmFile, false);
-			if (65535 == operand_one) {
+			operandOne = nextRegister(asmFile, false);
+			if (65535 == operandOne) {
 				fprintf(stderr, "Line %3d: Invalid operand "
-					"provided to NOT.\n", current_line);
+					"provided to NOT.\n", currentLine);
 				nextLine(asmFile);
 				errors++;
 				continue;
 			}
 
-			operand_two = nextRegister(asmFile, true);
-			if (65535 == operand_two) {
+			operandTwo = nextRegister(asmFile, true);
+			if (65535 == operandTwo) {
 				fprintf(stderr, "Line %3d: Invalid operand "
-					"provided to NOT.\n", current_line);
+					"provided to NOT.\n", currentLine);
 				nextLine(asmFile);
 				errors++;
 				continue;
 			}
 
-			instruction |= operand_one << 9 | operand_two << 6;
+			instruction |= operandOne << 9 | operandTwo << 6;
 			if (prog->verbosity) {
 				if (prog->verbosity > 2) {
-					printf("Line %3d:  ", current_line);
+					printf("Line %3d:  ", currentLine);
 				}
-				printf("%-5s  R%d  R%d", line, operand_one, operand_two);
+				printf("%-5s  R%d  R%d", line, operandOne, operandTwo);
 				puts("");
 			}
 			break;
-		case OP_JMP:        // FALLTHORUGH
+		case OP_JMP:
 			instruction = 0x8000;
-		case OP_JSRR:
+		case OP_JSRR:           // FALLTHORUGH
 			instruction += 0x4000;
 
 			if (1 == pass) {
@@ -1181,21 +1187,21 @@ bool parse(struct program *prog)
 				break;
 			}
 
-			operand_one = nextRegister(asmFile, false);
-			if (65535 == operand_one) {
+			operandOne = nextRegister(asmFile, false);
+			if (65535 == operandOne) {
 				fprintf(stderr, "Line %3d: Invalid operand "
-					"provided to %s.\n", current_line, line);
+					"provided to %s.\n", currentLine, line);
 				nextLine(asmFile);
 				errors++;
 				continue;
 			}
 
-			instruction |= operand_one << 6;
+			instruction |= operandOne << 6;
 			if (prog->verbosity) {
 				if (prog->verbosity > 2) {
-					printf("Line %3d:  ", current_line);
+					printf("Line %3d:  ", currentLine);
 				}
-				printf("%-5s  R%d", line, operand_one);
+				printf("%-5s  R%d", line, operandOne);
 				puts("");
 			}
 			break;
@@ -1209,7 +1215,7 @@ bool parse(struct program *prog)
 
 			if (EOF == fscanf(asmFile, "%79s", label)) {
 				fprintf(stderr, "Line %3d: Unexpected "
-					"end of file.\n", current_line);
+					"end of file.\n", currentLine);
 				ungetc(EOF, asmFile);
 				errors++;
 				continue;
@@ -1219,40 +1225,41 @@ bool parse(struct program *prog)
 			sym = findSymbol(label);
 			if (NULL == sym) {
 				fprintf(stderr, "Line %3d: Invalid "
-					"label '%s'.\n", current_line, label);
+					"label '%s'.\n", currentLine, label);
 				nextLine(asmFile);
 				errors++;
 				continue;
 			}
 
-			operand_three = sym->address - pc + 1;
-			if (operand_three < -1024 || operand_three > 1023) {
+			operandThree = sym->address - pc + 1;
+			if (operandThree < -1024 || operandThree > 1023) {
 				fprintf(stderr, "Line %3d: Label is "
-					"too far away.\n", current_line);
+					"too far away.\n", currentLine);
 				nextLine(asmFile);
 				errors++;
 				continue;
 			}
 
-			instruction |= (operand_three & 0x7ff);
+			instruction |= (operandThree & 0x7ff);
 			if (prog->verbosity) {
 				if (prog->verbosity > 2) {
-					printf("Line %3d:  ", current_line);
+					printf("Line %3d:  ", currentLine);
 				}
-				printf("%-5s  R%d  %-30s  (%4d addresses away)",
-					line, operand_one, sym->name, operand_three);
+				printf("%-5s  R%d  %-30s  (%4d address%s away)",
+                                        line, operandOne, sym->name, operandThree,
+					operandThree > 1 ? "es" : "");
 				puts("");
 			}
 			break;
-		case OP_LEA:        // FALLTHORUGH
+		case OP_LEA:
 			instruction = 0x3000;
-		case OP_STI:        // FALLTHROUGH
+		case OP_STI:            // FALLTHROUGH
 			instruction += 0x1000;
-		case OP_LDI:        // FALLTHORUGH
+		case OP_LDI:            // FALLTHORUGH
 			instruction += 0x7000;
-		case OP_ST:        // FALLTHORUGH
+		case OP_ST:             // FALLTHORUGH
 			instruction += 0x1000;
-		case OP_LD:
+		case OP_LD:             // FALLTHORUGH
 			instruction += 0x2000;
 
 			if (1 == pass) {
@@ -1260,10 +1267,10 @@ bool parse(struct program *prog)
 				break;
 			}
 
-			operand_one = nextRegister(asmFile, false);
-			if (65535 == operand_one) {
+			operandOne = nextRegister(asmFile, false);
+			if (65535 == operandOne) {
 				fprintf(stderr, "Line %3d: Invalid operand "
-					"for %s.\n", current_line, line);
+					"for %s.\n", currentLine, line);
 				nextLine(asmFile);
 				errors++;
 				continue;
@@ -1280,7 +1287,7 @@ bool parse(struct program *prog)
 
 			if (EOF == fscanf(asmFile, "%79s", label)) {
 				fprintf(stderr, "Line %3d: Unexpected "
-					"end of file.\n", current_line);
+					"end of file.\n", currentLine);
 				ungetc(EOF, asmFile);
 				errors++;
 				continue;
@@ -1290,36 +1297,37 @@ bool parse(struct program *prog)
 			sym = findSymbol(label);
 			if (NULL == sym) {
 				fprintf(stderr, "Line %3d: Invalid "
-					"label '%s'.\n", current_line, label);
+					"label '%s'.\n", currentLine, label);
 				nextLine(asmFile);
 				errors++;
 				continue;
 			}
 
-			operand_three = sym->address - pc + 1;
-			if (operand_three < -256 || operand_three > 255) {
+			operandThree = sym->address - pc + 1;
+			if (operandThree < -256 || operandThree > 255) {
 				fprintf(stderr, "Line %3d: Label is "
 					"too far away ( %s  %d  %d   %s ).\n",
-					current_line, line, operand_one, operand_three,
+					currentLine, line, operandOne, operandThree,
 					sym->name);
 				nextLine(asmFile);
 				errors++;
 				continue;
 			}
 
-			instruction |= operand_one << 9 | (operand_three & 0x1ff);
+			instruction |= operandOne << 9 | (operandThree & 0x1ff);
 			if (prog->verbosity) {
 				if (prog->verbosity > 2) {
-					printf("Line %3d:  ", current_line);
+					printf("Line %3d:  ", currentLine);
 				}
-				printf("%-5s  R%d  %-30s  (%4d addresses away)",
-					line, operand_one, sym->name, operand_three);
+				printf("%-5s  R%d  %-30s  (%4d address%s away)",
+					line, operandOne, sym->name, operandThree,
+					operandThree > 1 ? "es" : "");
 				puts("");
 			}
 			break;
-		case OP_STR:        // FALLTHROUGH
+		case OP_STR:
 			instruction = 0x1000;
-		case OP_LDR:
+		case OP_LDR:            // FALLTHROUGH
 			instruction += 0x6000;
 
 			if (1 == pass) {
@@ -1327,47 +1335,47 @@ bool parse(struct program *prog)
 				break;
 			}
 
-			operand_one = nextRegister(asmFile, false);
-			if (65535 == operand_one) {
+			operandOne = nextRegister(asmFile, false);
+			if (65535 == operandOne) {
 				fprintf(stderr, "Line %3d: Invalid operand "
-					"provided to %s.\n", current_line, line);
+					"provided to %s.\n", currentLine, line);
 				nextLine(asmFile);
 				errors++;
 				continue;
 			}
 
-			operand_two = nextRegister(asmFile, true);
-			if (65535 == operand_two) {
+			operandTwo = nextRegister(asmFile, true);
+			if (65535 == operandTwo) {
 				fprintf(stderr, "Line %3d: Invalid operand "
-					"provided to %s.\n", current_line, line);
+					"provided to %s.\n", currentLine, line);
 				nextLine(asmFile);
 				errors++;
 				continue;
 			}
 
-			operand_three = nextImmediate(asmFile, true);
-			if (INT_MAX == operand_three) {
+			operandThree = nextImmediate(asmFile, true);
+			if (INT_MAX == operandThree) {
 				fprintf(stderr, "Line %3d: Invalid operand "
-					"provided to %s.\n", current_line, line);
+					"provided to %s.\n", currentLine, line);
 				nextLine(asmFile);
 				errors++;
 				continue;
-			} else if (operand_three < -32 || operand_three > 31) {
+			} else if (operandThree < -32 || operandThree > 31) {
 				fprintf(stderr, "Line %3d: Third operand for %s "
 					"needs to be >= -32 and <= 31.\n",
-					current_line, line);
+					currentLine, line);
 				nextLine(asmFile);
 				errors++;
 				continue;
 			}
 
-			instruction |= operand_one << 9 | operand_two << 6 | (operand_three & 0x3f);
+			instruction |= operandOne << 9 | operandTwo << 6 | (operandThree & 0x3f);
 			if (prog->verbosity) {
 				if (prog->verbosity > 2) {
-					printf("Line %3d:  ", current_line);
+					printf("Line %3d:  ", currentLine);
 				}
-				printf("%-5s  R%d  R%d #%d", line, operand_one,
-					operand_two, operand_three);
+				printf("%-5s  R%d  R%d  #%d", line, operandOne,
+					operandTwo, operandThree);
 				puts("");
 			}
 			break;
@@ -1380,7 +1388,7 @@ bool parse(struct program *prog)
 			instruction = 0xc1c0;
 			if (prog->verbosity) {
 				if (prog->verbosity > 2) {
-					printf("Line %3d:  ", current_line);
+					printf("Line %3d:  ", currentLine);
 				}
 				printf("%-4s", line);
 				puts("");
@@ -1394,7 +1402,7 @@ bool parse(struct program *prog)
 
 			if (prog->verbosity) {
 				if (prog->verbosity > 2) {
-					printf("Line %3d:  ", current_line);
+					printf("Line %3d:  ", currentLine);
 				}
 				printf("%-5s", line);
 				puts("");
@@ -1406,56 +1414,56 @@ bool parse(struct program *prog)
 				break;
 			}
 
-			operand_three = nextImmediate(asmFile, false);
-			if (INT_MAX == operand_three) {
+			operandThree = nextImmediate(asmFile, false);
+			if (INT_MAX == operandThree) {
 				fprintf(stderr, "Line %3d: Invalid operand "
-					"for TRAP.\n", current_line);
+					"for TRAP.\n", currentLine);
 				nextLine(asmFile);
 				errors++;
 				continue;
-			} else if (operand_three < 0x20 || operand_three > 0x25) {
+			} else if (operandThree < 0x20 || operandThree > 0x25) {
 				fprintf(stderr, "Line %3d: Invalid "
-					"TRAP Routine.\n", current_line);
+					"TRAP Routine.\n", currentLine);
 				nextLine(asmFile);
 				errors++;
 				continue;
 			}
 
-			instruction = (uint16_t) (0xf000 + (uint16_t) operand_three);
+			instruction = (uint16_t) (0xf000 + (uint16_t) operandThree);
 			if (prog->verbosity) {
 				if (prog->verbosity > 2) {
-					printf("Line %3d:  ", current_line);
+					printf("Line %3d:  ", currentLine);
 				}
-				printf("%-5s 0x%x", line, operand_three);
+				printf("%-5s 0x%x", line, operandThree);
 				puts("");
 			}
 			break;
 		case OP_HALT:
 			instruction += (uint16_t) 0x0001;
-		case OP_PUTSP:
+		case OP_PUTSP:          // FALLTHROUGH
 			instruction += (uint16_t) 0x0001;
-		case OP_IN:
+		case OP_IN:             // FALLTHROUGH
 			instruction += (uint16_t) 0x0001;
-		case OP_PUTS:
+		case OP_PUTS:           // FALLTHROUGH
 			instruction += (uint16_t) 0x0001;
-		case OP_PUTC:
-		case OP_OUT:
+		case OP_PUTC:           // FALLTHROUGH
+		case OP_OUT:            // FALLTHROUGH
 			instruction += (uint16_t) 0x0001;
-		case OP_GETC:
+		case OP_GETC:           // FALLTHROUGH
 			instruction += (uint16_t) 0xF020;
 
 			if (1 == pass) {
 				nextLine(asmFile);
 			} else if (prog->verbosity) {
 				if (prog->verbosity > 2) {
-					printf("Line %3d:  ", current_line);
+					printf("Line %3d:  ", currentLine);
 				}
 				printf("%-62s", line);
 				puts("");
 			}
 			break;
 		case OP_BRUNK:
-		case OP_UNK:
+		case OP_UNK:            // FALLTHROUGH
 		default:
 			pc--;
 			if (1 == pass) {
@@ -1471,14 +1479,14 @@ bool parse(struct program *prog)
 				if (addSymbol(line, pc)) {
 					fprintf(stderr, "Line %3d: "
 						"Multiple definitions of label "
-						"'%s'\n", current_line, line);
+						"'%s'\n", currentLine, line);
 					nextLine(asmFile);
 					errors++;
 				}
 
 				if (prog->verbosity) {
 					if (prog->verbosity > 2) {
-						printf("Line %3d: ", current_line);
+						printf("Line %3d: ", currentLine);
 					}
 					printf("Found label '%s'", line);
 					if (prog->verbosity > 1) {
@@ -1495,20 +1503,28 @@ bool parse(struct program *prog)
 				if (!endOfLine(asmFile)) {
 					fprintf(stderr, "Line %3d: Too many "
 						"operands provided for %s.\n",
-						current_line, line);
+						currentLine, line);
 					nextLine(asmFile);
 					errors++;
 				} else if (!errors && origSeen && !endSeen) {
 					insert(instruction);
 				}
 			}
-		}
+		} else {
+                        if (endSeen && uppercmp(".END", line)) {
+                                fprintf(stderr, "Line %3d: Found %s after "
+                                        ".END directive.\n",
+                                        currentLine, line);
+                                nextLine(asmFile);
+                                errors++;
+                        }
+                }
 	}
 
-	error_count += errors;
+	errorCount += errors;
 	fclose(asmFile);
 
-	if (!error_count) {
+	if (!errorCount) {
 		FILE *symFile = fopen(prog->symbolfile, "w+");
 		FILE *hexFile = fopen(prog->hexoutfile, "w+");
 		FILE *binFile = fopen(prog->binoutfile, "w+");
@@ -1546,6 +1562,6 @@ bool parse(struct program *prog)
 
 	freeList(&listHead);
 
-	return !error_count;
+	return !errorCount;
 }
 

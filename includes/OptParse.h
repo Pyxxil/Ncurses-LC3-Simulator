@@ -16,13 +16,13 @@ typedef enum ARGUMENT_TYPES {
 } ARGUMENT_TYPES;
 
 typedef struct options {
-	char const *long_option;
-	unsigned char short_option;
+	char const *longOption;
+	unsigned char shortOption;
 	OPTION_TYPE option;
 } options;
 
-extern options returned_option;
+extern options returnedOption;
 
-int parse_options(options *__options, int argument_count, char **argument_values);
+int parseOptions(options *__options, int argumentCount, char **argumentValues);
 
 #endif // OPTPARSE_H
