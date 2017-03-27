@@ -234,7 +234,7 @@ NUMBERS	.FILL #10000
 	.FILL #0	; So we can tell when we've reached the last digit
 
 ; Save the value of some registers
-SAVER7	.FILL	#0
+SAVER7	.FILL	b0
 SAVER4	.FILL	#0
 SAVER3	.FILL	#0
 

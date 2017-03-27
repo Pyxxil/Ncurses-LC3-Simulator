@@ -1,53 +1,51 @@
-cmake_minimum_required(VERSION 3.6)
+CMAKE_MINIMUM_REQUIRED ( VERSION 3.6 )
 
-project (LC3Simulator)
+PROJECT ( LC3Simulator )
+SET ( PROJECT LC3Simulator )
 
-set (LC3Simulator_VERSION_MAJOR 0)
-set (LC3Simulator_VERSION_MINOR 1)
+SET ( CMAKE_C_STANDARD 11 )
 
-set (SOURCE_FILES
-	source/Error.c
-	source/LC3.c
-	source/Logging.c
-	source/Machine.c
-	source/Main.c
-	source/Memory.c
-	source/OptParse.c
-	source/Parser.c
-)
+SET ( LC3Simulator_VERSION_MAJOR 0 )
+SET ( LC3Simulator_VERSION_MINOR 1 )
 
-include_directories (${PROJECT_SOURCE_DIR}/includes)
+SET ( SOURCE_FILES
+      source/Error.c
+      source/LC3.c
+      source/Logging.c
+      source/Machine.c
+      source/Main.c
+      source/Memory.c
+      source/OptParse.c
+      source/Parser.c
+      )
 
-add_executable (LC3Simulator ${SOURCE_FILES})
+ADD_EXECUTABLE ( ${PROJECT} ${SOURCE_FILES} )
 
-find_package (Curses REQUIRED)
-if (CURSES_FOUND)
-    include_directories (${CURSES_INCLUDE_DIR})
-    target_link_libraries (LC3Simulator ${CURSES_LIBRARIES})
-else ()
-	message (SEND_ERROR "This program requires the curses library.")
-endif (CURSES_FOUND)
+INCLUDE_DIRECTORIES ( ${PROJECT_SOURCE_DIR}/includes )
 
-option (DEBUG "Build the debug version" OFF)
+FIND_PACKAGE ( Curses REQUIRED )
+IF ( CURSES_FOUND )
+    TARGET_LINK_LIBRARIES ( ${PROJECT} ${CURSES_LIBRARIES} )
+ELSE ()
+    MESSAGE ( SEND_ERROR "This program requires the curses library." )
+ENDIF ()
 
-if (DEBUG)
-	target_compile_options (LC3Simulator PRIVATE
-		-O0 -pg -std=c11 -Wall -Werror -Wpedantic -Wextra -Wcast-align
-		-Wfloat-equal -Wmissing-braces -Wmissing-declarations
-		-Wmissing-field-initializers -Wmissing-prototypes
-		-Woverlength-strings -Wparentheses -Wreturn-type -Wshadow
-		-Wsign-compare -Wsign-conversion -Wswitch -Wswitch-enum
-		-Wuninitialized -Wunknown-pragmas -Wunreachable-code
-		-Wunused-function -Wunused-label -Wunused-parameter
-		-Wunused-value -Wunused-variable
-	)
+IF ( "${CMAKE_BUILD_TYPE}" STREQUAL "Debug" )
+    SET ( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O0 -pg -Wall -Werror -Wpedantic -Wextra" )
+    SET ( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wcast-align -Wfloat-equal -Wmissing-braces" )
+    SET ( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wmissing-declarations -Wmissing-field-initializers" )
+    SET ( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wmissing-prototypes -Woverlength-strings" )
+    SET ( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wparentheses -Wreturn-type -Wshadow -Wsign-compare" )
+    SET ( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wsign-conversion -Wswitch -Wswitch-enum" )
+    SET ( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wuninitialized -Wunknown-pragmas -Wunreachable-code" )
+    SET ( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wunused-function -Wunused-label -Wunused-parameter" )
+    SET ( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wunused-value -Wunused-variable" )
 
-	target_link_libraries (LC3Simulator -pg)
+    SET ( CMAKE_VERBOSE_MAKEFILE ON )
+ELSE ()
+    SET ( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O2" )
+ENDIF ()
 
-	set (CMAKE_VERBOSE_MAKEFILE ON)
-else ()
-	target_compile_options (LC3Simulator PRIVATE -O2 -std=c11)
-endif (DEBUG)
+ADD_DEFINITIONS ( -DOS_PATH=${PROJECT_SOURCE_DIR} )
 
-add_definitions (-DOS_PATH=${PROJECT_SOURCE_DIR})
 

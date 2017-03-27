@@ -29,13 +29,21 @@
 
 .ORIG x3000                         ; Origin Memory
 
-CLEAR_REGISTERS:                    ; Clear every register prior to operation of the program.
+INIT_REGISTERS:                     ; Clear every register prior to operation of the program.
     AND R0, R0, #0                  ; Just to be safe.
     AND R1, R1, #0
-    AND R2, R2, #0
+
+    ; For now, R2 will be used for converting the ASCII input to it's decimal
+    ; value, i.e. '1' to 1
+    LD R2, ZERO
+    NOT R2, R2
+    ADD R2, R2, #1
+
     AND R3, R3, #0
     AND R4, R4, #0
-    AND R5, R5, #0
+
+    LEA R5, INPUT_STACK             ; Make R5 Point to the top of the InputStack
+
     AND R6, R6, #0
     AND R7, R7, #0
 
@@ -47,7 +55,6 @@ CREATE_NULL:
 
 
 CREATE_STACK:
-    LEA R5, INPUT_STACK             ; Make R5 Point to the top of the InputStack
     ADD R3, R3, #10                 ; Create an illegal stack value of 10
     STR R3, R5, #0                  ; Store the illegal value so we know where the top of the stack is
     ADD R5, R5, #1                  ; Increment by one so we know when to stop when creating number
@@ -59,10 +66,7 @@ GET_R1:
     AND R3, R3, #0                  ; Clear R3
     ADD R3, R0, R4                  ; Check to see if null character was selected
     BRz PROCESS_R1                  ; Go and process the stack
-    ADD R0, R0, #-15                ; Convert from ASCII to "decimal"
-    ADD R0, R0, #-15                ; Convert from ASCII to "decimal"
-    ADD R0, R0, #-15                ; Convert from ASCII to "decimal"
-    ADD R0, R0, #-3                 ; Convert from ASCII to "decimal"
+    ADD R0, R0, R2
     STR R0, R5, #0                  ; Put digit onto the stack
     ADD R5, R5, #1                  ; Increment Stack Counter
     BR GET_R1                       ; Loop back
@@ -104,7 +108,6 @@ PROCESS_R1:
     ADD R0, R3, #-10                ; Check to see if top of stack is reached
     BRz GET_R2                      ; Branch to get R2 if top of stack was reached
     AND R0, R0, #0                  ; Clear R0
-    ADD R0, R3, #0                  ; Store Value in R0
     ADD R0, R3, #0                  ; Check to see if a minus sign has been read,
                                     ; due to conversion a minus sign will be -3,
                                     ; which is an illegal value
@@ -118,8 +121,6 @@ PROCESS_R1:
     ADD R5, R5, #-1                 ; Deincrement stack counter
     LDR R3, R5, #0                  ; Load the value
     AND R0, R0, #0                  ; Clear R0
-    AND R0, R0, #0                  ; Clear R0
-    ADD R0, R3, #0                  ; Store Value in R0
     ADD R0, R3, #0                  ; Check to see if a minus sign has been read,
                                     ; due to conversion a minus sign will be -3,
                                     ; which is an illegal value
@@ -145,16 +146,14 @@ GET_R2_LOOP:
     AND R3, R3, #0                  ; Clear R3
     ADD R3, R0, R4                  ; Check to see if null character was selected
     BRz PROCESS_R2                  ; Go and process the stack
-    ADD R0, R0, #-15                ; Convert from ASCII to "decimal"
-    ADD R0, R0, #-15                ; Convert from ASCII to "decimal"
-    ADD R0, R0, #-15                ; Convert from ASCII to "decimal"
-    ADD R0, R0, #-3                 ; Convert from ASCII to "decimal"
+    ADD R0, R0, R2
     STR R0, R5, #0                  ; Put digit onto the stack
     ADD R5, R5, #1                  ; Increment Stack Counter
     BR GET_R2_LOOP                  ; Loop back
 
 
 PROCESS_R2:
+    AND R2, R2, #0
     ADD R5, R5, #-1                 ; Deincrement stack counter as it one too much ahead
     LDR R3, R5, #0                  ; Load the value
     AND R0, R0, #0                  ; Clear R0
@@ -217,6 +216,7 @@ MAKE_R2_NEGATIVE:
 
 
 CHECKING_LOOP:
+    LEA R0, NEGATIVE_ONE
     ADD R3, R1, #0                  ; Check if R1 is negative or positive
     BRn R1_NEGATIVE                 ; If negative, then branch to R1_negative Branch
     AND R3, R3, #0                  ; Clear value in R3
@@ -244,7 +244,6 @@ R1_POSITIVE_R2_NEGATIVE:
 
 
 R1_R2_SAME_SIGN:
-    LEA R0, NEGATIVE_ONE
     NOT R2, R2                      ; 2's Compliment Negation of R2
     ADD R2, R2, #1                  ; ^^^^^^^
     AND R3, R3, #0                  ; Clear value in R3

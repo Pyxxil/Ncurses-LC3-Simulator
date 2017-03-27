@@ -18,7 +18,7 @@
 // This will have to do for now... It allows the use of '//' as a comment.
 static char lastSkippedChar = 0;
 
-static unsigned const MAX_LABEL_LENGTH = 80;
+#define MAX_LABEL_LENGTH 80
 
 /*
  * Copy the contents of one string to another, allocating enough memory to the
@@ -576,7 +576,7 @@ static int nextImmediate(FILE *file, bool allowedComma)
 {
 	int c;
 	int immediate;
-	int repr;
+	int base;
 	char line[MAX_LABEL_LENGTH];
 	char *end = NULL;
 
@@ -591,10 +591,10 @@ static int nextImmediate(FILE *file, bool allowedComma)
 	}
 
 	if ('-' == c) {
-		repr = 10;
+		base = 10;
 		line[0] = '-';
 	} else if ('#' == c) {
-		repr = 10;
+		base = 10;
 		c = fgetc(file);
 		if ('-' == c) {
 			line[0] = '-';
@@ -603,22 +603,28 @@ static int nextImmediate(FILE *file, bool allowedComma)
 			ungetc(c, file);
 		}
 	} else if ('X' == toupper(c)) {
-		repr = 16;
+		base = 16;
 		line[0] = '0';
 	} else if (isdigit(c)) {
-		if ('0' == c) {
-			c = fgetc(file);
-			if ('X' == toupper(c)) {
-				repr = 16;
-				line[0] = '0';
-			} else {
-				ungetc(c, file);
-				repr = 10;
-			}
-		} else {
-			repr = 10;
-			line[0] = (char) c;
-		}
+                if ('0' == c) {
+                        c = fgetc(file);
+                        if ('X' == toupper(c)) {
+                                base = 16;
+                                line[0] = '0';
+                        } else if ('B' == toupper(c)) {
+                                base = 2;
+                                line[0] = '0';
+                        } else {
+                                ungetc(c, file);
+                                base = 10;
+                        }
+                } else {
+                        base = 10;
+                        line[0] = (char) c;
+                }
+        } else if ('B' == toupper(c)) {
+                base = 2;
+                line[0] = '0';
 	} else {
 		ungetc(c, file);
 		return INT_MAX;
@@ -631,7 +637,7 @@ static int nextImmediate(FILE *file, bool allowedComma)
 	}
 	ungetc(c, file);
 
-	immediate = (int) strtol(line, &end, repr);
+	immediate = (int) strtol(line, &end, base);
 
 	if (*end) {
 		return INT_MAX;

@@ -150,6 +150,7 @@ static char *instruction(uint16_t instr, uint16_t address, char *buff,
                 strcat(buff, ", R");
                 buff[9] = (char) (((instr >> 6) & 0x7) + 0x30);
                 strcat(buff, ", ");
+
                 if (instr & 0x20) {
                         strcat(buff, "#");
                         snprintf(immediate, 5, "%hd",
@@ -255,6 +256,7 @@ static char *instruction(uint16_t instr, uint16_t address, char *buff,
                         symbol = findSymbolByAddress((uint16_t) address +
                                                      (uint16_t) (instr & 0x00FF));
                 }
+
                 if (NULL != symbol) {
                         strcat(buff, symbol->name);
                 } else {
@@ -373,8 +375,7 @@ static void redraw(WINDOW *window, struct program *program)
                         winPrint(window, program, (size_t) selectedAddress +
                                                   (size_t) i, i + 1, 1);
 
-                        if (program->simulator.memory[selectedAddress + i]
-                                .isBreakpoint) {
+                        if (program->simulator.memory[selectedAddress + i].isBreakpoint) {
                                 wattroff(window, BREAKPOINT_ATTRIBUTES);
                         }
                 }
@@ -392,12 +393,12 @@ static void redraw(WINDOW *window, struct program *program)
  */
 
 void generateContext(WINDOW *window, struct program *program, int _selected,
-                     uint16_t selectedAddress)
+                     uint16_t _selectedAddress)
 {
         int i = 0;
 
         selected = _selected;
-        selectedAddress = selectedAddress;
+        selectedAddress = _selectedAddress;
 
         selected =
                 ((selectedAddress + (outputHeight - 1 - selected)) > 0xfffe) ?
@@ -418,7 +419,7 @@ void moveContext(WINDOW *window, struct program *program, enum DIRECTION directi
 {
         bool _redraw = false;
         int prev = selected;
-        uint16_t previous_address = selectedAddress;
+        uint16_t previousAddress = selectedAddress;
 
         switch (direction) {
         case UP:
@@ -438,13 +439,13 @@ void moveContext(WINDOW *window, struct program *program, enum DIRECTION directi
         winPrint(window, program, selectedAddress, selected + 1, 1);
         wattroff(window, SELECTED_ATTRIBUTES);
 
-        if (program->simulator.memory[previous_address].isBreakpoint) {
+        if (program->simulator.memory[previousAddress].isBreakpoint) {
                 wattron(window, BREAKPOINT_ATTRIBUTES);
         }
 
-        winPrint(window, program, previous_address, prev + 1, 1);
+        winPrint(window, program, previousAddress, prev + 1, 1);
 
-        if (program->simulator.memory[previous_address].isBreakpoint) {
+        if (program->simulator.memory[previousAddress].isBreakpoint) {
                 wattroff(window, BREAKPOINT_ATTRIBUTES);
         }
 
