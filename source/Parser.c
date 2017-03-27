@@ -30,6 +30,7 @@
 
 #define ERROR(str, ...) fprintf(stderr, "ERROR: " str ".\n", __VA_ARGS__)
 #define WARNING(str, ...) fprintf(stderr, "WARNING: " str ".\n", __VA_ARGS__)
+#define NOTE(str, ...) fprintf(stderr, "NOTE: " str ".\n", __VA_ARGS__)
 
 // This will have to do for now... It allows the use of '//' as a comment.
 static char lastSkippedChar = 0;
@@ -63,8 +64,9 @@ static void skipWhitespace(FILE *file)
 {
 	int c = 0;
 	while (EOF != (c = fgetc(file)) && isspace(c)) {
-		if ('\n' == c)
-			break;
+		if ('\n' == c) {
+                        break;
+                }
 	}
 
 	ungetc(c, file);
@@ -205,7 +207,7 @@ struct symbol *findSymbolByAddress(uint16_t address)
 	return NULL;
 }
 
-static void __addSymbol(char const *const name, uint16_t address)
+static void __addSymbol(char const *const name, uint16_t address, int line)
 {
 	struct symbol *symbol = malloc(sizeof(struct symbol));
 	struct symbolTable *table;
@@ -216,14 +218,16 @@ static void __addSymbol(char const *const name, uint16_t address)
 	}
 
 	table = malloc(sizeof(struct symbolTable));
-	strmcpy(&symbol->name, name);
-	symbol->address = address;
-	symbol->fromOS = false;
 
 	if (NULL == table) {
 		perror("LC3-Simulator");
 		exit(EXIT_FAILURE);
 	}
+
+        strmcpy(&symbol->name, name);
+        symbol->address = address;
+        symbol->fromOS = false;
+        symbol->line = line;
 
 	table->sym = symbol;
 	table->next = NULL;
@@ -241,12 +245,13 @@ static void __addSymbol(char const *const name, uint16_t address)
  * Add a Symbol by name and address into the Symbol Table.
  */
 
-static int addSymbol(char const *const name, uint16_t address)
+static int addSymbol(char const *const name, uint16_t address, int line)
 {
-	if (NULL != findSymbol(name))
-		return 1;
+	if (NULL != findSymbol(name)) {
+                return 1;
+        }
 
-	__addSymbol(name, address);
+        __addSymbol(name, address, line);
 	return 0;
 }
 
@@ -266,7 +271,7 @@ static void populateSymbols(char *fileName)
 	ungetc(c, file);
 
 	while (EOF != fscanf(file, "%s %s %hx", beginning, label, &address)) {
-		__addSymbol(label, address);
+                __addSymbol(label, address, 0);
 		memset(label, 0, MAX_LABEL_LENGTH);
 	}
 
@@ -1507,9 +1512,10 @@ bool parse(struct program *prog)
                                         // TODO: printed out to help the user find the troublesome code.
                                         WARNING("Line %3d: '%s' shares a memory address (%#04x) with '%s'",
                                                 currentLine, line, pc, foundSymbol->name);
+                                        NOTE("Previous label was declared on line %d", foundSymbol->line);
                                 }
 
-				if (addSymbol(line, pc)) {
+				if (addSymbol(line, pc, currentLine)) {
 					ERROR("Line %3d: Multiple definitions of label '%s'",
                                               currentLine, line);
 					nextLine(asmFile);

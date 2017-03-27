@@ -38,6 +38,7 @@ struct symbol {
 	char *name;
 	uint16_t address;
 	bool fromOS;
+	int line;
 };
 
 struct symbolTable {
