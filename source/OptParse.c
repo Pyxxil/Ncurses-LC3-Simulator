@@ -52,7 +52,7 @@ static OPT_TYPE optionType(char const *option)
  *   a) Not preceded by a '-', or
  *   b) Preceded by a '-', but the first character following it is a digit.
  */
-static inline bool is_valid_argument(char **argumentValues)
+static inline bool isValidArgument(char **argumentValues)
 {
         return (internalArgCount - internalArgOffset) > internalArgIndex &&
                (isdigit(argumentValues[internalArgIndex + internalArgOffset][1]) ||
@@ -62,7 +62,7 @@ static inline bool is_valid_argument(char **argumentValues)
 static void grabArg(char **from, options *option)
 {
         bool valid = false;
-        if ((matchedWithEquals && equals + 1) || (valid = is_valid_argument(from))) {
+        if ((matchedWithEquals && equals + 1) || (valid = isValidArgument(from))) {
                 returnedOption = (options) {
                         .longOption = valid ? from[internalArgIndex + internalArgOffset] : equals + 1,
                         .shortOption = option->shortOption,

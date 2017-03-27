@@ -24,7 +24,7 @@
 ; R6 -- Used to multiply by ten		| R6 --	The current digit	| R6 -- Temporary Value
 ; R7 -- Return address			| R7 --	Return address		| R7 -- Return address
 
-.ORIG x3000
+.ORIG 0x3000
 
 ; Prompt for input, also the entry for the program
 OUT_PROMPT:
@@ -239,3 +239,4 @@ SAVER4	.FILL	#0
 SAVER3	.FILL	#0
 
 .END
+

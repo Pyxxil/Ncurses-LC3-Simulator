@@ -11,9 +11,25 @@
 #error "No Path has been supplied for the Operating System."
 #endif
 
+// TODO:
+//      - Add line numbers to symbols
+//      - Add a NOTE macro that shows relevant information similar to clang/gcc
+//              - E.g. "NOTE: Label with same address on line 32"
+//      - For OptParse.c:
+//              - Allow the user to toggle warnings with a flag (maybe --no-warnings)
+//      - For Machine.c:
+//              - If the symbol file can't be found, then show the user a warning,
+//                but carry on execution.
+//                      - Tell them the file we were searching for, maybe prompt for
+//                        correct file?
+//
+
 #define STR(x) #x
 #define OSPATH(path) STR(path)
 #define OS_SYM_FILE OSPATH(OS_PATH) "/LC3_OS.sym"
+
+#define ERROR(str, ...) fprintf(stderr, "ERROR: " str ".\n", __VA_ARGS__)
+#define WARNING(str, ...) fprintf(stderr, "WARNING: " str ".\n", __VA_ARGS__)
 
 // This will have to do for now... It allows the use of '//' as a comment.
 static char lastSkippedChar = 0;
@@ -871,14 +887,12 @@ bool parse(struct program *prog)
 			}
 
 			if (origSeen) {
-				fprintf(stderr, "Line %3d: Extra .ORIG "
-					"directive.\n", currentLine);
+                                ERROR("Line %3d: Extra .ORIG directive", currentLine);
 				nextLine(asmFile);
 				errors++;
 				continue;
 			} else if (endSeen) {
-				fprintf(stderr, "Line %3d: .END seen "
-					"before .ORIG.\n", currentLine);
+				ERROR("Line %3d: .END seen before .ORIG", currentLine);
 				nextLine(asmFile);
 				errors++;
 				continue;
@@ -886,12 +900,14 @@ bool parse(struct program *prog)
 
 			operandThree = nextImmediate(asmFile, false);
 			if (operandThree > 0xffff || operandThree < 0) {
-				fprintf(stderr, "Line %3d: Invalid operand "
-					"for .ORIG.\n", currentLine);
+				ERROR("Line %3d: Invalid operand for .ORIG", currentLine);
 				nextLine(asmFile);
 				errors++;
 				continue;
-			}
+			} else if (operandThree < 0x3000) {
+                                WARNING("Line %3d: .ORIG memory address is in OS memory",
+                                        currentLine);
+                        }
 
 			pc = realPc = (uint16_t) operandThree;
 			origSeen = true;
@@ -900,9 +916,8 @@ bool parse(struct program *prog)
 			c = fgetc(asmFile);
 
 			if ('"' != c) {
-				fprintf(stderr, "Line %3d: No string "
-					"supplied to .STRINGZ.\n",
-				currentLine);
+				ERROR("Line %3d: No string supplied to .STRINGZ",
+                                      currentLine);
 				nextLine(asmFile);
 				errors++;
 				continue;
@@ -951,19 +966,17 @@ bool parse(struct program *prog)
 			operandThree = nextImmediate(asmFile, false);
 
 			if (INT_MAX == operandThree) {
-				fprintf(stderr, "Line %3d: Invalid operand "
-					"for .BLKW.\n", currentLine);
+				ERROR("Line %3d: Invalid operand for .BLKW",
+                                      currentLine);
 			} else if (operandThree < 1) {
-				fprintf(stderr, "Line %3d: .BLKW "
-					"requires an argument > 0.\n",
-				currentLine);
+				ERROR("Line %3d: .BLKW requires an argument > 0",
+                                      currentLine);
 				nextLine(asmFile);
 				errors++;
 				continue;
 			} else if (operandThree > 150) {
-				fprintf(stderr, "Line %3d: .BLKW "
-					"requires an argument < 150.\n",
-				currentLine);
+				ERROR("Line %3d: .BLKW requires an argument < 150",
+                                      currentLine);
 				nextLine(asmFile);
 				errors++;
 				continue;
@@ -987,8 +1000,7 @@ bool parse(struct program *prog)
 
 			if (INT_MAX == operandThree) {
 				if (EOF == fscanf(asmFile, "%79s", label)) {
-					fprintf(stderr, "Line %3d: Unexpected "
-						"end of file.\n", currentLine);
+					ERROR("Line %3d: Unexpected end of file", currentLine);
 					ungetc(EOF, asmFile);
 					errors++;
 					continue;
@@ -998,9 +1010,8 @@ bool parse(struct program *prog)
 				sym = findSymbol(label);
 
 				if (NULL == sym) {
-					fprintf(stderr, "Line %3d: Invalid "
-						"literal for base %d.\n",
-						currentLine, operandThree);
+					ERROR("Line %3d: Invalid literal for base %d",
+                                              currentLine, operandThree);
 					nextLine(asmFile);
 					errors++;
 					continue;
@@ -1018,8 +1029,7 @@ bool parse(struct program *prog)
 			}
 
 			if (endSeen) {
-				fprintf(stderr, "Line %3d: Extra .END "
-					"directive.\n", currentLine);
+				ERROR("Line %3d: Extra .END directive", currentLine);
 				errors++;
 			}
 
@@ -1039,17 +1049,15 @@ bool parse(struct program *prog)
 
 			instruction = nzp(line + 2);
 			if (instruction & 7) {
-				fprintf(stderr, "Line %3d: "
-					"Invalid BR instruction.\n",
-					currentLine);
+				ERROR("Line %3d: Invalid BR instruction",
+                                      currentLine);
 				errors++;
 				continue;
 			}
 
 			if (EOF == fscanf(asmFile, "%79s", label)) {
-				fprintf(stderr, "Line %3d: Unexpected "
-					"end of file.\n",
-					currentLine);
+				ERROR("Line %3d: Unexpected end of file",
+                                      currentLine);
 				ungetc(EOF, asmFile);
 				errors++;
 				continue;
@@ -1058,9 +1066,8 @@ bool parse(struct program *prog)
 			extractLabel(label, asmFile);
 			sym = findSymbol(label);
 			if (NULL == sym) {
-				fprintf(stderr, "Line %3d: Invalid "
-					"label '%s'.\n", currentLine,
-					label);
+				ERROR("Line %3d: Invalid label '%s'",
+                                      currentLine, label);
 				nextLine(asmFile);
 				errors++;
 				continue;
@@ -1068,12 +1075,22 @@ bool parse(struct program *prog)
 
 			operandThree = sym->address - pc + 1;
 			if (operandThree < -256 || operandThree > 255) {
-				fprintf(stderr, "Line %3d: Label is "
-					"too far away.\n", currentLine);
+				ERROR("Line %3d: Label is too far away",
+                                      currentLine);
 				nextLine(asmFile);
 				errors++;
 				continue;
 			}
+
+                        // Check if the last statement has the same condition code as this one,
+                        // or if the last one was a BR(nzp), in which case it's covered by that
+                        // one.
+                        if ((instruction & 0xFE00) == (listTail->instruction & 0xFE00) ||
+                                        (listTail->instruction & 0xFE00) == 0xFE00) {
+                                WARNING("Line %3d: Statement possibly has no effect, "
+                                                "as last line has same BR condition",
+                                        currentLine);
+                        }
 
 			instruction |= (operandThree & 0x1ff);
 			if (prog->verbosity) {
@@ -1083,11 +1100,6 @@ bool parse(struct program *prog)
 				printf("%-5s  R%d  %-30s  (%4d address%s away)",
 					line, operandOne, sym->name, operandThree, operandThree > 1 ? "es" : "");
 				puts("");
-                                if ((instruction & 0xFE00) == (listTail->instruction & 0xFE00)) {
-                                        fprintf(stderr, "Line %3d: WARNING: Statement possibly has no effect, "
-						"as last line has same BR condition.\n",
-						currentLine);
-                                }
 			}
 			break;
 		case OP_AND:
@@ -1102,8 +1114,8 @@ bool parse(struct program *prog)
 
 			operandOne = nextRegister(asmFile, false);
 			if (65535 == operandOne) {
-				fprintf(stderr, "Line %3d: Invalid operand "
-					"provided to %s.\n", currentLine, line);
+				ERROR("Line %3d: Invalid operand provided to %s",
+                                      currentLine, line);
 				nextLine(asmFile);
 				errors++;
 				continue;
@@ -1111,8 +1123,8 @@ bool parse(struct program *prog)
 
 			operandTwo = nextRegister(asmFile, true);
 			if (65535 == operandTwo) {
-				fprintf(stderr, "Line %3d: Invalid operand "
-					"provided to %s.\n", currentLine, line);
+				ERROR("Line %3d: Invalid operand provided to %s",
+                                      currentLine, line);
 				nextLine(asmFile);
 				errors++;
 				continue;
@@ -1122,8 +1134,7 @@ bool parse(struct program *prog)
 			if (65535 == operandThree) {
 				operandThree = nextImmediate(asmFile, true);
 				if (operandThree > 15 || operandThree < -16) {
-					fprintf(stderr, "Line %3d: Invalid "
-						"operand provided to %s.\n",
+					ERROR("Line %3d: Invalid operand provided to %s",
 						currentLine, line);
 					nextLine(asmFile);
 					errors++;
@@ -1158,8 +1169,8 @@ bool parse(struct program *prog)
 
 			operandOne = nextRegister(asmFile, false);
 			if (65535 == operandOne) {
-				fprintf(stderr, "Line %3d: Invalid operand "
-					"provided to NOT.\n", currentLine);
+				ERROR("Line %3d: Invalid operand provided to NOT",
+                                      currentLine);
 				nextLine(asmFile);
 				errors++;
 				continue;
@@ -1167,8 +1178,8 @@ bool parse(struct program *prog)
 
 			operandTwo = nextRegister(asmFile, true);
 			if (65535 == operandTwo) {
-				fprintf(stderr, "Line %3d: Invalid operand "
-					"provided to NOT.\n", currentLine);
+				ERROR("Line %3d: Invalid operand provided to NOT",
+                                      currentLine);
 				nextLine(asmFile);
 				errors++;
 				continue;
@@ -1195,8 +1206,8 @@ bool parse(struct program *prog)
 
 			operandOne = nextRegister(asmFile, false);
 			if (65535 == operandOne) {
-				fprintf(stderr, "Line %3d: Invalid operand "
-					"provided to %s.\n", currentLine, line);
+				ERROR("Line %3d: Invalid operand provided to %s",
+                                      currentLine, line);
 				nextLine(asmFile);
 				errors++;
 				continue;
@@ -1220,8 +1231,8 @@ bool parse(struct program *prog)
 			}
 
 			if (EOF == fscanf(asmFile, "%79s", label)) {
-				fprintf(stderr, "Line %3d: Unexpected "
-					"end of file.\n", currentLine);
+				ERROR("Line %3d: Unexpected end of file",
+                                      currentLine);
 				ungetc(EOF, asmFile);
 				errors++;
 				continue;
@@ -1230,8 +1241,8 @@ bool parse(struct program *prog)
 			extractLabel(label, asmFile);
 			sym = findSymbol(label);
 			if (NULL == sym) {
-				fprintf(stderr, "Line %3d: Invalid "
-					"label '%s'.\n", currentLine, label);
+				ERROR("Line %3d: Invalid label '%s'",
+                                      currentLine, label);
 				nextLine(asmFile);
 				errors++;
 				continue;
@@ -1239,8 +1250,8 @@ bool parse(struct program *prog)
 
 			operandThree = sym->address - pc + 1;
 			if (operandThree < -1024 || operandThree > 1023) {
-				fprintf(stderr, "Line %3d: Label is "
-					"too far away.\n", currentLine);
+				ERROR("Line %3d: Label is too far away",
+                                      currentLine);
 				nextLine(asmFile);
 				errors++;
 				continue;
@@ -1275,8 +1286,8 @@ bool parse(struct program *prog)
 
 			operandOne = nextRegister(asmFile, false);
 			if (65535 == operandOne) {
-				fprintf(stderr, "Line %3d: Invalid operand "
-					"for %s.\n", currentLine, line);
+				ERROR("Line %3d: Invalid operand for %s",
+                                      currentLine, line);
 				nextLine(asmFile);
 				errors++;
 				continue;
@@ -1292,8 +1303,8 @@ bool parse(struct program *prog)
 			}
 
 			if (EOF == fscanf(asmFile, "%79s", label)) {
-				fprintf(stderr, "Line %3d: Unexpected "
-					"end of file.\n", currentLine);
+				ERROR("Line %3d: Unexpected end of file",
+                                      currentLine);
 				ungetc(EOF, asmFile);
 				errors++;
 				continue;
@@ -1302,8 +1313,7 @@ bool parse(struct program *prog)
 			extractLabel(label, asmFile);
 			sym = findSymbol(label);
 			if (NULL == sym) {
-				fprintf(stderr, "Line %3d: Invalid "
-					"label '%s'.\n", currentLine, label);
+				ERROR("Line %3d: Invalid label '%s'", currentLine, label);
 				nextLine(asmFile);
 				errors++;
 				continue;
@@ -1311,10 +1321,8 @@ bool parse(struct program *prog)
 
 			operandThree = sym->address - pc + 1;
 			if (operandThree < -256 || operandThree > 255) {
-				fprintf(stderr, "Line %3d: Label is "
-					"too far away ( %s  %d  %d   %s ).\n",
-					currentLine, line, operandOne, operandThree,
-					sym->name);
+				ERROR("Line %3d: Label is too far away ( %s  %d  %d   %s )",
+					currentLine, line, operandOne, operandThree, sym->name);
 				nextLine(asmFile);
 				errors++;
 				continue;
@@ -1343,8 +1351,8 @@ bool parse(struct program *prog)
 
 			operandOne = nextRegister(asmFile, false);
 			if (65535 == operandOne) {
-				fprintf(stderr, "Line %3d: Invalid operand "
-					"provided to %s.\n", currentLine, line);
+				ERROR("Line %3d: Invalid operand provided to %s",
+                                      currentLine, line);
 				nextLine(asmFile);
 				errors++;
 				continue;
@@ -1352,8 +1360,8 @@ bool parse(struct program *prog)
 
 			operandTwo = nextRegister(asmFile, true);
 			if (65535 == operandTwo) {
-				fprintf(stderr, "Line %3d: Invalid operand "
-					"provided to %s.\n", currentLine, line);
+				ERROR("Line %3d: Invalid operand provided to %s",
+                                      currentLine, line);
 				nextLine(asmFile);
 				errors++;
 				continue;
@@ -1361,15 +1369,14 @@ bool parse(struct program *prog)
 
 			operandThree = nextImmediate(asmFile, true);
 			if (INT_MAX == operandThree) {
-				fprintf(stderr, "Line %3d: Invalid operand "
-					"provided to %s.\n", currentLine, line);
+				ERROR("Line %3d: Invalid operand provided to %s",
+                                      currentLine, line);
 				nextLine(asmFile);
 				errors++;
 				continue;
 			} else if (operandThree < -32 || operandThree > 31) {
-				fprintf(stderr, "Line %3d: Third operand for %s "
-					"needs to be >= -32 and <= 31.\n",
-					currentLine, line);
+				ERROR("Line %3d: Third operand for %s needs to be >= -32 and <= 31",
+                                      currentLine, line);
 				nextLine(asmFile);
 				errors++;
 				continue;
@@ -1422,14 +1429,14 @@ bool parse(struct program *prog)
 
 			operandThree = nextImmediate(asmFile, false);
 			if (INT_MAX == operandThree) {
-				fprintf(stderr, "Line %3d: Invalid operand "
-					"for TRAP.\n", currentLine);
+				ERROR("Line %3d: Invalid operand for TRAP",
+                                      currentLine);
 				nextLine(asmFile);
 				errors++;
 				continue;
 			} else if (operandThree < 0x20 || operandThree > 0x25) {
-				fprintf(stderr, "Line %3d: Invalid "
-					"TRAP Routine.\n", currentLine);
+				ERROR("Line %3d: Invalid TRAP Routine",
+                                      currentLine);
 				nextLine(asmFile);
 				errors++;
 				continue;
@@ -1482,10 +1489,29 @@ bool parse(struct program *prog)
 					*colon = '\0';
 				}
 
+                                struct symbol *foundSymbol = findSymbolByAddress(pc);
+                                if (NULL != foundSymbol) {
+                                        // As far as I'm aware this should only happen if a label
+                                        // has no instruction following it, e.g.:
+                                        //      .ORIG 0x3000
+                                        //      LABEL_ONE
+                                        //      LABEL_TWO  ; Warning thrown for this line
+                                        //      LABEL_THREE ; Warning also thrown
+                                        //      .END
+                                        // Of course, if more than 2 labels share an address this will
+                                        // compare the last with the first, e.g. in the above example,
+                                        // the following 2 warnings will be thrown:
+                                        //       Line   2: 'LABEL_TWO' shares a memory address (0x3000) with 'LABEL_ONE'
+                                        //       Line   3: 'LABEL_THREE' shares a memory address (0x3000) with 'LABEL_ONE
+                                        // TODO: Possibly fix this so each symbol has a line number, and they can be
+                                        // TODO: printed out to help the user find the troublesome code.
+                                        WARNING("Line %3d: '%s' shares a memory address (%#04x) with '%s'",
+                                                currentLine, line, pc, foundSymbol->name);
+                                }
+
 				if (addSymbol(line, pc)) {
-					fprintf(stderr, "Line %3d: "
-						"Multiple definitions of label "
-						"'%s'\n", currentLine, line);
+					ERROR("Line %3d: Multiple definitions of label '%s'",
+                                              currentLine, line);
 					nextLine(asmFile);
 					errors++;
 				}
@@ -1507,9 +1533,8 @@ bool parse(struct program *prog)
 		if (1 != pass) {
 			if (OP_BRUNK != tok && OP_UNK != tok) {
 				if (!endOfLine(asmFile)) {
-					fprintf(stderr, "Line %3d: Too many "
-						"operands provided for %s.\n",
-						currentLine, line);
+					ERROR("Line %3d: Too many operands provided for %s",
+                                              currentLine, line);
 					nextLine(asmFile);
 					errors++;
 				} else if (!errors && origSeen && !endSeen) {
@@ -1518,11 +1543,10 @@ bool parse(struct program *prog)
 			}
 		} else {
                         if (endSeen && uppercmp(".END", line)) {
-                                fprintf(stderr, "Line %3d: Found %s after "
-                                        ".END directive.\n",
+                                WARNING("Line %3d: Found %s after .END directive. It will be ignored",
                                         currentLine, line);
                                 nextLine(asmFile);
-                                errors++;
+                                //errors++;
                         }
                 }
 	}
