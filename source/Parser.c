@@ -12,25 +12,54 @@
 #endif
 
 // TODO:
-//      - Add line numbers to symbols
-//      - Add a NOTE macro that shows relevant information similar to clang/gcc
-//              - E.g. "NOTE: Label with same address on line 32"
-//      - For OptParse.c:
+//      - For Main.c:
 //              - Allow the user to toggle warnings with a flag (maybe --no-warnings)
 //      - For Machine.c:
 //              - If the symbol file can't be found, then show the user a warning,
 //                but carry on execution.
 //                      - Tell them the file we were searching for, maybe prompt for
 //                        correct file?
+//      - Make a singlylinkedlist struct, that has 3 elements (something like this):
+//              struct singlyLinkedList {
+//                      void *data;
+//                      void (*insert)(struct singlyLinkedList *, void *);
+//                      struct singlyLinkedList *next;
+//              }
+//              struct singlyLinkedList list = {
+//                      .data = NULL,
+//                      .insert = &insert,
+//                      .next = NULL,
+//              };
+//              void insert(struct singlyLinkedList *this, void *data)
+//              {
+//                      if (NULL != this->next) {
+//                              this->next->insert(this->next);
+//                              return;
+//                      }
+//                      struct singlyLinkedList *next = malloc(sizeof(singlyLinkedList));
+//                      // etc.
+//              }
+//      - Separate the assembling portion into multiple parts:
+//              Assemble(file) : bool -> parse(line) : linkedList *
+//              parse would return a tokenized version of the line, e.g.
+//                      parse("LABEL .fill 0x0 ; Comment") -> listHead(label("LABEL"), type(LABEL))->
+//                                                              next(directive(FILL), type(DIRECTIVE))->
+//                                                              next(immediate(0x0), type(IMMEDIATE))->
+//                                                              next(type(COMMENT))
+//              This allows modularisation as well as being able to more easily spread out
+//              the logic into 2 projects (an assembler and a simulator)
+//              This would agree with the idea to rewrite this in C++ (for strings, getline).
+//	- Move the OS code to be builtin (?)
+//		- What if someone wants to explicitly alter it -- without using instructions.
 //
 
 #define STR(x) #x
 #define OSPATH(path) STR(path)
 #define OS_SYM_FILE OSPATH(OS_PATH) "/LC3_OS.sym"
 
-#define ERROR(str, ...) fprintf(stderr, "ERROR: " str ".\n", __VA_ARGS__)
+#define ERROR(str, ...)   fprintf(stderr, "ERROR: "   str ".\n", __VA_ARGS__)
 #define WARNING(str, ...) fprintf(stderr, "WARNING: " str ".\n", __VA_ARGS__)
-#define NOTE(str, ...) fprintf(stderr, "NOTE: " str ".\n", __VA_ARGS__)
+#define NOTE(str, ...)    fprintf(stderr, "NOTE: "    str ".\n", __VA_ARGS__)
 
 // This will have to do for now... It allows the use of '//' as a comment.
 static char lastSkippedChar = 0;
@@ -210,13 +239,13 @@ struct symbol *findSymbolByAddress(uint16_t address)
 static void __addSymbol(char const *const name, uint16_t address, int line)
 {
 	struct symbol *symbol = malloc(sizeof(struct symbol));
-	struct symbolTable *table;
 
 	if (NULL == symbol) {
 		perror("LC3-Simulator");
 		exit(EXIT_FAILURE);
 	}
 
+        struct symbolTable *table;
 	table = malloc(sizeof(struct symbolTable));
 
 	if (NULL == table) {
@@ -258,9 +287,14 @@ static int addSymbol(char const *const name, uint16_t address, int line)
 static void populateSymbols(char *fileName)
 {
 	FILE *file = fopen(fileName, "r");
+	if (NULL == file) {
+		perror("LC3Simulator");
+		exit(EXIT_FAILURE);
+	}
+
 	uint16_t address;
 	char label[MAX_LABEL_LENGTH];
-	char beginning[3];
+	char beginning[3] = { 0 };
 	int c = 0;
 
 	for (size_t i = 4; i > 0; i--) {
@@ -288,7 +322,6 @@ void populateOSSymbols(void)
 			table = table->next) {
 		table->sym->fromOS = true;
 	}
-
 }
 
 /*
@@ -297,35 +330,48 @@ void populateOSSymbols(void)
  * in memory.
  */
 
-void populateSymbolsFromFile(struct program *prog)
+void populateSymbolsFromFile(struct program *program)
 {
-	if (NULL == prog->symbolfile) {
-		char *ext = strrchr(prog->objectfile, '.');
-		size_t length = strlen(prog->objectfile);
+	if (NULL == program->symbolfile) {
+		char *ext = strrchr(program->objectfile, '.');
+		size_t length = strlen(program->objectfile);
 
 		if (NULL != ext) {
-			prog->symbolfile = calloc(length + 1, sizeof(char));
-			if (NULL == prog->symbolfile) {
+			program->symbolfile = calloc(length + 1, sizeof(char));
+			if (NULL == program->symbolfile) {
 				perror("LC3-Simulator");
 				exit(EXIT_FAILURE);
 			}
 
-			strncpy(prog->symbolfile, prog->objectfile,
-				(size_t) (ext - prog->objectfile));
+			strncpy(program->symbolfile, program->objectfile,
+				(size_t) (ext - program->objectfile));
 		} else {
-			prog->symbolfile = calloc(length + 5, sizeof(char));
-			if (NULL == prog->symbolfile) {
+			program->symbolfile = calloc(length + 5, sizeof(char));
+			if (NULL == program->symbolfile) {
 				perror("LC3-Simulator");
 				exit(EXIT_FAILURE);
 			}
 
-			strcpy(prog->symbolfile, prog->objectfile);
+			strcpy(program->symbolfile, program->objectfile);
 		}
 
-		strcat(prog->symbolfile, ".sym");
+		strcat(program->symbolfile, ".sym");
 	}
 
-	populateSymbols(prog->symbolfile);
+	populateSymbols(program->symbolfile);
+}
+
+/*
+ * Copy one string to another character by character, converting them to
+ * upper case as we go.
+ */
+
+static void copy_upper(char *const from, char *to)
+{
+        for (char *i = from; *i; ++i) {
+                *to = (char) toupper(*i);
+                to++;
+        }
 }
 
 /*
@@ -335,28 +381,9 @@ void populateSymbolsFromFile(struct program *prog)
 
 static int uppercmp(char *from, char const *const to)
 {
-	char copy[100];
-	strcpy(copy, from);
-
-	for (size_t i = 0; copy[i]; i++) {
-		copy[i] = (char) toupper(copy[i]);
-	}
-
+	char copy[100] = { 0 };
+	copy_upper(from, copy);
 	return strcmp(copy, to);
-}
-
-/*
- * Compare n number of characters in a string, each of which is converted to its
- * upper case equivalent.
- */
-
-static int uppercmpn(char *from, char const *const to, size_t n)
-{
-	char copy[n + 1];
-	strncpy(copy, from, n);
-	copy[n] = '\0';
-
-	return uppercmp(copy, to);
 }
 
 /*
@@ -453,6 +480,41 @@ static bool endOfLine(FILE *file)
 	return true;
 }
 
+static const size_t hashed_letters[26] = {
+        100363, 99989, 97711, 97151, 92311, 80147,
+        82279,  72997, 66457, 65719, 70957, 50262,
+        48407,  51151, 41047, 39371, 35401, 37039,
+        28697,  27791, 20201, 21523, 6449,  4813,
+        16333,  13337,
+};
+
+static size_t hash(const char *const string, size_t length) {
+        if (!length) {
+                return 0;
+        }
+
+        size_t _hash = 37;
+        size_t first_char_on_directive = length > 1 ? (size_t) *(string + 1) : 0;
+
+        for (size_t index = 0; index < length; ++index) {
+                if (*string == '.') {
+                        if (*(string + index) == '.') {
+                                _hash = (_hash * hashed_letters[first_char_on_directive - 0x41u]) ^
+                                        (first_char_on_directive * hashed_letters[first_char_on_directive - 0x41u]);
+                        } else {
+                                _hash = (_hash * hashed_letters[((size_t) *(string + index)) - 0x41u]) ^
+                                        (first_char_on_directive * hashed_letters[
+                                                ((size_t) *(string + index)) - 0x41u]);
+                        }
+                } else {
+                        _hash = (_hash * hashed_letters[((size_t) *(string + index)) - 0x41u]) ^
+                                (((size_t) *string) * hashed_letters[(size_t) *(string + index) - 0x41u]);
+                }
+        }
+
+        return _hash;
+}
+
 /*
  * Read the given file to find what the next token is.
  *
@@ -464,87 +526,134 @@ static bool endOfLine(FILE *file)
 static enum Token nextToken(FILE *file, char *buffer)
 {
 	if (EOF == fscanf(file, "%99s", buffer)) {
+                // TODO: This should probably return something like OP_NONE to signal the end.
 		*buffer = '\0';
+                return OP_NONE;
 	}
 
-	if (!uppercmp(buffer, "ADD")) {
-		return OP_ADD;
-	} else if (!uppercmp(buffer, "AND")) {
-		return OP_AND;
-	} else if (!uppercmp(buffer, "JMP")) {
-		return OP_JMP;
-	} else if (!uppercmp(buffer, "JSR")) {
-		return OP_JSR;
-	} else if (!uppercmp(buffer, "JSRR")) {
-		return OP_JSRR;
-	} else if (!uppercmp(buffer, "LD")) {
-		return OP_LD;
-	} else if (!uppercmp(buffer, "LDR")) {
-		return OP_LDR;
-	} else if (!uppercmp(buffer, "LDI")) {
-		return OP_LDI;
-	} else if (!uppercmp(buffer, "LEA")) {
-		return OP_LEA;
-	} else if (!uppercmp(buffer, "NOT")) {
-		return OP_NOT;
-	} else if (!uppercmp(buffer, "RET")) {
-		return OP_RET;
-	} else if (!uppercmp(buffer, "RTI")) {
-		return OP_RTI;
-	} else if (!uppercmp(buffer, "ST")) {
-		return OP_ST;
-	} else if (!uppercmp(buffer, "STR")) {
-		return OP_STR;
-	} else if (!uppercmp(buffer, "STI")) {
-		return OP_STI;
-	} else if (!uppercmp(buffer, "TRAP")) {
-		return OP_TRAP;
-	} else if (!uppercmp(buffer, "GETC")) {
-		return OP_GETC;
-	} else if (!uppercmp(buffer, "PUTC")) {
-		return OP_PUTC;
-	} else if (!uppercmp(buffer, "OUT")) {
-		return OP_OUT;
-	} else if (!uppercmp(buffer, "HALT")) {
-		return OP_HALT;
-	} else if (!uppercmp(buffer, "IN")) {
-		return OP_IN;
-	} else if (!uppercmp(buffer, "PUTS")) {
-		return OP_PUTS;
-	} else if (!uppercmp(buffer, "PUTSP")) {
-		return OP_PUTSP;
-	} else if (!uppercmp(buffer, ".ORIG")) {
-		return DIR_ORIG;
-	} else if (!uppercmp(buffer, ".STRINGZ")) {
-		return DIR_STRINGZ;
-	} else if (!uppercmp(buffer, ".FILL")) {
-		return DIR_FILL;
-	} else if (!uppercmp(buffer, ".END")) {
-		return DIR_END;
-	} else if (!uppercmp(buffer, ".BLKW")) {
-		return DIR_BLKW;
-	} else if (!uppercmpn(buffer, "BR", 2)) {
-		switch (nzp(buffer + 2)) {
-		case 0x0001:
-			return OP_BRUNK;
-		case 0x0200:
-			return OP_BRP;
-		case 0x0400:
-			return OP_BRZ;
-		case 0x0600:
-			return OP_BRZP;
-		case 0x0800:
-			return OP_BRN;
-		case 0x0A00:
-			return OP_BRNP;
-		case 0x0C00:
-			return OP_BRNZ;
-		default:
-			return OP_BR;
-		}
-	} else {
-		return OP_UNK;
-	}
+        char upper_copy[100] = { 0 };
+
+        enum Token token;
+
+        copy_upper(buffer, upper_copy);
+        size_t hashed = hash(upper_copy, strlen(upper_copy));
+
+        switch (hashed) {
+        case 0xc847e7858f3bda:  // hash("ADD")
+                token = OP_ADD;
+                break;
+        case 0x6972ca4e0fe6aa:  // hash("AND")
+                token = OP_AND;
+                break;
+        case 0x3155da34ef9599:  // hash("JMP")
+                token = OP_JMP;
+                break;
+        case 0x1b83c7f078f08f:  // hash("JSR")
+                token = OP_JSR;
+                break;
+        case 0x8cef8cf169d53357:  // hash("JSRR")
+                token = OP_JSRR;
+                break;
+        case 0x389286e2ae:  // hash("LD")
+                token = OP_LD;
+                break;
+        case 0x1ff918099c2706:  // hash("LDR")
+                token = OP_LDR;
+                break;
+        case 0x395e0e09be9292:  // hash("LDI")
+                token = OP_LDI;
+                break;
+        case 0x5251df343da02e:  // hash("LEA")
+                token = OP_LEA;
+                break;
+        case 0x880559a3c58a1:  // hash("NOT")
+                token = OP_NOT;
+                break;
+        case 0x230e9051f39cad:  // hash("RET")
+                token = OP_RET;
+                break;
+        case 0x193d3c0bf91b3f:  // hash("RTI")
+                token = OP_RTI;
+                break;
+        case 0x163a87a587:  // hash("ST")
+                token = OP_ST;
+                break;
+        case 0xc901e4ff8fff4:  // hash("STR")
+                token = OP_STR;
+                break;
+        case 0x168a8037dda834:  // hash("STI")
+                token = OP_STI;
+                break;
+        case 0xf8bf61331cc727e5:  // hash("TRAP")
+                token = OP_TRAP;
+                break;
+        case 0x41ca364764d222c1:  // hash("GETC")
+                token = OP_GETC;
+                break;
+        case 0x7226fce93d74058f:  // hash("PUTC")
+                token = OP_PUTC;
+                break;
+        case 0x502dd326219b2:  // hash("OUT")
+                token = OP_OUT;
+                break;
+        case 0x45f5f141ac74c8d6:  // hash("HALT")
+                token = OP_HALT;
+                break;
+        case 0x5709aa5303:  // hash("IN")
+                token = OP_IN;
+                break;
+        case 0x2fd2a79caa1c2dd9:  // hash("PUTS")
+                token = OP_PUTS;
+                break;
+        case 0xd2378ae5bb8f0363:  // hash("PUTSP")
+                token = OP_PUTSP;
+                break;
+        case 0xae00dbad81af1338:  // hash(".ORIG")
+                token = DIR_ORIG;
+                break;
+        case 0xef479fa15c8dd7c1:  // hash(".STRINGZ")
+                token = DIR_STRINGZ;
+                break;
+        case 0x66e0b0b6cd5a4e20:  // hash(".FILL")
+                token = DIR_FILL;
+                break;
+        case 0xd143ba5fa8981851:  // hash(".END")
+                token = DIR_END;
+                break;
+        case 0xb97d9f7e2d9fd702:  // hash(".BLKW")
+                token = DIR_BLKW;
+                break;
+        case 0x346c5d7733:  // hash("BR")
+        case 0x6c916d80285dac45:  // hash("BRNZP")
+                token = OP_BR;
+                break;
+        case 0x68bcc37dfdb0eef5:  // hash("BRZP")
+        case 0x68bcc38217e14bbd:  // hash("BRPZ")
+                token = OP_BRZP;
+                break;
+        case 0x94abd7909f4a83d7:  // hash("BRNP")
+        case 0x94abd7c59fc129d7:  // hash("BRPN")
+                token = OP_BRNP;
+                break;
+        case 0x53a77816176567d9:  // hash("BRNZ")
+        case 0x53a77822b71faf99:  // hash("BRZN")
+                token = OP_BRNZ;
+                break;
+        case 0x28eaa0470f8463:  // hash("BRN")
+                token = OP_BRN;
+                break;
+        case 0xaab21915b9189:  // hash("BRZ")
+                token = OP_BRZ;
+                break;
+        case 0x1f7e55ca7ca627:  // hash("BRP")
+                token = OP_BRP;
+                break;
+        default:
+                token = OP_LABEL;
+                break;
+        }
+
+        return token;
 }
 
 /*
@@ -1480,8 +1589,7 @@ bool parse(struct program *prog)
 				puts("");
 			}
 			break;
-		case OP_BRUNK:
-		case OP_UNK:            // FALLTHROUGH
+		case OP_LABEL:
 		default:
 			pc--;
 			if (1 == pass) {
@@ -1537,7 +1645,7 @@ bool parse(struct program *prog)
 		}
 
 		if (1 != pass) {
-			if (OP_BRUNK != tok && OP_UNK != tok) {
+			if (OP_LABEL != tok) {
 				if (!endOfLine(asmFile)) {
 					ERROR("Line %3d: Too many operands provided for %s",
                                               currentLine, line);
@@ -1548,11 +1656,11 @@ bool parse(struct program *prog)
 				}
 			}
 		} else {
-                        if (endSeen && uppercmp(".END", line)) {
+                        if (endSeen && tok != OP_NONE && uppercmp(line, ".END")) {
+                                printf("OP_NONE = %d  op = %d  DIR_END = %d\n", OP_NONE, tok, DIR_END);
                                 WARNING("Line %3d: Found %s after .END directive. It will be ignored",
                                         currentLine, line);
                                 nextLine(asmFile);
-                                //errors++;
                         }
                 }
 	}

@@ -9,7 +9,11 @@ but it works for the most part.
 
 Usage:
 
-First run `make`.
+```shell
+mkdir build
+cd build
+cmake ..
+```
 
 Then, to assemble your LC-3 file:
 ```shell

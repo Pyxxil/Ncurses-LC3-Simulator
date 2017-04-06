@@ -3,7 +3,7 @@ CMAKE_MINIMUM_REQUIRED ( VERSION 3.6 )
 PROJECT ( LC3Simulator )
 SET ( PROJECT LC3Simulator )
 
-SET ( CMAKE_C_STANDARD 11 )
+SET ( CMAKE_CXX_STANDARD 14 )
 
 SET ( LC3Simulator_VERSION_MAJOR 0 )
 SET ( LC3Simulator_VERSION_MINOR 1 )
@@ -30,22 +30,21 @@ ELSE ()
     MESSAGE ( SEND_ERROR "This program requires the curses library." )
 ENDIF ()
 
+SET ( CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -Wall -Werror -Wpedantic -x c++" )
+
 IF ( "${CMAKE_BUILD_TYPE}" STREQUAL "Debug" )
-    SET ( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O0 -pg -Wall -Werror -Wpedantic -Wextra" )
-    SET ( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wcast-align -Wfloat-equal -Wmissing-braces" )
-    SET ( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wmissing-declarations -Wmissing-field-initializers" )
-    SET ( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wmissing-prototypes -Woverlength-strings" )
-    SET ( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wparentheses -Wreturn-type -Wshadow -Wsign-compare" )
-    SET ( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wsign-conversion -Wswitch -Wswitch-enum" )
-    SET ( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wuninitialized -Wunknown-pragmas -Wunreachable-code" )
-    SET ( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wunused-function -Wunused-label -Wunused-parameter" )
-    SET ( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wunused-value -Wunused-variable" )
+    SET ( CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -O0 -pg -Wextra -Wcast-align -Wfloat-equal -Wmissing-braces" )
+    SET ( CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -Wmissing-declarations -Wmissing-field-initializers" )
+    SET ( CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -Wmissing-prototypes -Woverlength-strings" )
+    SET ( CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -Wparentheses -Wreturn-type -Wshadow -Wsign-compare" )
+    SET ( CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -Wsign-conversion -Wswitch -Wswitch-enum" )
+    SET ( CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -Wuninitialized -Wunknown-pragmas -Wunreachable-code" )
+    SET ( CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -Wunused-function -Wunused-label -Wunused-parameter" )
+    SET ( CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -Wunused-value -Wunused-variable" )
 
     SET ( CMAKE_VERBOSE_MAKEFILE ON )
 ELSE ()
-    SET ( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O2" )
+    SET ( CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -O2" )
 ENDIF ()
 
 ADD_DEFINITIONS ( -DOS_PATH=${PROJECT_SOURCE_DIR} )
-
-
