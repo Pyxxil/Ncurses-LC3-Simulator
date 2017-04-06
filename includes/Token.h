@@ -2,6 +2,7 @@
 #define TOKEN_H
 
 enum Token {
+	OP_NONE,
 	OP_ADD,
 	OP_AND,
 	OP_BR,
@@ -11,7 +12,6 @@ enum Token {
 	OP_BRNZ,
 	OP_BRZP,
 	OP_BRNP,
-	OP_BRUNK,
 	OP_JMP,
 	OP_JSR,
 	OP_JSRR,
@@ -33,7 +33,7 @@ enum Token {
 	OP_IN,
 	OP_PUTS,
 	OP_PUTSP,
-	OP_UNK,
+	OP_LABEL,
 
 	DIR_ORIG,
 	DIR_STRINGZ,
