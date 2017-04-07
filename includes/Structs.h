@@ -28,6 +28,7 @@ struct program {
 	char *symbolfile;
 	char *hexoutfile;
 	char *binoutfile;
+        bool warn;
 
 	int verbosity;
 

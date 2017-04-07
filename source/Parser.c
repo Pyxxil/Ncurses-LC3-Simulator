@@ -12,23 +12,23 @@
 #endif
 
 // TODO:
-//      - For Main.c:
-//              - Allow the user to toggle warnings with a flag (maybe --no-warnings)
 //      - For Machine.c:
 //              - If the symbol file can't be found, then show the user a warning,
 //                but carry on execution.
 //                      - Tell them the file we were searching for, maybe prompt for
 //                        correct file?
-//      - Make a singlylinkedlist struct, that has 3 elements (something like this):
+//      - Make a singlylinkedlist struct, that has 4 elements (something like this):
 //              struct singlyLinkedList {
 //                      void *data;
 //                      void (*insert)(struct singlyLinkedList *, void *);
 //                      struct singlyLinkedList *next;
+//                      enum token_type type;
 //              }
 //              struct singlyLinkedList list = {
 //                      .data = NULL,
 //                      .insert = &insert,
 //                      .next = NULL,
+//                      .type = NONE,
 //              };
 //              void insert(struct singlyLinkedList *this, void *data)
 //              {
@@ -518,15 +518,17 @@ static size_t hash(const char *const string, size_t length) {
 /*
  * Read the given file to find what the next token is.
  *
- * If none match, we return an OP_UNK. In general, only the first pass of the
- * file will care about OP_UNK/OP_BRUNK -- the first pass will use the token
- * found as a label.
+ * If we've reached the end of the file, then we return OP_NONE to signal
+ * we've finished.
+ *
+ * If nothing matches, then we return OP_LABEL, simply because it's assumed
+ * that anything that isn't an instruction/register/directive/immediate value
+ * is a label.
  */
 
 static enum Token nextToken(FILE *file, char *buffer)
 {
 	if (EOF == fscanf(file, "%99s", buffer)) {
-                // TODO: This should probably return something like OP_NONE to signal the end.
 		*buffer = '\0';
                 return OP_NONE;
 	}
@@ -539,49 +541,49 @@ static enum Token nextToken(FILE *file, char *buffer)
         size_t hashed = hash(upper_copy, strlen(upper_copy));
 
         switch (hashed) {
-        case 0xc847e7858f3bda:  // hash("ADD")
+        case 0x00c847e7858f3bda:  // hash("ADD")
                 token = OP_ADD;
                 break;
-        case 0x6972ca4e0fe6aa:  // hash("AND")
+        case 0x006972ca4e0fe6aa:  // hash("AND")
                 token = OP_AND;
                 break;
-        case 0x3155da34ef9599:  // hash("JMP")
+        case 0x003155da34ef9599:  // hash("JMP")
                 token = OP_JMP;
                 break;
-        case 0x1b83c7f078f08f:  // hash("JSR")
+        case 0x001b83c7f078f08f:  // hash("JSR")
                 token = OP_JSR;
                 break;
         case 0x8cef8cf169d53357:  // hash("JSRR")
                 token = OP_JSRR;
                 break;
-        case 0x389286e2ae:  // hash("LD")
+        case 0x000000389286e2ae:  // hash("LD")
                 token = OP_LD;
                 break;
-        case 0x1ff918099c2706:  // hash("LDR")
+        case 0x001ff918099c2706:  // hash("LDR")
                 token = OP_LDR;
                 break;
-        case 0x395e0e09be9292:  // hash("LDI")
+        case 0x00395e0e09be9292:  // hash("LDI")
                 token = OP_LDI;
                 break;
-        case 0x5251df343da02e:  // hash("LEA")
+        case 0x005251df343da02e:  // hash("LEA")
                 token = OP_LEA;
                 break;
-        case 0x880559a3c58a1:  // hash("NOT")
+        case 0x000880559a3c58a1:  // hash("NOT")
                 token = OP_NOT;
                 break;
-        case 0x230e9051f39cad:  // hash("RET")
+        case 0x00230e9051f39cad:  // hash("RET")
                 token = OP_RET;
                 break;
-        case 0x193d3c0bf91b3f:  // hash("RTI")
+        case 0x00193d3c0bf91b3f:  // hash("RTI")
                 token = OP_RTI;
                 break;
-        case 0x163a87a587:  // hash("ST")
+        case 0x000000163a87a587:  // hash("ST")
                 token = OP_ST;
                 break;
-        case 0xc901e4ff8fff4:  // hash("STR")
+        case 0x000c901e4ff8fff4:  // hash("STR")
                 token = OP_STR;
                 break;
-        case 0x168a8037dda834:  // hash("STI")
+        case 0x00168a8037dda834:  // hash("STI")
                 token = OP_STI;
                 break;
         case 0xf8bf61331cc727e5:  // hash("TRAP")
@@ -593,13 +595,13 @@ static enum Token nextToken(FILE *file, char *buffer)
         case 0x7226fce93d74058f:  // hash("PUTC")
                 token = OP_PUTC;
                 break;
-        case 0x502dd326219b2:  // hash("OUT")
+        case 0x000502dd326219b2:  // hash("OUT")
                 token = OP_OUT;
                 break;
         case 0x45f5f141ac74c8d6:  // hash("HALT")
                 token = OP_HALT;
                 break;
-        case 0x5709aa5303:  // hash("IN")
+        case 0x0000005709aa5303:  // hash("IN")
                 token = OP_IN;
                 break;
         case 0x2fd2a79caa1c2dd9:  // hash("PUTS")
@@ -623,7 +625,7 @@ static enum Token nextToken(FILE *file, char *buffer)
         case 0xb97d9f7e2d9fd702:  // hash(".BLKW")
                 token = DIR_BLKW;
                 break;
-        case 0x346c5d7733:  // hash("BR")
+        case 0x000000346c5d7733:  // hash("BR")
         case 0x6c916d80285dac45:  // hash("BRNZP")
                 token = OP_BR;
                 break;
@@ -639,13 +641,13 @@ static enum Token nextToken(FILE *file, char *buffer)
         case 0x53a77822b71faf99:  // hash("BRZN")
                 token = OP_BRNZ;
                 break;
-        case 0x28eaa0470f8463:  // hash("BRN")
+        case 0x0028eaa0470f8463:  // hash("BRN")
                 token = OP_BRN;
                 break;
-        case 0xaab21915b9189:  // hash("BRZ")
+        case 0x000aab21915b9189:  // hash("BRZ")
                 token = OP_BRZ;
                 break;
-        case 0x1f7e55ca7ca627:  // hash("BRP")
+        case 0x001f7e55ca7ca627:  // hash("BRP")
                 token = OP_BRP;
                 break;
         default:
@@ -818,7 +820,7 @@ bool parse(struct program *prog)
 {
 	uint16_t instruction = 0, pc = 0, operandOne, operandTwo, realPc = 0;
 	int c, currentLine = 1, errors = 0, operandThree, pass = 1, errorCount = 0;
-	char line[100] = {0}, label[MAX_LABEL_LENGTH], *end;
+	char line[100] = { 0 }, label[MAX_LABEL_LENGTH], *end;
 	bool origSeen = false, endSeen = false;
 
 	enum Token tok;
@@ -941,7 +943,7 @@ bool parse(struct program *prog)
 		exit(EXIT_FAILURE);
 	}
 
-	printf("STARTING FIRST PASS...\n");
+	puts("STARTING FIRST PASS...");
 
 	while (1) {
 		memset(line, 0, sizeof(line));
@@ -960,7 +962,7 @@ bool parse(struct program *prog)
 			}
 			printf("%d error%s found in first pass.\n",
 				errors, 1 == errors ? "" : "'s");
-			printf("STARTING SECOND PASS...\n");
+			puts("STARTING SECOND PASS...");
 			pass = 2;
 			pc = realPc;
 			rewind(asmFile);
@@ -1018,7 +1020,7 @@ bool parse(struct program *prog)
 				nextLine(asmFile);
 				errors++;
 				continue;
-			} else if (operandThree < 0x3000) {
+			} else if (operandThree < 0x3000 && prog->warn) {
                                 WARNING("Line %3d: .ORIG memory address is in OS memory",
                                         currentLine);
                         }
@@ -1199,8 +1201,8 @@ bool parse(struct program *prog)
                         // Check if the last statement has the same condition code as this one,
                         // or if the last one was a BR(nzp), in which case it's covered by that
                         // one.
-                        if ((instruction & 0xFE00) == (listTail->instruction & 0xFE00) ||
-                                        (listTail->instruction & 0xFE00) == 0xFE00) {
+                        if (((instruction & 0xFE00) == (listTail->instruction & 0xFE00) ||
+                                        (listTail->instruction & 0xFE00) == 0xFE00) && prog->warn) {
                                 WARNING("Line %3d: Statement possibly has no effect, "
                                                 "as last line has same BR condition",
                                         currentLine);
@@ -1211,9 +1213,8 @@ bool parse(struct program *prog)
 				if (prog->verbosity > 2) {
 					printf("Line %3d:  ", currentLine);
 				}
-				printf("%-5s  R%d  %-30s  (%4d address%s away)",
+				printf("%-5s  R%d  %-30s  (%4d address%s away)\n",
 					line, operandOne, sym->name, operandThree, operandThree > 1 ? "es" : "");
-				puts("");
 			}
 			break;
 		case OP_AND:
@@ -1603,7 +1604,7 @@ bool parse(struct program *prog)
 				}
 
                                 struct symbol *foundSymbol = findSymbolByAddress(pc);
-                                if (NULL != foundSymbol) {
+                                if (NULL != foundSymbol && prog->warn) {
                                         // As far as I'm aware this should only happen if a label
                                         // has no instruction following it, e.g.:
                                         //      .ORIG 0x3000
@@ -1658,8 +1659,10 @@ bool parse(struct program *prog)
 		} else {
                         if (endSeen && tok != OP_NONE && uppercmp(line, ".END")) {
                                 printf("OP_NONE = %d  op = %d  DIR_END = %d\n", OP_NONE, tok, DIR_END);
-                                WARNING("Line %3d: Found %s after .END directive. It will be ignored",
-                                        currentLine, line);
+                                if (prog->warn) {
+                                        WARNING("Line %3d: Found %s after .END directive. It will be ignored",
+                                                currentLine, line);
+                                }
                                 nextLine(asmFile);
                         }
                 }

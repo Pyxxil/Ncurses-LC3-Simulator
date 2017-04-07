@@ -50,6 +50,7 @@ int main(int argc, char **argv)
                 .binoutfile   = NULL,
                 .objectfile   = NULL,
                 .verbosity    = 0,
+                .warn         = true,
         };
 
         program = &prog;
@@ -80,6 +81,11 @@ int main(int argc, char **argv)
                         .option = REQUIRED,
                 },
                 {
+                        .longOption = "no-warn",
+                        .shortOption = 'n',
+                        .option = NONE,
+                },
+                {
                         .longOption = "help",
                         .shortOption = 'h',
                         .option = NONE,
@@ -106,6 +112,9 @@ int main(int argc, char **argv)
                         }
 
                         opts |= ASSEMBLE;
+                        break;
+                case 'n':
+                        program->warn = false;
                         break;
                 case 'f':
                         if (returnedOption.option == NONE) {
