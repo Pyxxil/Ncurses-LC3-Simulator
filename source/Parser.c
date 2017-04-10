@@ -816,7 +816,109 @@ static uint16_t nextRegister(FILE *file, bool allowedComma)
 	return (uint16_t) (c - 0x30);
 }
 
-bool parse(struct program *prog)
+static void create_files_for(struct program *program)
+{
+	size_t length = strlen(program->assemblyfile) + 1;
+	char *ext = strrchr(program->assemblyfile, '.');
+
+	if (NULL == program->symbolfile) {
+		if (NULL != ext) {
+			program->symbolfile = calloc(length, sizeof(char));
+			if (NULL == program->symbolfile) {
+				perror("LC3-Simulator");
+				exit(EXIT_FAILURE);
+			}
+
+			strncpy(program->symbolfile, program->assemblyfile,
+				(size_t) (ext - program->assemblyfile));
+		} else {
+			program->symbolfile = calloc(length + 5,
+						     sizeof(char));
+			if (NULL == program->symbolfile) {
+				perror("LC3-Simulator");
+				exit(EXIT_FAILURE);
+			}
+
+			strcpy(program->symbolfile, program->assemblyfile);
+		}
+
+		strcat(program->symbolfile, ".sym");
+	}
+
+	if (NULL == program->hexoutfile) {
+		if (NULL != ext) {
+			program->hexoutfile = calloc(length, sizeof(char));
+			if (NULL == program->hexoutfile) {
+				perror("LC3-Simulator");
+				exit(EXIT_FAILURE);
+			}
+
+			strncpy(program->hexoutfile, program->assemblyfile,
+				(size_t) (ext - program->assemblyfile));
+		} else {
+			program->hexoutfile = calloc(length + 5,
+						     sizeof(char));
+			if (NULL == program->hexoutfile) {
+				perror("LC3-Simulator");
+				exit(EXIT_FAILURE);
+			}
+
+			strcpy(program->hexoutfile, program->assemblyfile);
+		}
+
+		strcat(program->hexoutfile, ".hex");
+	}
+
+	if (NULL == program->binoutfile) {
+		if (NULL != ext) {
+			program->binoutfile = calloc(length, sizeof(char));
+			if (NULL == program->binoutfile) {
+				perror("LC3-Simulator");
+				exit(EXIT_FAILURE);
+			}
+
+			strncpy(program->binoutfile, program->assemblyfile,
+				(size_t) (ext - program->assemblyfile));
+		} else {
+			program->binoutfile = calloc(length + 5,
+						     sizeof(char));
+			if (NULL == program->binoutfile) {
+				perror("LC3-Simulator");
+				exit(EXIT_FAILURE);
+			}
+
+			strcpy(program->binoutfile, program->assemblyfile);
+		}
+
+		strcat(program->binoutfile, ".bin");
+	}
+
+	if (NULL == program->objectfile) {
+		if (NULL != ext) {
+			program->objectfile = calloc(length, sizeof(char));
+			if (NULL == program->objectfile) {
+				perror("LC3-Simulator");
+				exit(EXIT_FAILURE);
+			}
+
+			strncpy(program->objectfile, program->assemblyfile,
+				(size_t) (ext - program->assemblyfile));
+		} else {
+			program->objectfile = calloc(length + 5,
+						     sizeof(char));
+			if (NULL == program->objectfile) {
+				perror("LC3-Simulator");
+				exit(EXIT_FAILURE);
+			}
+
+			strcpy(program->objectfile, program->assemblyfile);
+		}
+
+		strcat(program->objectfile, ".obj");
+	}
+}
+
+bool parse(struct program *program)
 {
 	uint16_t instruction = 0, pc = 0, operandOne, operandTwo, realPc = 0;
 	int c, currentLine = 1, errors = 0, operandThree, pass = 1, errorCount = 0;
@@ -826,122 +928,23 @@ bool parse(struct program *prog)
 	enum Token tok;
 	struct symbol *sym;
 
-	FILE *asmFile;
-
-	if (NULL == prog->assemblyfile) {
+        if (NULL == program->assemblyfile) {
 		fprintf(stderr, "No assembly file provided.\n");
-		return false;
-	} else {
-		size_t length = strlen(prog->assemblyfile) + 1;
-		char *ext = strrchr(prog->assemblyfile, '.');
+                return false;
+        }
 
-		if (NULL == prog->symbolfile) {
-			if (NULL != ext) {
-				prog->symbolfile = calloc(length, sizeof(char));
-				if (NULL == prog->symbolfile) {
-					perror("LC3-Simulator");
-					exit(EXIT_FAILURE);
-				}
+	create_files_for(program);
 
-				strncpy(prog->symbolfile, prog->assemblyfile,
-					(size_t) (ext - prog->assemblyfile));
-			} else {
-				prog->symbolfile = calloc(length + 5,
-				sizeof(char));
-				if (NULL == prog->symbolfile) {
-					perror("LC3-Simulator");
-					exit(EXIT_FAILURE);
-				}
-
-				strcpy(prog->symbolfile, prog->assemblyfile);
-			}
-
-			strcat(prog->symbolfile, ".sym");
-		}
-
-		if (NULL == prog->hexoutfile) {
-			if (NULL != ext) {
-				prog->hexoutfile = calloc(length, sizeof(char));
-				if (NULL == prog->hexoutfile) {
-					perror("LC3-Simulator");
-					exit(EXIT_FAILURE);
-				}
-
-				strncpy(prog->hexoutfile, prog->assemblyfile,
-					(size_t) (ext - prog->assemblyfile));
-			} else {
-				prog->hexoutfile = calloc(length + 5,
-				sizeof(char));
-				if (NULL == prog->hexoutfile) {
-					perror("LC3-Simulator");
-					exit(EXIT_FAILURE);
-				}
-
-				strcpy(prog->hexoutfile, prog->assemblyfile);
-			}
-
-			strcat(prog->hexoutfile, ".hex");
-		}
-
-		if (NULL == prog->binoutfile) {
-			if (NULL != ext) {
-				prog->binoutfile = calloc(length, sizeof(char));
-				if (NULL == prog->binoutfile) {
-					perror("LC3-Simulator");
-					exit(EXIT_FAILURE);
-				}
-
-				strncpy(prog->binoutfile, prog->assemblyfile,
-					(size_t) (ext - prog->assemblyfile));
-			} else {
-				prog->binoutfile = calloc(length + 5,
-				sizeof(char));
-				if (NULL == prog->binoutfile) {
-					perror("LC3-Simulator");
-					exit(EXIT_FAILURE);
-				}
-
-				strcpy(prog->binoutfile, prog->assemblyfile);
-			}
-
-			strcat(prog->binoutfile, ".bin");
-		}
-
-		if (NULL == prog->objectfile) {
-			if (NULL != ext) {
-				prog->objectfile = calloc(length, sizeof(char));
-				if (NULL == prog->objectfile) {
-					perror("LC3-Simulator");
-					exit(EXIT_FAILURE);
-				}
-
-				strncpy(prog->objectfile, prog->assemblyfile,
-					(size_t) (ext - prog->assemblyfile));
-			} else {
-				prog->objectfile = calloc(length + 5,
-				sizeof(char));
-				if (NULL == prog->objectfile) {
-					perror("LC3-Simulator");
-					exit(EXIT_FAILURE);
-				}
-
-				strcpy(prog->objectfile, prog->assemblyfile);
-			}
-
-			strcat(prog->objectfile, ".obj");
-		}
+	FILE *asmFile = fopen(program->assemblyfile, "r");
+	if (NULL == asmFile) {
+		perror("LC3-Simulator");
+		exit(EXIT_FAILURE);
 	}
 
 	// This isn't the best place for this as it populates the symbol table
 	// with information we don't need to show.
 	populateOSSymbols();
 	OSInstalled = true;
-
-	asmFile = fopen(prog->assemblyfile, "r");
-	if (NULL == asmFile) {
-		perror("LC3-Simulator");
-		exit(EXIT_FAILURE);
-	}
 
 	puts("STARTING FIRST PASS...");
 
@@ -1020,7 +1023,7 @@ bool parse(struct program *prog)
 				nextLine(asmFile);
 				errors++;
 				continue;
-			} else if (operandThree < 0x3000 && prog->warn) {
+			} else if (operandThree < 0x3000 && program->warn) {
                                 WARNING("Line %3d: .ORIG memory address is in OS memory",
                                         currentLine);
                         }
@@ -1202,15 +1205,15 @@ bool parse(struct program *prog)
                         // or if the last one was a BR(nzp), in which case it's covered by that
                         // one.
                         if (((instruction & 0xFE00) == (listTail->instruction & 0xFE00) ||
-                                        (listTail->instruction & 0xFE00) == 0xFE00) && prog->warn) {
+                                        (listTail->instruction & 0xFE00) == 0xFE00) && program->warn) {
                                 WARNING("Line %3d: Statement possibly has no effect, "
                                                 "as last line has same BR condition",
                                         currentLine);
                         }
 
 			instruction |= (operandThree & 0x1ff);
-			if (prog->verbosity) {
-				if (prog->verbosity > 2) {
+			if (program->verbosity) {
+				if (program->verbosity > 2) {
 					printf("Line %3d:  ", currentLine);
 				}
 				printf("%-5s  R%d  %-30s  (%4d address%s away)\n",
@@ -1261,8 +1264,8 @@ bool parse(struct program *prog)
 
 			instruction = instruction | (uint16_t) (operandOne << 9 |
 								operandTwo << 6 | operandThree);
-			if (prog->verbosity) {
-				if (prog->verbosity > 2) {
+			if (program->verbosity) {
+				if (program->verbosity > 2) {
 					printf("Line %3d:  ", currentLine);
 				}
 				printf("%-5s  R%d  R%d  ", line, operandOne, operandTwo);
@@ -1301,8 +1304,8 @@ bool parse(struct program *prog)
 			}
 
 			instruction |= operandOne << 9 | operandTwo << 6;
-			if (prog->verbosity) {
-				if (prog->verbosity > 2) {
+			if (program->verbosity) {
+				if (program->verbosity > 2) {
 					printf("Line %3d:  ", currentLine);
 				}
 				printf("%-5s  R%d  R%d", line, operandOne, operandTwo);
@@ -1329,8 +1332,8 @@ bool parse(struct program *prog)
 			}
 
 			instruction |= operandOne << 6;
-			if (prog->verbosity) {
-				if (prog->verbosity > 2) {
+			if (program->verbosity) {
+				if (program->verbosity > 2) {
 					printf("Line %3d:  ", currentLine);
 				}
 				printf("%-5s  R%d", line, operandOne);
@@ -1373,8 +1376,8 @@ bool parse(struct program *prog)
 			}
 
 			instruction |= (operandThree & 0x7ff);
-			if (prog->verbosity) {
-				if (prog->verbosity > 2) {
+			if (program->verbosity) {
+				if (program->verbosity > 2) {
 					printf("Line %3d:  ", currentLine);
 				}
 				printf("%-5s  R%d  %-30s  (%4d address%s away)",
@@ -1444,8 +1447,8 @@ bool parse(struct program *prog)
 			}
 
 			instruction |= operandOne << 9 | (operandThree & 0x1ff);
-			if (prog->verbosity) {
-				if (prog->verbosity > 2) {
+			if (program->verbosity) {
+				if (program->verbosity > 2) {
 					printf("Line %3d:  ", currentLine);
 				}
 				printf("%-5s  R%d  %-30s  (%4d address%s away)",
@@ -1498,8 +1501,8 @@ bool parse(struct program *prog)
 			}
 
 			instruction |= operandOne << 9 | operandTwo << 6 | (operandThree & 0x3f);
-			if (prog->verbosity) {
-				if (prog->verbosity > 2) {
+			if (program->verbosity) {
+				if (program->verbosity > 2) {
 					printf("Line %3d:  ", currentLine);
 				}
 				printf("%-5s  R%d  R%d  #%d", line, operandOne,
@@ -1514,8 +1517,8 @@ bool parse(struct program *prog)
 			}
 
 			instruction = 0xc1c0;
-			if (prog->verbosity) {
-				if (prog->verbosity > 2) {
+			if (program->verbosity) {
+				if (program->verbosity > 2) {
 					printf("Line %3d:  ", currentLine);
 				}
 				printf("%-4s", line);
@@ -1528,8 +1531,8 @@ bool parse(struct program *prog)
 				break;
 			}
 
-			if (prog->verbosity) {
-				if (prog->verbosity > 2) {
+			if (program->verbosity) {
+				if (program->verbosity > 2) {
 					printf("Line %3d:  ", currentLine);
 				}
 				printf("%-5s", line);
@@ -1558,8 +1561,8 @@ bool parse(struct program *prog)
 			}
 
 			instruction = (uint16_t) (0xf000 + (uint16_t) operandThree);
-			if (prog->verbosity) {
-				if (prog->verbosity > 2) {
+			if (program->verbosity) {
+				if (program->verbosity > 2) {
 					printf("Line %3d:  ", currentLine);
 				}
 				printf("%-5s 0x%x", line, operandThree);
@@ -1582,8 +1585,8 @@ bool parse(struct program *prog)
 
 			if (1 == pass) {
 				nextLine(asmFile);
-			} else if (prog->verbosity) {
-				if (prog->verbosity > 2) {
+			} else if (program->verbosity) {
+				if (program->verbosity > 2) {
 					printf("Line %3d:  ", currentLine);
 				}
 				printf("%-62s", line);
@@ -1603,14 +1606,16 @@ bool parse(struct program *prog)
 					*colon = '\0';
 				}
 
+                                // TODO: Should this go inside an if block for program->warn?
+                                // TODO: If the user doesn't want warnings, then this wouldn't be used..
                                 struct symbol *foundSymbol = findSymbolByAddress(pc);
-                                if (NULL != foundSymbol && prog->warn) {
+                                if (NULL != foundSymbol && program->warn) {
                                         // As far as I'm aware this should only happen if a label
                                         // has no instruction following it, e.g.:
                                         //      .ORIG 0x3000
                                         //      LABEL_ONE
-                                        //      LABEL_TWO  ; Warning thrown for this line
-                                        //      LABEL_THREE ; Warning also thrown
+                                        //      LABEL_TWO   ; Warning thrown for this line
+                                        //      LABEL_THREE ; Warning also thrown for this line
                                         //      .END
                                         // Of course, if more than 2 labels share an address this will
                                         // compare the last with the first, e.g. in the above example,
@@ -1631,12 +1636,12 @@ bool parse(struct program *prog)
 					errors++;
 				}
 
-				if (prog->verbosity) {
-					if (prog->verbosity > 2) {
+				if (program->verbosity) {
+					if (program->verbosity > 2) {
 						printf("Line %3d: ", currentLine);
 					}
 					printf("Found label '%s'", line);
-					if (prog->verbosity > 1) {
+					if (program->verbosity > 1) {
 						printf(" with address 0x%4x", pc);
 					}
 					puts("");
@@ -1658,8 +1663,7 @@ bool parse(struct program *prog)
 			}
 		} else {
                         if (endSeen && tok != OP_NONE && uppercmp(line, ".END")) {
-                                printf("OP_NONE = %d  op = %d  DIR_END = %d\n", OP_NONE, tok, DIR_END);
-                                if (prog->warn) {
+                                if (program->warn) {
                                         WARNING("Line %3d: Found %s after .END directive. It will be ignored",
                                                 currentLine, line);
                                 }
@@ -1672,10 +1676,10 @@ bool parse(struct program *prog)
 	fclose(asmFile);
 
 	if (!errorCount) {
-		FILE *symFile = fopen(prog->symbolfile, "w+");
-		FILE *hexFile = fopen(prog->hexoutfile, "w+");
-		FILE *binFile = fopen(prog->binoutfile, "w+");
-		FILE *objFile = fopen(prog->objectfile, "wb+");
+		FILE *symFile = fopen(program->symbolfile, "w+");
+		FILE *hexFile = fopen(program->hexoutfile, "w+");
+		FILE *binFile = fopen(program->binoutfile, "w+");
+		FILE *objFile = fopen(program->objectfile, "wb+");
 		if (NULL == symFile || NULL == hexFile || NULL == binFile ||
 		    NULL == objFile) {
 			perror("LC3-Simulator");
